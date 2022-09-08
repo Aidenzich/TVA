@@ -171,14 +171,14 @@ class AbstractDataset(metaclass=ABCMeta):
             raise NotImplementedError
 
     def _get_rawdata_root_path(self):
-        return Path(RAW_DATASET_ROOT_FOLDER)
+        return 
 
     def _get_rawdata_folder_path(self):
-        root = self._get_rawdata_root_path()
+        root = Path(RAW_DATASET_ROOT_FOLDER)
         return root.joinpath(self.raw_code())
 
     def _get_preprocessed_root_path(self):
-        root = self._get_rawdata_root_path()
+        root = Path(RAW_DATASET_ROOT_FOLDER)
         return root.joinpath('preprocessed')
 
     def _get_preprocessed_folder_path(self):

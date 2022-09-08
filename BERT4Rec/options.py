@@ -1,8 +1,6 @@
 from templates import set_template
-from datasets import DATASETS
+from tmpdatasets import DATASETS
 from dataloaders import DATALOADERS
-from models import MODELS
-from trainers import TRAINERS
 
 import argparse
 
@@ -47,16 +45,15 @@ parser.add_argument('--test_batch_size', type=int, default=64)
 parser.add_argument('--train_negative_sampler_code', type=str, default='random', choices=['popular', 'random'],
                     help='Method to sample negative items for training. Not used in bert')
 parser.add_argument('--train_negative_sample_size', type=int, default=100)
-parser.add_argument('--train_negative_sampling_seed', type=int, default=None)
+parser.add_argument('--train_negative_sampling_seed', type=int, default=0)
 parser.add_argument('--test_negative_sampler_code', type=str, default='random', choices=['popular', 'random'],
                     help='Method to sample negative items for evaluation')
 parser.add_argument('--test_negative_sample_size', type=int, default=100)
-parser.add_argument('--test_negative_sampling_seed', type=int, default=None)
+parser.add_argument('--test_negative_sampling_seed', type=int, default=0)
 
 ################
 # Trainer
 ################
-parser.add_argument('--trainer_code', type=str, default='bert', choices=TRAINERS.keys())
 # device #
 parser.add_argument('--device', type=str, default='cpu', choices=['cpu', 'cuda'])
 parser.add_argument('--num_gpu', type=int, default=1)
@@ -76,17 +73,13 @@ parser.add_argument('--log_period_as_iter', type=int, default=12800)
 # evaluation #
 parser.add_argument('--metric_ks', nargs='+', type=int, default=[10, 20, 50], help='ks for Metric@k')
 parser.add_argument('--best_metric', type=str, default='NDCG@10', help='Metric for determining the best model')
-# Finding optimal beta for VAE #
-parser.add_argument('--find_best_beta', type=bool, default=False, 
-                    help='If set True, the trainer will anneal beta all the way up to 1.0 and find the best beta')
 parser.add_argument('--total_anneal_steps', type=int, default=2000, help='The step number when beta reaches 1.0')
 parser.add_argument('--anneal_cap', type=float, default=0.2, help='Upper limit of increasing beta. Set this as the best beta found')
 
 ################
 # Model
 ################
-parser.add_argument('--model_code', type=str, default='bert', choices=MODELS.keys())
-parser.add_argument('--model_init_seed', type=int, default=None)
+parser.add_argument('--model_init_seed', type=int, default=0)
 # BERT #
 parser.add_argument('--bert_max_len', type=int, default=None, help='Length of sequence for bert')
 parser.add_argument('--bert_num_items', type=int, default=None, help='Number of total items')
@@ -95,18 +88,7 @@ parser.add_argument('--bert_num_blocks', type=int, default=None, help='Number of
 parser.add_argument('--bert_num_heads', type=int, default=None, help='Number of heads for multi-attention')
 parser.add_argument('--bert_dropout', type=float, default=None, help='Dropout probability to use throughout the model')
 parser.add_argument('--bert_mask_prob', type=float, default=None, help='Probability for masking items in the training sequence')
-# DAE #
-parser.add_argument('--dae_num_items', type=int, default=None, help='Number of total items')
-parser.add_argument('--dae_num_hidden', type=int, default=0, help='Number of hidden layers in DAE')
-parser.add_argument('--dae_hidden_dim', type=int, default=600, help='Dimension of hidden layer in DAE')
-parser.add_argument('--dae_latent_dim', type=int, default=200, help="Dimension of latent vector in DAE")
-parser.add_argument('--dae_dropout', type=float, default=0.5, help='Probability of input dropout in DAE')
-# VAE #
-parser.add_argument('--vae_num_items', type=int, default=None, help='Number of total items')
-parser.add_argument('--vae_num_hidden', type=int, default=0, help='Number of hidden layers in VAE')
-parser.add_argument('--vae_hidden_dim', type=int, default=600, help='Dimension of hidden layer in VAE')
-parser.add_argument('--vae_latent_dim', type=int, default=200, help="Dimension of latent vector in VAE (K in paper)")
-parser.add_argument('--vae_dropout', type=float, default=0.5, help='Probability of input dropout in VAE')
+
 
 ################
 # Experiment
@@ -114,7 +96,7 @@ parser.add_argument('--vae_dropout', type=float, default=0.5, help='Probability 
 parser.add_argument('--experiment_dir', type=str, default='experiments')
 parser.add_argument('--experiment_description', type=str, default='test')
 
-
 ################
-args = parser.parse_args()
+# args = parser.parse_args()
+args = parser.parse_args(args=["--template", "train_bert"])
 set_template(args)

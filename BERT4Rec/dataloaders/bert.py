@@ -122,12 +122,11 @@ class BertTrainDataset(data_utils.Dataset):
 class BertEvalDataset(data_utils.Dataset):
     def __init__(self, u2seq, u2answer, max_len, mask_token, negative_samples):
         self.u2seq = u2seq
-        self.users = sorted(self.u2seq.keys())
-        self.u2answer = u2answer
+        self.users = sorted(self.u2seq.keys())        
         self.max_len = max_len
         self.mask_token = mask_token
         self.negative_samples = negative_samples
-
+        self.u2answer = u2answer
     def __len__(self):
         return len(self.users)
 

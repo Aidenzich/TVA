@@ -10,7 +10,7 @@ class RandomNegativeSampler(AbstractNegativeSampler):
     def code(cls):
         return 'random'
 
-    def generate_negative_samples(self):
+    def generate_negative_samples(self):        
         assert self.seed is not None, 'Specify seed for random sampling'
         np.random.seed(self.seed)
         negative_samples = {}
