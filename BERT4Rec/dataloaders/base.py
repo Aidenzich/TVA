@@ -17,11 +17,6 @@ class AbstractDataloader(metaclass=ABCMeta):
         self.user_count = len(self.umap)
         self.item_count = len(self.smap)
 
-    @classmethod
-    @abstractmethod
-    def code(cls):
-        pass
-
     @abstractmethod
     def get_pytorch_dataloaders(self):
         pass

@@ -17,7 +17,7 @@ def set_template(args):
         args.val_batch_size = batch
         args.test_batch_size = batch
 
-        args.train_negative_sampler_code = 'random'
+        args.train_negative_sampler_method = 'random'
         args.train_negative_sample_size = 0
         args.train_negative_sampling_seed = 0
         args.test_negative_sampler_code = 'random'
@@ -43,5 +43,5 @@ def set_template(args):
         args.bert_hidden_units = 256
         args.bert_mask_prob = 0.15
         args.bert_max_len = 100
-        args.bert_num_blocks = 2
+        args.bert_n_layers = 2
         args.bert_num_heads = 4

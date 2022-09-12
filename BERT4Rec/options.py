@@ -1,6 +1,5 @@
 from templates import set_template
 from tmpdatasets import DATASETS
-from dataloaders import DATALOADERS
 
 import argparse
 
@@ -33,7 +32,6 @@ parser.add_argument('--eval_set_size', type=int, default=500,
 ################
 # Dataloader
 ################
-parser.add_argument('--dataloader_code', type=str, default='bert', choices=DATALOADERS.keys())
 parser.add_argument('--dataloader_random_seed', type=float, default=0.0)
 parser.add_argument('--train_batch_size', type=int, default=64)
 parser.add_argument('--val_batch_size', type=int, default=64)
@@ -42,7 +40,7 @@ parser.add_argument('--test_batch_size', type=int, default=64)
 ################
 # NegativeSampler
 ################
-parser.add_argument('--train_negative_sampler_code', type=str, default='random', choices=['popular', 'random'],
+parser.add_argument('--train_negative_sampler_method', type=str, default='random', choices=['popular', 'random'],
                     help='Method to sample negative items for training. Not used in bert')
 parser.add_argument('--train_negative_sample_size', type=int, default=100)
 parser.add_argument('--train_negative_sampling_seed', type=int, default=0)

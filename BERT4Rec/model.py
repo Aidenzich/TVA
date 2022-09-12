@@ -8,11 +8,27 @@ from utils import recalls_and_ndcgs_for_ks
 
 # BERTModel
 class BERTModel(pl.LightningModule):
-    def __init__(self, args):
+    def __init__(self,        
+        hidden_size:int,
+        n_layers:int,
+        heads:int,
+        num_items:int,
+        max_len:int,
+        dropout:int,
+        ):
         super().__init__()
-        self.args = args
-        self.bert = BERT(args)
-        self.out = nn.Linear(self.bert.hidden, args.num_items + 1)    
+
+        self.bert = BERT(        
+            model_init_seed=0,            
+            max_len=max_len,
+            num_items=num_items,
+            n_layers=n_layers,
+            hidden_size=hidden_size, 
+            heads=heads,
+            dropout=dropout,
+        )
+        
+        self.out = nn.Linear(hidden_size, num_items + 1)
 
     def forward(self, x):
         x = self.bert(x)
@@ -21,8 +37,8 @@ class BERTModel(pl.LightningModule):
     def training_step(self, batch, batch_idx):
         seqs, labels = batch
         logits = self.forward(seqs)                 # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)        
-        logits = logits.view(-1, logits.size(-1))   # (B*T) x V
-        labels = labels.view(-1)                    # B*T
+        logits = logits.view(-1, logits.size(-1))   # (B * T) x V
+        labels = labels.view(-1)                    # B * T
         loss = F.cross_entropy(logits, labels, ignore_index=0)
         self.log("train_loss", loss)
         return loss
@@ -33,35 +49,34 @@ class BERTModel(pl.LightningModule):
     
     def validation_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
-        scores = self.forward(seqs)             # B x T x V
-        scores = scores[:, -1, :]               # B x V
-        scores = scores.gather(1, candidates)   # B x C
+        scores = self.forward(seqs)                 # B x T x V
+        scores = scores[:, -1, :]                   # B x V
+        scores = scores.gather(1, candidates)       # B x C
         metrics = recalls_and_ndcgs_for_ks(scores, labels, [1])
         self.log("recall", metrics)
 
 # BERT
 class BERT(nn.Module):
-    def __init__(self, args):
+    def __init__(self,
+            model_init_seed:int,
+            max_len:int,
+            num_items:int,
+            n_layers:int,
+            heads:int,
+            hidden_size:int,
+            dropout:float,
+        ):
         super().__init__()
-
-        fix_random_seed_as(args.model_init_seed)
+        fix_random_seed_as(model_init_seed)
         # self.init_weights()
-
-        max_len = args.bert_max_len
-        num_items = args.num_items
-        n_layers = args.bert_num_blocks
-        heads = args.bert_num_heads
-        vocab_size = num_items + 2
-        hidden = args.bert_hidden_units
-        self.hidden = hidden
-        dropout = args.bert_dropout
+        vocab_size = num_items + 2                    
 
         # embedding for BERT, sum of positional, segment, token embeddings
-        self.embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=self.hidden, max_len=max_len, dropout=dropout)
+        self.embedding = BERTEmbedding(vocab_size=vocab_size, embed_size=hidden_size, max_len=max_len, dropout=dropout)
 
         # multi-layers transformer blocks, deep network
         self.transformer_blocks = nn.ModuleList(
-            [TransformerBlock(hidden, heads, hidden * 4, dropout) for _ in range(n_layers)])
+            [TransformerBlock(hidden_size, heads, hidden_size * 4, dropout) for _ in range(n_layers)])
 
     def forward(self, x):
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
