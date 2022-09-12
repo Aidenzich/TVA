@@ -9,11 +9,11 @@ class AbstractDataloader(metaclass=ABCMeta):
         self.rng = random.Random(seed)
         self.save_folder = dataset._get_preprocessed_folder_path()
         dataset = dataset.load_dataset()
-        self.train = dataset['train']
-        self.val = dataset['val']
-        self.test = dataset['test']
-        self.umap = dataset['umap']
-        self.smap = dataset['smap']
+        self.train = dataset["train"]  # dict
+        self.val = dataset["val"]
+        self.test = dataset["test"]
+        self.umap = dataset["umap"]
+        self.smap = dataset["smap"]
         self.user_count = len(self.umap)
         self.item_count = len(self.smap)
 

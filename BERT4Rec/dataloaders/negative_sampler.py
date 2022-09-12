@@ -6,19 +6,20 @@ import numpy as np
 from tqdm import trange
 from collections import Counter
 
+
 class NegativeSampler(metaclass=ABCMeta):
     def __init__(
-        self,         
-        train, 
-        val, 
-        test,         
-        user_count, 
-        item_count, 
-        sample_size, 
-        seed, 
+        self,
+        train,
+        val,
+        test,
+        user_count,
+        item_count,
+        sample_size,
+        seed,
         save_folder,
-        method='random',
-        ):
+        method="random",
+    ):
         self.train = train
         self.val = val
         self.test = test
@@ -27,22 +28,21 @@ class NegativeSampler(metaclass=ABCMeta):
         self.sample_size = sample_size
         self.seed = seed
         self.save_folder = save_folder
-    
-    def generate_negative_samples(self, method='random'):
+
+    def generate_negative_samples(self, method="random"):
         # return self.get_negative_samples(method)
-        if method == 'random':
+        if method == "random":
             return self._generate_random_negative_samples(self)
-        if method == 'popular':
+        if method == "popular":
             return self._generate_popular_negative_samples(self)
         else:
-            raise ValueError('Invalid method')
-        
-    
+            raise ValueError("Invalid method")
+
     def _generate_random_negative_samples(self):
-        assert self.seed is not None, 'Specify seed for random sampling'
+        assert self.seed is not None, "Specify seed for random sampling"
         np.random.seed(self.seed)
         negative_samples = {}
-        print('Sampling negative items')
+        print("Sampling negative items")
         for user in trange(self.user_count):
             if isinstance(self.train[user][1], tuple):
                 seen = set(x[0] for x in self.train[user])
@@ -63,12 +63,12 @@ class NegativeSampler(metaclass=ABCMeta):
             negative_samples[user] = samples
 
         return negative_samples
-    
+
     def _generate_popular_negative_samples(self):
         popular_items = self.items_by_popularity()
 
         negative_samples = {}
-        print('Sampling negative items')
+        print("Sampling negative items")
         for user in trange(self.user_count):
             seen = set(self.train[user])
             seen.update(self.val[user])
@@ -85,7 +85,7 @@ class NegativeSampler(metaclass=ABCMeta):
             negative_samples[user] = samples
 
         return negative_samples
-    
+
     def items_by_popularity(self):
         popularity = Counter()
         for user in range(self.user_count):
@@ -95,22 +95,23 @@ class NegativeSampler(metaclass=ABCMeta):
         popular_items = sorted(popularity, key=popularity.get, reverse=True)
         return popular_items
 
-    def get_negative_samples(self, method='random'):
+    def get_negative_samples(self, method="random"):
         savefile_path = self._get_save_path(method)
         if savefile_path.is_file():
-            print('Negatives samples exist. Loading.')
-            negative_samples = pickle.load(savefile_path.open('rb'))
+            print("Negatives samples exist. Loading.")
+            negative_samples = pickle.load(savefile_path.open("rb"))
             return negative_samples
-        print("Negative samples don't exist. Generating.")                
-        negative_samples = self.generate_negative_samples(method)    
-        print('Saving negative samples')
-        with savefile_path.open('wb') as f:
+        print("Negative samples don't exist. Generating.")
+        negative_samples = self.generate_negative_samples(method)
+        print("Saving negative samples")
+        with savefile_path.open("wb") as f:
             pickle.dump(negative_samples, f)
-            
-        return negative_samples
-    
 
-    def _get_save_path(self, method:string):
+        return negative_samples
+
+    def _get_save_path(self, method: string):
         folder = Path(self.save_folder)
-        filename = '{}-sample_size{}-seed{}.pkl'.format(method, self.sample_size, self.seed)
+        filename = "{}-sample_size{}-seed{}.pkl".format(
+            method, self.sample_size, self.seed
+        )
         return folder.joinpath(filename)
