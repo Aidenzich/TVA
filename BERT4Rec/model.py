@@ -35,7 +35,7 @@ class BERTModel(pl.LightningModule):
         return self.out(x)
 
     def training_step(self, batch, batch_idx):
-        seqs, labels = batch
+        seqs, labels, _ = batch
         logits = self.forward(seqs)                 # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)        
         logits = logits.view(-1, logits.size(-1))   # (B * T) x V
         labels = labels.view(-1)                    # B * T

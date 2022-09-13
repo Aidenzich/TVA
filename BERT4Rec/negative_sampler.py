@@ -32,9 +32,9 @@ class NegativeSampler(metaclass=ABCMeta):
     def generate_negative_samples(self, method="random"):
         # return self.get_negative_samples(method)
         if method == "random":
-            return self._generate_random_negative_samples(self)
+            return self._generate_random_negative_samples()
         if method == "popular":
-            return self._generate_popular_negative_samples(self)
+            return self._generate_popular_negative_samples()
         else:
             raise ValueError("Invalid method")
 

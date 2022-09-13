@@ -42,14 +42,6 @@ class AbstractDataset(metaclass=ABCMeta):
         pass
 
     @classmethod
-    def is_zipfile(cls):
-        return True
-
-    @classmethod
-    def zip_file_content_is_folder(cls):
-        return True
-
-    @classmethod
     def all_raw_file_names(cls):
         return []
 
