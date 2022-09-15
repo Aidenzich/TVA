@@ -172,9 +172,11 @@ class SequenceDataset(Dataset):
             seq = [0] * padding_len + seq
 
             return (
-                torch.LongTensor(seq),
-                torch.LongTensor(candidates),
-                torch.LongTensor(labels),
+                torch.LongTensor(seq),  # user's sequence
+                torch.LongTensor(candidates),  # candidates from negative sampling
+                torch.LongTensor(
+                    labels
+                ),  # labels from user's answer and negative samples
             )
 
         else:
@@ -205,7 +207,11 @@ class SequenceDataset(Dataset):
             tokens = [0] * mask_len + tokens
             labels = [0] * mask_len + labels
 
-            return torch.LongTensor(tokens), torch.LongTensor(labels), torch.empty((0))
+            return (
+                torch.LongTensor(tokens),  # masked user's sequence
+                torch.LongTensor(labels),  # labels for masked tokens
+                torch.empty((0)),
+            )
 
 
 # %%

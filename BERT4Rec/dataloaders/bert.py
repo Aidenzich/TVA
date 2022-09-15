@@ -1,5 +1,5 @@
 from .base import AbstractDataloader
-from .negative_sampler import NegativeSampler
+from ..negative_sampler import NegativeSampler
 from typing import Optional, Tuple
 import torch
 import torch.utils.data as data_utils

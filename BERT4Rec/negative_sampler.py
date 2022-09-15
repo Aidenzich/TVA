@@ -5,6 +5,7 @@ import string
 import numpy as np
 from tqdm import trange
 from collections import Counter
+from config import DATA_PATH
 
 
 class NegativeSampler(metaclass=ABCMeta):
@@ -17,7 +18,6 @@ class NegativeSampler(metaclass=ABCMeta):
         item_count,
         sample_size,
         seed,
-        save_folder,
         method="random",
     ):
         self.train = train
@@ -27,16 +27,7 @@ class NegativeSampler(metaclass=ABCMeta):
         self.item_count = item_count
         self.sample_size = sample_size
         self.seed = seed
-        self.save_folder = save_folder
-
-    def generate_negative_samples(self, method="random"):
-        # return self.get_negative_samples(method)
-        if method == "random":
-            return self._generate_random_negative_samples()
-        if method == "popular":
-            return self._generate_popular_negative_samples()
-        else:
-            raise ValueError("Invalid method")
+        self.method = method
 
     def _generate_random_negative_samples(self):
         assert self.seed is not None, "Specify seed for random sampling"
@@ -86,6 +77,14 @@ class NegativeSampler(metaclass=ABCMeta):
 
         return negative_samples
 
+    def _get_save_path(self):
+        folder = DATA_PATH
+        filename = "{}-sample_size{}-seed{}.pkl".format(
+            self.method, self.sample_size, self.seed
+        )
+
+        return folder / filename
+
     def items_by_popularity(self):
         popularity = Counter()
         for user in range(self.user_count):
@@ -96,7 +95,7 @@ class NegativeSampler(metaclass=ABCMeta):
         return popular_items
 
     def get_negative_samples(self, method="random"):
-        savefile_path = self._get_save_path(method)
+        savefile_path = self._get_save_path()
         if savefile_path.is_file():
             print("Negatives samples exist. Loading.")
             negative_samples = pickle.load(savefile_path.open("rb"))
@@ -109,9 +108,10 @@ class NegativeSampler(metaclass=ABCMeta):
 
         return negative_samples
 
-    def _get_save_path(self, method: string):
-        folder = Path(self.save_folder)
-        filename = "{}-sample_size{}-seed{}.pkl".format(
-            method, self.sample_size, self.seed
-        )
-        return folder.joinpath(filename)
+    def generate_negative_samples(self):
+        if self.method == "random":
+            return self._generate_random_negative_samples()
+        if self.method == "popular":
+            return self._generate_popular_negative_samples()
+        else:
+            raise ValueError("Invalid method")
