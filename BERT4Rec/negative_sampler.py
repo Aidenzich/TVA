@@ -101,7 +101,7 @@ class NegativeSampler(metaclass=ABCMeta):
             negative_samples = pickle.load(savefile_path.open("rb"))
             return negative_samples
         print("Negative samples don't exist. Generating.")
-        negative_samples = self.generate_negative_samples(method)
+        negative_samples = self.generate_negative_samples()
         print("Saving negative samples")
         with savefile_path.open("wb") as f:
             pickle.dump(negative_samples, f)

@@ -8,26 +8,46 @@ import random
 from model import BERTModel
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
+from config import DATA_PATH
+#%%
+pd_data = pd.read_pickle( DATA_PATH / "carrefour.pkl")
+pd_data.rename(columns={"quantity": "rating"}, inplace=True)
+pd_data = pd_data[["user_id", "item_id", "rating", "timestamp"]]
+pd_data.dropna(inplace=True)
+#%%
+# 為了確保模型不會出錯誤，所以只取 user 交易次數 > 10(min available num) 的資料，這邊應該可以移動到 RecsysData 裡面
+vc = pd_data.user_id.value_counts()
+user10index = vc[vc > 10].index
+print(user10index)
+
+
+pd_data = pd_data[pd_data.user_id.isin(user10index)]
+#%%
+pd_data
+# %%
+# ml_100k = cornac.datasets.movielens.load_feedback(fmt="UIRT")
+# np_data = np.array(ml_100k)
+# pd_data = pd.DataFrame(
+#     {
+#         "user_id": np_data[:, 0],
+#         "item_id": np_data[:, 1],
+#         "rating": np_data[:, 2].astype(float),
+#         "timestamp": np_data[:, 3].astype(int),
+#     }
+# )
+# pd_data.info()
+# %%
+# pd_data.user_id.value_counts().plot(kind="hist")
+# pd_data.user_id.value_counts()
 
 # %%
-ml_100k = cornac.datasets.movielens.load_feedback(fmt="UIRT")
-np_data = np.array(ml_100k)
-
-
-# %%
-pd_data = pd.DataFrame(
-    {
-        "user_id": np_data[:, 0],
-        "item_id": np_data[:, 1],
-        "rating": np_data[:, 2].astype(float),
-        "timestamp": np_data[:, 3].astype(int),
-    }
-)
-pd_data.info()
-
-# %%
-max_len = 100
+pd_data
+max_len = 128
 myData = RecsysData(pd_data)
+print(myData.num_items)
+print(myData.num_users)
+
+#%%
 myData.num_items
 trainset = SequenceDataset(
     # Hyperparameters
@@ -36,7 +56,7 @@ trainset = SequenceDataset(
     num_items=myData.num_items,
     mask_token=myData.num_items + 1,
     u2seq=myData.train_seqs,
-    rng=random.Random(1234),
+    rng=random.Random(12345),
 )
 
 test_negative_sampler = NegativeSampler(
@@ -46,7 +66,7 @@ test_negative_sampler = NegativeSampler(
     user_count=myData.num_users,
     item_count=myData.num_items,
     sample_size=120,
-    seed=1234,
+    seed=12345,
 )
 test_negative_samples = test_negative_sampler.get_negative_samples()
 
@@ -70,9 +90,14 @@ mymodel = BERTModel(
 )
 
 # %%
-train_loader = DataLoader(trainset, batch_size=128, shuffle=True, pin_memory=True)
-val_loader = DataLoader(valset, batch_size=128, shuffle=False, pin_memory=True)
+train_loader = DataLoader(trainset, batch_size=12, shuffle=True, pin_memory=True)
+val_loader = DataLoader(valset, batch_size=12, shuffle=False, pin_memory=True)
 
 # %%
 trainer = pl.Trainer(limit_train_batches=100, max_epochs=10, gpus=1)
 trainer.fit(mymodel, train_loader, val_loader)
+
+# %%
+# for i in train_loader:
+#     print(i[0].shape)
+    

@@ -15,7 +15,7 @@ from config import (
 )
 from typing import Dict, List, Tuple
 
-#%%
+
 class RecsysData:
     def __init__(self, df: pd.DataFrame):
         self.dataframe = df
@@ -212,6 +212,7 @@ class SequenceDataset(Dataset):
                 torch.LongTensor(labels),  # labels for masked tokens
                 torch.empty((0)),
             )
+        # TODO Inference dataset mode
 
 
 # %%
