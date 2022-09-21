@@ -1,4 +1,4 @@
-from config import *
+from ...config import *
 
 import json
 import os
@@ -13,19 +13,25 @@ import torch.backends.cudnn as cudnn
 from torch import optim as optim
 
 
-
 def create_experiment_export_folder(args):
-    experiment_dir, experiment_description = args.experiment_dir, args.experiment_description
+    experiment_dir, experiment_description = (
+        args.experiment_dir,
+        args.experiment_description,
+    )
     if not os.path.exists(experiment_dir):
         os.mkdir(experiment_dir)
-    experiment_path = get_name_of_experiment_path(experiment_dir, experiment_description)
+    experiment_path = get_name_of_experiment_path(
+        experiment_dir, experiment_description
+    )
     os.mkdir(experiment_path)
-    print('Folder created: ' + os.path.abspath(experiment_path))
+    print("Folder created: " + os.path.abspath(experiment_path))
     return experiment_path
 
 
 def get_name_of_experiment_path(experiment_dir, experiment_description):
-    experiment_path = os.path.join(experiment_dir, (experiment_description + "_" + str(date.today())))
+    experiment_path = os.path.join(
+        experiment_dir, (experiment_description + "_" + str(date.today()))
+    )
     idx = _get_experiment_index(experiment_path)
     experiment_path = experiment_path + "_" + str(idx)
     return experiment_path
@@ -43,13 +49,13 @@ def load_weights(model, path):
 
 
 def save_test_result(export_root, result):
-    filepath = Path(export_root).joinpath('test_result.txt')
-    with filepath.open('w') as f:
+    filepath = Path(export_root).joinpath("test_result.txt")
+    with filepath.open("w") as f:
         json.dump(result, f, indent=2)
 
 
 def export_experiments_config_as_json(args, experiment_path):
-    with open(os.path.join(experiment_path, 'config.json'), 'w') as outfile:
+    with open(os.path.join(experiment_path, "config.json"), "w") as outfile:
         json.dump(vars(args), outfile, indent=2)
 
 
@@ -63,27 +69,43 @@ def fix_random_seed_as(random_seed):
 
 
 def set_up_gpu(args):
-    os.environ['CUDA_VISIBLE_DEVICES'] = args.device_idx
+    os.environ["CUDA_VISIBLE_DEVICES"] = args.device_idx
     args.num_gpu = len(args.device_idx.split(","))
 
 
 def load_pretrained_weights(model, path):
     chk_dict = torch.load(os.path.abspath(path))
-    model_state_dict = chk_dict[STATE_DICT_KEY] if STATE_DICT_KEY in chk_dict else chk_dict['state_dict']
+    model_state_dict = (
+        chk_dict[STATE_DICT_KEY]
+        if STATE_DICT_KEY in chk_dict
+        else chk_dict["state_dict"]
+    )
     model.load_state_dict(model_state_dict)
 
 
 def setup_to_resume(args, model, optimizer):
-    chk_dict = torch.load(os.path.join(os.path.abspath(args.resume_training), 'models/checkpoint-recent.pth'))
+    chk_dict = torch.load(
+        os.path.join(
+            os.path.abspath(args.resume_training), "models/checkpoint-recent.pth"
+        )
+    )
     model.load_state_dict(chk_dict[STATE_DICT_KEY])
     optimizer.load_state_dict(chk_dict[OPTIMIZER_STATE_DICT_KEY])
 
 
 def create_optimizer(model, args):
-    if args.optimizer == 'Adam':
-        return optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    if args.optimizer == "Adam":
+        return optim.Adam(
+            model.parameters(), lr=args.lr, weight_decay=args.weight_decay
+        )
 
-    return optim.SGD(model.parameters(), lr=args.lr, weight_decay=args.weight_decay, momentum=args.momentum)
+    return optim.SGD(
+        model.parameters(),
+        lr=args.lr,
+        weight_decay=args.weight_decay,
+        momentum=args.momentum,
+    )
+
 
 class AverageMeterSet(object):
     def __init__(self, meters=None):
@@ -105,17 +127,26 @@ class AverageMeterSet(object):
         for meter in self.meters.values():
             meter.reset()
 
-    def values(self, format_string='{}'):
-        return {format_string.format(name): meter.val for name, meter in self.meters.items()}
+    def values(self, format_string="{}"):
+        return {
+            format_string.format(name): meter.val for name, meter in self.meters.items()
+        }
 
-    def averages(self, format_string='{}'):
-        return {format_string.format(name): meter.avg for name, meter in self.meters.items()}
+    def averages(self, format_string="{}"):
+        return {
+            format_string.format(name): meter.avg for name, meter in self.meters.items()
+        }
 
-    def sums(self, format_string='{}'):
-        return {format_string.format(name): meter.sum for name, meter in self.meters.items()}
+    def sums(self, format_string="{}"):
+        return {
+            format_string.format(name): meter.sum for name, meter in self.meters.items()
+        }
 
-    def counts(self, format_string='{}'):
-        return {format_string.format(name): meter.count for name, meter in self.meters.items()}
+    def counts(self, format_string="{}"):
+        return {
+            format_string.format(name): meter.count
+            for name, meter in self.meters.items()
+        }
 
 
 class AverageMeter(object):
@@ -140,7 +171,10 @@ class AverageMeter(object):
         self.avg = self.sum / self.count
 
     def __format__(self, format):
-        return "{self.val:{format}} ({self.avg:{format}})".format(self=self, format=format)
+        return "{self.val:{format}} ({self.avg:{format}})".format(
+            self=self, format=format
+        )
+
 
 def recall(scores, labels, k):
     scores = scores
@@ -148,7 +182,16 @@ def recall(scores, labels, k):
     rank = (-scores).argsort(dim=1)
     cut = rank[:, :k]
     hit = labels.gather(1, cut)
-    return (hit.sum(1).float() / torch.min(torch.Tensor([k]).to(hit.device), labels.sum(1).float())).mean().cpu().item()
+    return (
+        (
+            hit.sum(1).float()
+            / torch.min(torch.Tensor([k]).to(hit.device), labels.sum(1).float())
+        )
+        .mean()
+        .cpu()
+        .item()
+    )
+
 
 def ndcg(scores, labels, k):
     scores = scores.cpu()
@@ -156,12 +199,13 @@ def ndcg(scores, labels, k):
     rank = (-scores).argsort(dim=1)
     cut = rank[:, :k]
     hits = labels.gather(1, cut)
-    position = torch.arange(2, 2+k)
+    position = torch.arange(2, 2 + k)
     weights = 1 / torch.log2(position.float())
     dcg = (hits.float() * weights).sum(1)
-    idcg = torch.Tensor([weights[:min(int(n), k)].sum() for n in labels.sum(1)])
+    idcg = torch.Tensor([weights[: min(int(n), k)].sum() for n in labels.sum(1)])
     ndcg = dcg / idcg
     return ndcg.mean()
+
 
 def recalls_and_ndcgs_for_ks(scores, labels, ks):
     metrics = {}
@@ -174,16 +218,25 @@ def recalls_and_ndcgs_for_ks(scores, labels, ks):
     rank = (-scores).argsort(dim=1)
     cut = rank
     for k in sorted(ks, reverse=True):
-       cut = cut[:, :k]
-       hits = labels_float.gather(1, cut)
-       metrics['Recall@%d' % k] = \
-           (hits.sum(1) / torch.min(torch.Tensor([k]).to(labels.device), labels.sum(1).float())).mean().cpu().item()
+        cut = cut[:, :k]
+        hits = labels_float.gather(1, cut)
+        metrics["Recall@%d" % k] = (
+            (
+                hits.sum(1)
+                / torch.min(torch.Tensor([k]).to(labels.device), labels.sum(1).float())
+            )
+            .mean()
+            .cpu()
+            .item()
+        )
 
-       position = torch.arange(2, 2+k)
-       weights = 1 / torch.log2(position.float())
-       dcg = (hits * weights.to(hits.device)).sum(1)
-       idcg = torch.Tensor([weights[:min(int(n), k)].sum() for n in answer_count]).to(dcg.device)
-       ndcg = (dcg / idcg).mean()
-       metrics['NDCG@%d' % k] = ndcg.cpu().item()
+        position = torch.arange(2, 2 + k)
+        weights = 1 / torch.log2(position.float())
+        dcg = (hits * weights.to(hits.device)).sum(1)
+        idcg = torch.Tensor([weights[: min(int(n), k)].sum() for n in answer_count]).to(
+            dcg.device
+        )
+        ndcg = (dcg / idcg).mean()
+        metrics["NDCG@%d" % k] = ndcg.cpu().item()
 
     return metrics

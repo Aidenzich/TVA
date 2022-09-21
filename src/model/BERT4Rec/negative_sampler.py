@@ -5,7 +5,7 @@ import string
 import numpy as np
 from tqdm import trange
 from collections import Counter
-from config import DATA_PATH
+from ...config import DATA_PATH
 
 
 class NegativeSampler(metaclass=ABCMeta):

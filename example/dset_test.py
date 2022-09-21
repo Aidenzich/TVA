@@ -1,20 +1,30 @@
 # %%
+import sys
+
+sys.path.append("./")
+sys.path.append("../")
+sys.path.append("../../")
+
+
 import cornac
 import numpy as np
 import pandas as pd
-from dset import RecsysData, SequenceDataset
-from negative_sampler import NegativeSampler
 import random
-from model import BERTModel
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
-from config import DATA_PATH
+
+from src.dataset.common import RecsysData
+from src.dataset.seq_dset import SequenceDataset
+from src.model.BERT4Rec.negative_sampler import NegativeSampler
+from src.model.BERT4Rec.model import BERTModel
+from src.config import DATA_PATH
+
 #%%
-pd_data = pd.read_pickle( DATA_PATH / "carrefour.pkl")
+pd_data = pd.read_pickle(DATA_PATH / "carrefour.pkl")
 pd_data.rename(columns={"quantity": "rating"}, inplace=True)
 pd_data = pd_data[["user_id", "item_id", "rating", "timestamp"]]
 pd_data.dropna(inplace=True)
-#%%
+
 # 為了確保模型不會出錯誤，所以只取 user 交易次數 > 10(min available num) 的資料，這邊應該可以移動到 RecsysData 裡面
 vc = pd_data.user_id.value_counts()
 user10index = vc[vc > 10].index
@@ -22,8 +32,8 @@ print(user10index)
 
 
 pd_data = pd_data[pd_data.user_id.isin(user10index)]
-#%%
 pd_data
+
 # %%
 # ml_100k = cornac.datasets.movielens.load_feedback(fmt="UIRT")
 # np_data = np.array(ml_100k)
@@ -41,7 +51,6 @@ pd_data
 # pd_data.user_id.value_counts()
 
 # %%
-pd_data
 max_len = 128
 myData = RecsysData(pd_data)
 print(myData.num_items)
@@ -50,7 +59,7 @@ print(myData.num_users)
 #%%
 myData.num_items
 trainset = SequenceDataset(
-    # Hyperparameters
+    mode="train",
     max_len=max_len,
     mask_prob=0.15,
     num_items=myData.num_items,
@@ -72,8 +81,8 @@ test_negative_samples = test_negative_sampler.get_negative_samples()
 
 
 valset = SequenceDataset(
+    mode="eval",
     mask_token=myData.num_items + 1,
-    eval=True,
     u2seq=myData.train_seqs,
     u2answer=myData.val_seqs,
     max_len=max_len,
@@ -89,15 +98,9 @@ mymodel = BERTModel(
     max_len=max_len,
 )
 
+
 # %%
 train_loader = DataLoader(trainset, batch_size=12, shuffle=True, pin_memory=True)
 val_loader = DataLoader(valset, batch_size=12, shuffle=False, pin_memory=True)
-
-# %%
 trainer = pl.Trainer(limit_train_batches=100, max_epochs=10, gpus=1)
 trainer.fit(mymodel, train_loader, val_loader)
-
-# %%
-# for i in train_loader:
-#     print(i[0].shape)
-    
