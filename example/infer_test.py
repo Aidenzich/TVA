@@ -1,45 +1,26 @@
 # %%
+import pickle
+import torch
+from tqdm import tqdm
+from torch.utils.data import DataLoader
+
 import sys
 
-sys.path.append("./")
 sys.path.append("../")
-sys.path.append("../../")
-
-
-import cornac
-import numpy as np
-import pandas as pd
-import random
-import pytorch_lightning as pl
-from torch.utils.data import DataLoader
 
 from src.dataset.common import RecsysData
 from src.dataset.seq_dset import SequenceDataset
 from src.model.BERT4Rec.negative_sampler import NegativeSampler
 from src.model.BERT4Rec.model import BERTModel
-from src.config import DATA_PATH
+from src.config import DATA_PATH, LOG_PATH
 
 #%%
-pd_data = pd.read_pickle(DATA_PATH / "carrefour.pkl")
-pd_data.rename(columns={"quantity": "rating"}, inplace=True)
-pd_data = pd_data[["user_id", "item_id", "rating", "timestamp"]]
-pd_data.dropna(inplace=True)
-
-# 為了確保模型不會出錯誤，所以只取 user 交易次數 > 10(min available num) 的資料，這邊應該可以移動到 RecsysData 裡面
-vc = pd_data.user_id.value_counts()
-user10index = vc[vc > 10].index
-print(user10index)
-
-
-pd_data = pd_data[pd_data.user_id.isin(user10index)]
-pd_data
-# %%
 max_len = 128
-myData = RecsysData(pd_data)
-##### INFER ######
-from tqdm import tqdm
-import torch
+with open(DATA_PATH / "data_cls.pkl", "rb") as f:
+    myData = pickle.load(f)
 
+#%%
+##### INFER ######
 torch.cuda.empty_cache()
 
 test_negative_sampler = NegativeSampler(
@@ -64,10 +45,10 @@ inferset = SequenceDataset(
     negative_samples=test_negative_samples,
 )
 
-infer_loader = DataLoader(inferset, batch_size=100, shuffle=False, pin_memory=True)
+infer_loader = DataLoader(inferset, batch_size=12, shuffle=False, pin_memory=True)
 
 mymodel = BERTModel.load_from_checkpoint(
-    "lightning_logs/version_0/checkpoints/epoch=9-step=1000.ckpt"
+    LOG_PATH / "lightning_logs/version_0/checkpoints/epoch=9-step=1000.ckpt"
 )
 
 

@@ -78,12 +78,12 @@ class NegativeSampler(metaclass=ABCMeta):
         return negative_samples
 
     def _get_save_path(self):
-        folder = DATA_PATH
+
         filename = "{}-sample_size{}-seed{}.pkl".format(
             self.method, self.sample_size, self.seed
         )
 
-        return folder / filename
+        return DATA_PATH / filename
 
     def items_by_popularity(self):
         popularity = Counter()

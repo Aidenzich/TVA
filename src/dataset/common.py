@@ -2,6 +2,7 @@ from typing import Dict, Tuple
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+import pickle
 
 tqdm.pandas()
 
@@ -10,6 +11,7 @@ from ..config import (
     ITEM_COLUMN_NAME,
     RATING_COLUMN_NAME,
     TIMESTAMP_COLUMN_NAME,
+    DATA_PATH,
 )
 
 
@@ -120,3 +122,14 @@ class RecsysData:
         cat2i = {v: k for k, v in i2cat.items()}
 
         return u2cat, i2cat, cat2u, cat2i, users_cats, items_cats
+
+    def save(self):
+        savefile_path = self._get_save_path()
+        with savefile_path.open("wb") as f:
+            pickle.dump(self, f)
+
+    def _get_save_path(self):
+
+        filename = "data_cls.pkl"
+
+        return DATA_PATH / filename

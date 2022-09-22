@@ -11,13 +11,14 @@ import numpy as np
 import pandas as pd
 import random
 import pytorch_lightning as pl
+from pytorch_lightning import loggers as pl_loggers
 from torch.utils.data import DataLoader
 
 from src.dataset.common import RecsysData
 from src.dataset.seq_dset import SequenceDataset
 from src.model.BERT4Rec.negative_sampler import NegativeSampler
 from src.model.BERT4Rec.model import BERTModel
-from src.config import DATA_PATH
+from src.config import DATA_PATH, LOG_PATH
 
 #%%
 pd_data = pd.read_pickle(DATA_PATH / "carrefour.pkl")
@@ -55,7 +56,7 @@ max_len = 128
 myData = RecsysData(pd_data)
 print(myData.num_items)
 print(myData.num_users)
-
+myData.save()
 #%%
 myData.num_items
 trainset = SequenceDataset(
@@ -102,5 +103,8 @@ mymodel = BERTModel(
 # %%
 train_loader = DataLoader(trainset, batch_size=12, shuffle=True, pin_memory=True)
 val_loader = DataLoader(valset, batch_size=12, shuffle=False, pin_memory=True)
-trainer = pl.Trainer(limit_train_batches=100, max_epochs=10, gpus=1)
+tb_logger = pl_loggers.TensorBoardLogger(save_dir=LOG_PATH)
+trainer = pl.Trainer(limit_train_batches=100, max_epochs=10, gpus=1, logger=tb_logger)
 trainer.fit(mymodel, train_loader, val_loader)
+
+# %%
