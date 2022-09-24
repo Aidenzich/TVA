@@ -1,7 +1,5 @@
 from abc import *
-from pathlib import Path
 import pickle
-import string
 import numpy as np
 from tqdm import trange
 from collections import Counter
@@ -33,7 +31,7 @@ class NegativeSampler(metaclass=ABCMeta):
         assert self.seed is not None, "Specify seed for random sampling"
         np.random.seed(self.seed)
         negative_samples = {}
-        print("Sampling negative items")
+        print("Sampling random negative items")
         for user in trange(self.user_count):
             if isinstance(self.train[user][1], tuple):
                 seen = set(x[0] for x in self.train[user])
@@ -59,7 +57,7 @@ class NegativeSampler(metaclass=ABCMeta):
         popular_items = self.items_by_popularity()
 
         negative_samples = {}
-        print("Sampling negative items")
+        print("Sampling popular negative items")
         for user in trange(self.user_count):
             seen = set(self.train[user])
             seen.update(self.val[user])
@@ -94,7 +92,7 @@ class NegativeSampler(metaclass=ABCMeta):
         popular_items = sorted(popularity, key=popularity.get, reverse=True)
         return popular_items
 
-    def get_negative_samples(self, method="random"):
+    def get_negative_samples(self):
         savefile_path = self._get_save_path()
         if savefile_path.is_file():
             print("Negatives samples exist. Loading.")

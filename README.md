@@ -27,5 +27,5 @@ docker run -p 7777:7777 -p 6006:6006 --gpus all -v $PWD/data:/home/myuser/data r
 
 ## Tensorboard
 ```
-tensorboard --logdir lightning_logs
+tensorboard --logdir logs/lightning_logs
 ```

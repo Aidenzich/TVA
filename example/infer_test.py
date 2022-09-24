@@ -8,7 +8,6 @@ import sys
 
 sys.path.append("../")
 
-from src.dataset.common import RecsysData
 from src.dataset.seq_dset import SequenceDataset
 from src.model.BERT4Rec.negative_sampler import NegativeSampler
 from src.model.BERT4Rec.model import BERTModel

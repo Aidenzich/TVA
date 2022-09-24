@@ -54,8 +54,9 @@ class BERTModel(pl.LightningModule):
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = recalls_and_ndcgs_for_ks(scores, labels, [1])
-        self.log("recall", metrics)
+        metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 5, 10, 20, 50, 100])
+        for i in metrics.keys():
+            self.log(i, metrics[i])
 
 
 # BERT

@@ -1,9 +1,7 @@
 # %%
 import sys
 
-sys.path.append("./")
 sys.path.append("../")
-sys.path.append("../../")
 
 
 import cornac
@@ -52,7 +50,7 @@ pd_data
 # pd_data.user_id.value_counts()
 
 # %%
-max_len = 128
+max_len = 512
 myData = RecsysData(pd_data)
 print(myData.num_items)
 print(myData.num_users)
@@ -75,7 +73,8 @@ test_negative_sampler = NegativeSampler(
     test=myData.test_seqs,
     user_count=myData.num_users,
     item_count=myData.num_items,
-    sample_size=120,
+    sample_size=128,
+    method="random",
     seed=12345,
 )
 test_negative_samples = test_negative_sampler.get_negative_samples()
@@ -104,7 +103,7 @@ mymodel = BERTModel(
 train_loader = DataLoader(trainset, batch_size=12, shuffle=True, pin_memory=True)
 val_loader = DataLoader(valset, batch_size=12, shuffle=False, pin_memory=True)
 tb_logger = pl_loggers.TensorBoardLogger(save_dir=LOG_PATH)
-trainer = pl.Trainer(limit_train_batches=100, max_epochs=10, gpus=1, logger=tb_logger)
+trainer = pl.Trainer(limit_train_batches=100, max_epochs=40, gpus=1, logger=tb_logger)
 trainer.fit(mymodel, train_loader, val_loader)
 
 # %%
