@@ -31,6 +31,7 @@ class BERTModel(pl.LightningModule):
         self.out = nn.Linear(hidden_size, num_items + 1)
 
     def forward(self, x):
+        print("Hello forward")
         x = self.bert(x)
         return self.out(x)
 
@@ -203,6 +204,7 @@ class MultiHeadedAttention(nn.Module):
 
     def __init__(self, h, d_model, dropout=0.1):
         super().__init__()
+
         assert d_model % h == 0
 
         # We assume d_v always equals d_k
