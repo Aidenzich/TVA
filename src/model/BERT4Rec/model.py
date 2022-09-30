@@ -30,8 +30,7 @@ class BERTModel(pl.LightningModule):
 
         self.out = nn.Linear(hidden_size, num_items + 1)
 
-    def forward(self, x):
-        print("Hello forward")
+    def forward(self, x):        
         x = self.bert(x)
         return self.out(x)
 

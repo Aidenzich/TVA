@@ -15,12 +15,12 @@
     | 2 | 3 | 1.003 |
 
 ## Docker
-## Install
+### Install
 ```
 docker build -t recsys .
 ```
 
-## Run
+### Run
 ```
 docker run -p 7777:7777 -p 6006:6006 --gpus all -v $PWD/data:/home/myuser/data recsys
 ```
