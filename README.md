@@ -22,7 +22,7 @@ docker build -t recsys .
 
 ### Run
 ```
-docker run -p 7777:7777 -p 6006:6006 --gpus all -v $PWD/data:/home/myuser/data recsys
+docker run -p 7777:7777 -p 6006:6006 --rm --gpus all -v $PWD/data:/home/myuser/data recsys
 ```
 
 ## Tensorboard

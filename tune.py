@@ -23,7 +23,7 @@ from ray.tune import CLIReporter
 def train_tune(config, epochs=5, accelerator="cpu"):
 
     early_stop_callback = EarlyStopping(
-        monitor="Recall@1", patience=5, verbose=False, mode="min"
+        monitor="Recall@1", patience=5, verbose=False, mode="max"
     )
     tb_logger = pl_loggers.TensorBoardLogger(save_dir=tune.get_trial_dir())
     tune_callback = TuneReportCallback(
@@ -65,8 +65,8 @@ def train_tune(config, epochs=5, accelerator="cpu"):
         test=recsys_data.test_seqs,
         user_count=recsys_data.num_users,
         item_count=recsys_data.num_items,
-        sample_size=512,
-        method="random",
+        sample_size=100000,
+        method="popular",
         seed=12345,
     )
     test_negative_samples = test_negative_sampler.get_negative_samples()
@@ -87,23 +87,23 @@ def train_tune(config, epochs=5, accelerator="cpu"):
 
 def tune_bert4rec():
     config = {
-        "hidden_size": 128,
+        "hidden_size": tune.choice([64, 128, 256]),
         "n_layers": tune.choice([2, 3]),
         "dropout": tune.choice([0, 0.1, 0.2]),
         "max_len": tune.choice([64, 128, 256, 512]),
     }
-    config = {
-        "hidden_size": 128,
-        "n_layers": 2,
-        "dropout": 0.1,
-        "max_len": 64,
-    }
+    # config = {
+    #     "hidden_size": 128,
+    #     "n_layers": 2,
+    #     "dropout": 0.1,
+    #     "max_len": 64,
+    # }
 
     reporter = CLIReporter(
         parameter_columns=["hidden_size", "n_layers", "dropout", "max_len"],
         metric_columns=["recall"],
     )
-    resources_per_trial = {"cpu": 16, "gpu": 1}
+    resources_per_trial = {"cpu": 4, "gpu": 1}
     accelerator = "cuda" if resources_per_trial["gpu"] > 0 else "cpu"
     # scheduler = ASHAScheduler(max_t=10, grace_period=1, reduction_factor=2)
     train_fn_with_parameters = tune.with_parameters(

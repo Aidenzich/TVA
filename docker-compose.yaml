@@ -1,0 +1,18 @@
+version: '3'
+services:
+  recsys:
+    container_name: aidenrec
+    build: .
+    image: azrecsys
+    ports:
+      - "8964:7777"
+      - "6006:6006"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: 1 # default use all
+              capabilities: [ gpu ]
+    volumes:
+      - "./data:/home/myuser/data"
