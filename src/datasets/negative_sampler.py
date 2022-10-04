@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 from tqdm import trange
 from collections import Counter
-from ...config import DATA_PATH
+from ..config import DATA_PATH
 
 
 class NegativeSampler(metaclass=ABCMeta):
@@ -26,6 +26,37 @@ class NegativeSampler(metaclass=ABCMeta):
         self.sample_size = sample_size
         self.seed = seed
         self.method = method
+
+    def items_by_popularity(self):
+        popularity = Counter()
+        for user in range(self.user_count):
+            popularity.update(self.train[user])
+            popularity.update(self.val[user])
+            popularity.update(self.test[user])
+        popular_items = sorted(popularity, key=popularity.get, reverse=True)
+        return popular_items
+
+    def get_negative_samples(self):
+        savefile_path = self._get_save_path()
+        if savefile_path.is_file():
+            print("Negatives samples exist. Loading.")
+            negative_samples = pickle.load(savefile_path.open("rb"))
+            return negative_samples
+        print("Negative samples don't exist. Generating.")
+        negative_samples = self.generate_negative_samples()
+        print("Saving negative samples")
+        with savefile_path.open("wb") as f:
+            pickle.dump(negative_samples, f)
+
+        return negative_samples
+
+    def generate_negative_samples(self):
+        if self.method == "random":
+            return self._generate_random_negative_samples()
+        if self.method == "popular":
+            return self._generate_popular_negative_samples()
+        else:
+            raise ValueError("Invalid method")
 
     def _generate_random_negative_samples(self):
         assert self.seed is not None, "Specify seed for random sampling"
@@ -82,34 +113,3 @@ class NegativeSampler(metaclass=ABCMeta):
         )
 
         return DATA_PATH / filename
-
-    def items_by_popularity(self):
-        popularity = Counter()
-        for user in range(self.user_count):
-            popularity.update(self.train[user])
-            popularity.update(self.val[user])
-            popularity.update(self.test[user])
-        popular_items = sorted(popularity, key=popularity.get, reverse=True)
-        return popular_items
-
-    def get_negative_samples(self):
-        savefile_path = self._get_save_path()
-        if savefile_path.is_file():
-            print("Negatives samples exist. Loading.")
-            negative_samples = pickle.load(savefile_path.open("rb"))
-            return negative_samples
-        print("Negative samples don't exist. Generating.")
-        negative_samples = self.generate_negative_samples()
-        print("Saving negative samples")
-        with savefile_path.open("wb") as f:
-            pickle.dump(negative_samples, f)
-
-        return negative_samples
-
-    def generate_negative_samples(self):
-        if self.method == "random":
-            return self._generate_random_negative_samples()
-        if self.method == "popular":
-            return self._generate_popular_negative_samples()
-        else:
-            raise ValueError("Invalid method")

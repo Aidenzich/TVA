@@ -36,6 +36,16 @@ class RecsysData:
             self.users_seqs,
         ) = self._split_df_u2seq(split_method="leave_one_out")
 
+    def prepare(self):
+        if self.mode == "seq":
+            (
+                self.train_seqs,
+                self.val_seqs,
+                self.test_seqs,
+                self.users_seqs,
+            ) = self._split_df_u2seq(split_method="leave_one_out")
+        print()
+
     def _split_df_u2seq(
         self, split_method: str = "leave_one_out"
     ) -> Tuple[Dict, Dict, Dict, Dict]:

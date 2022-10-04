@@ -5,16 +5,14 @@ sys.path.append("../")
 
 
 import cornac
-import numpy as np
 import pandas as pd
-import random
 import pytorch_lightning as pl
 from pytorch_lightning import loggers as pl_loggers
 from torch.utils.data import DataLoader
 
-from src.dataset.common import RecsysData
-from src.dataset.seq_dset import SequenceDataset
-from src.model.BERT4Rec.negative_sampler import NegativeSampler
+from src.datasets.common import RecsysData
+from src.datasets.seq_dset import SequenceDataset
+from src.datasets.negative_sampler import NegativeSampler
 from src.model.BERT4Rec.model import BERTModel
 from src.config import DATA_PATH, LOG_PATH
 
@@ -63,7 +61,7 @@ trainset = SequenceDataset(
     num_items=myData.num_items,
     mask_token=myData.num_items + 1,
     u2seq=myData.train_seqs,
-    rng=random.Random(12345),
+    seed=12345,
 )
 
 test_negative_sampler = NegativeSampler(

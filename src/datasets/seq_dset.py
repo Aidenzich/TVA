@@ -1,6 +1,7 @@
 import torch
 from torch.utils.data import Dataset, DataLoader
 from typing import Dict, List, Tuple
+import random
 
 
 class SequenceDataset(Dataset):
@@ -13,7 +14,7 @@ class SequenceDataset(Dataset):
         # for train
         num_items=0,
         mask_prob=0,
-        rng=None,
+        seed=0,
         # for eval
         negative_samples=None,
         u2answer=None,
@@ -23,8 +24,8 @@ class SequenceDataset(Dataset):
             if negative_samples is None or u2answer is None:
                 raise ValueError("negative_samples and u2answer must be provided")
         if mode == "train":
-            if num_items == 0 or mask_prob == 0 or rng is None:
-                raise ValueError("num_items, mask_prob and rng must be provided")
+            if num_items == 0 or mask_prob == 0:
+                raise ValueError("num_items, mask_prob must be provided")
 
         self.mode = mode
         self.u2seq = u2seq
@@ -33,7 +34,7 @@ class SequenceDataset(Dataset):
         self.mask_prob = mask_prob
         self.mask_token = mask_token
         self.num_items = num_items
-        self.rng = rng
+        self.rng = random.Random(seed)
         self.negative_samples = negative_samples
         self.u2answer = u2answer
 

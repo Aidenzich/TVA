@@ -1,23 +1,22 @@
 # %%
 import random
-from ray import tune
-from pytorch_lightning import loggers as pl_loggers
-
-from ray.tune.integration.pytorch_lightning import TuneReportCallback
 import pickle
+
+from pytorch_lightning import loggers as pl_loggers
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
+from pytorch_lightning import Trainer
+
+from ray import tune
+from ray.tune import CLIReporter
+from ray.tune.integration.pytorch_lightning import TuneReportCallback
+from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 
 from torch.utils.data import DataLoader
 
-from src.dataset.seq_dset import SequenceDataset
+from src.datasets.seq_dset import SequenceDataset
 from src.model.BERT4Rec.model import BERTModel
+from src.datasets.negative_sampler import NegativeSampler
 from src.config import DATA_PATH, LOG_PATH
-from src.model.BERT4Rec.negative_sampler import NegativeSampler
-from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
-from pytorch_lightning import Trainer
-from ray.tune import CLIReporter
-
-#%%
 
 
 def train_tune(config, epochs=5, accelerator="cpu"):
@@ -45,7 +44,7 @@ def train_tune(config, epochs=5, accelerator="cpu"):
         hidden_size=config["hidden_size"],
         n_layers=config["n_layers"],
         dropout=config["dropout"],
-        heads=8,
+        heads=config["head"],
         max_len=config["max_len"],
     )
 
@@ -56,7 +55,7 @@ def train_tune(config, epochs=5, accelerator="cpu"):
         num_items=recsys_data.num_items,
         mask_token=recsys_data.num_items + 1,
         u2seq=recsys_data.train_seqs,
-        rng=random.Random(12345),
+        seed=12345,
     )
 
     test_negative_sampler = NegativeSampler(
@@ -91,10 +90,11 @@ def tune_bert4rec():
         "n_layers": tune.choice([2, 3]),
         "dropout": tune.choice([0, 0.1, 0.2]),
         "max_len": tune.choice([64, 128, 256, 512]),
+        "head": tune.choice([2, 4, 8, 16]),
     }
 
     reporter = CLIReporter(
-        parameter_columns=["hidden_size", "n_layers", "dropout", "max_len"],
+        parameter_columns=["hidden_size", "n_layers", "dropout", "max_len", "head"],
         metric_columns=["recall"],
     )
     resources_per_trial = {"cpu": 4, "gpu": 1}
