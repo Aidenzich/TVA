@@ -15,4 +15,5 @@ services:
               count: 1 # default use all
               capabilities: [ gpu ]
     volumes:
-      - "./data:/home/myuser/data"
+      - "./data:/home/app/data"
+      - "./logs:/home/app/logs"

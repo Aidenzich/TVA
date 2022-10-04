@@ -10,7 +10,7 @@ from torch.utils.data import DataLoader
 
 from src.dataset.seq_dset import SequenceDataset
 from src.model.BERT4Rec.model import BERTModel
-from src.config import DATA_PATH
+from src.config import DATA_PATH, LOG_PATH
 from src.model.BERT4Rec.negative_sampler import NegativeSampler
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
@@ -65,7 +65,7 @@ def train_tune(config, epochs=5, accelerator="cpu"):
         test=recsys_data.test_seqs,
         user_count=recsys_data.num_users,
         item_count=recsys_data.num_items,
-        sample_size=100000,
+        sample_size=10,
         method="popular",
         seed=12345,
     )
@@ -92,12 +92,6 @@ def tune_bert4rec():
         "dropout": tune.choice([0, 0.1, 0.2]),
         "max_len": tune.choice([64, 128, 256, 512]),
     }
-    # config = {
-    #     "hidden_size": 128,
-    #     "n_layers": 2,
-    #     "dropout": 0.1,
-    #     "max_len": 64,
-    # }
 
     reporter = CLIReporter(
         parameter_columns=["hidden_size", "n_layers", "dropout", "max_len"],
@@ -119,6 +113,7 @@ def tune_bert4rec():
         num_samples=1,  # trials number
         mode="max",
         config=config,
+        local_dir=LOG_PATH / "tune",
     )
 
     print("Best hyperparameters found were: ", analysis.best_config)
@@ -126,15 +121,3 @@ def tune_bert4rec():
 
 # %%
 tune_bert4rec()
-
-# %%
-# with open(DATA_PATH / "data_cls.pkl", "rb") as f:
-#     recsys_data = pickle.load(f)
-
-
-# recsys_data
-# # %%
-# recsys_data.num_items
-
-# #%%
-# recsys_data.num_users

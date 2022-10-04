@@ -30,7 +30,7 @@ class BERTModel(pl.LightningModule):
 
         self.out = nn.Linear(hidden_size, num_items + 1)
 
-    def forward(self, x):        
+    def forward(self, x):
         x = self.bert(x)
         return self.out(x)
 
@@ -50,6 +50,16 @@ class BERTModel(pl.LightningModule):
         return optimizer
 
     def validation_step(self, batch, batch_idx):
+        seqs, candidates, labels = batch
+        scores = self.forward(seqs)  # B x T x V
+        scores = scores[:, -1, :]  # B x V
+        scores = scores.gather(1, candidates)  # B x C
+        metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 5, 10, 20, 50, 100])
+        for i in metrics.keys():
+            if "Recall" in i:
+                self.log(i, metrics[i])
+
+    def test_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V

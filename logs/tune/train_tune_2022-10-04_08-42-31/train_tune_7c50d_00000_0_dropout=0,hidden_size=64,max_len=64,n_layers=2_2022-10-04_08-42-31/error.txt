@@ -1,0 +1,53 @@
+Failure # 1 (occurred at 2022-10-04_08-42-37)
+[36mray::ImplicitFunc.train()[39m (pid=1481, ip=172.20.0.2, repr=train_tune)
+  File "/usr/local/lib/python3.8/site-packages/ray/tune/trainable/trainable.py", line 347, in train
+    result = self.step()
+  File "/usr/local/lib/python3.8/site-packages/ray/tune/trainable/function_trainable.py", line 417, in step
+    self._report_thread_runner_error(block=True)
+  File "/usr/local/lib/python3.8/site-packages/ray/tune/trainable/function_trainable.py", line 589, in _report_thread_runner_error
+    raise e
+  File "/usr/local/lib/python3.8/site-packages/ray/tune/trainable/function_trainable.py", line 289, in run
+    self._entrypoint()
+  File "/usr/local/lib/python3.8/site-packages/ray/tune/trainable/function_trainable.py", line 362, in entrypoint
+    return self._trainable_func(
+  File "/usr/local/lib/python3.8/site-packages/ray/tune/trainable/function_trainable.py", line 684, in _trainable_func
+    output = fn()
+  File "/usr/local/lib/python3.8/site-packages/ray/tune/trainable/util.py", line 368, in _inner
+    inner(config, checkpoint_dir=None)
+  File "/usr/local/lib/python3.8/site-packages/ray/tune/trainable/util.py", line 359, in inner
+    trainable(config, **fn_kwargs)
+  File "tune.py", line 85, in train_tune
+    trainer.fit(model, train_loader, val_loader)
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 696, in fit
+    self._call_and_handle_interrupt(
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 650, in _call_and_handle_interrupt
+    return trainer_fn(*args, **kwargs)
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 735, in _fit_impl
+    results = self._run(model, ckpt_path=self.ckpt_path)
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1166, in _run
+    results = self._run_stage()
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1252, in _run_stage
+    return self._run_train()
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1274, in _run_train
+    self._run_sanity_check()
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1343, in _run_sanity_check
+    val_loop.run()
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/loops/loop.py", line 200, in run
+    self.advance(*args, **kwargs)
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/loops/dataloader/evaluation_loop.py", line 155, in advance
+    dl_outputs = self.epoch_loop.run(self._data_fetcher, dl_max_batches, kwargs)
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/loops/loop.py", line 200, in run
+    self.advance(*args, **kwargs)
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/loops/epoch/evaluation_epoch_loop.py", line 143, in advance
+    output = self._evaluation_step(**kwargs)
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/loops/epoch/evaluation_epoch_loop.py", line 240, in _evaluation_step
+    output = self.trainer._call_strategy_hook(hook_name, *kwargs.values())
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py", line 1704, in _call_strategy_hook
+    output = fn(*args, **kwargs)
+  File "/usr/local/lib/python3.8/site-packages/pytorch_lightning/strategies/strategy.py", line 370, in validation_step
+    return self.model.validation_step(*args, **kwargs)
+  File "/home/app/src/model/BERT4Rec/model.py", line 57, in validation_step
+    metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 5, 10, 20, 50, 100])
+  File "/home/app/src/model/BERT4Rec/utils.py", line 235, in recalls_and_ndcgs_for_ks
+    dcg = (hits * weights.to(hits.device)).sum(1)
+RuntimeError: The size of tensor a (11) must match the size of tensor b (100) at non-singleton dimension 1
