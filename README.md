@@ -1,31 +1,30 @@
-# Recsys Sequence Playground
-這個repo用來統整我發論文所需要的比較對手，以及我論文主題的試驗場地
+# LightRec
+此專案用於建立方便使用的推薦系統模型，
+基本上架構應採用比較寬鬆的設計，
+結合 Pytorch Lighting 簡化 pytorch 框架的複雜度
 
-## Compare models
-- [ ] Bert4Rec
+## 資料前處理
+- 容許資料格式
+    | userid | itemid | rating | timestemp |
+    |-|-|-|-|
+    | 1 | 2 | 1.333 |  |
+    | 2 | 3 | 1.003 |  |
+
+## Datasets 設計
+我們使用 cornac 套件作為資料源
+基本上分成兩種：
+- SeqDataset
+- CfDateset
+
+## Models
+- [x] Bert4Rec
 - [ ] SASRec
 - [ ] Carca
-
-## Datasets
-- 目前預計使用 cornac 作為資料集
-- 預計使用的資料格式
-    | userid | itemid | rating |
-    |-|-|-|
-    | 1 | 2 | 1.333 |
-    | 2 | 3 | 1.003 |
+- [ ] VAECF
+- [ ] BiVAECF
 
 ## Docker
-### Install
-```
-docker build -t recsys .
-```
-
 ### Run
 ```
-docker run -p 7777:7777 -p 6006:6006 --rm --gpus all -v $PWD/data:/home/myuser/data recsys
-```
-
-## Tensorboard
-```
-tensorboard --logdir logs/lightning_logs
+docker compose up -d
 ```

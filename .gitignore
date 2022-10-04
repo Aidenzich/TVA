@@ -196,4 +196,5 @@ pip-selfcheck.json
 Data/
 experiments/
 lightning_logs/
+logs/
 *.pkl
