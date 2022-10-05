@@ -1,10 +1,8 @@
 FROM tiangolo/uvicorn-gunicorn:python3.8
-
 RUN pip install --upgrade pip
 
 # RUN adduser -disabled-password myuser
-RUN apt-get update && apt-get -y install sudo
-RUN apt-get update && apt-get -y install vim
+RUN apt-get update && apt-get -y install sudo && apt-get -y install vim
 WORKDIR /home/app
 
 COPY requirements.txt ./requirements.txt
@@ -17,4 +15,4 @@ ENV PATH="/home/app/.local/bin:${PATH}"
 # RUN tensorboard --logdir ~/ray_results/ &> /dev/null &
 COPY . .
 
-CMD ["tensorboard", "--logdir", "~/ray_results/", "--host", "0.0.0.0"]
+CMD ["tensorboard", "--logdir", "./logs", "--host", "0.0.0.0"]

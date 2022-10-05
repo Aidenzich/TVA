@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 
 
 def train(
-    model: Dataset,
+    model: pl.LightningModule,
     trainset: Dataset,
     valset: Dataset,
     config: Dict,

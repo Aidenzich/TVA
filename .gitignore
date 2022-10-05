@@ -198,3 +198,4 @@ experiments/
 lightning_logs/
 logs/
 *.pkl
+.trash/

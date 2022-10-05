@@ -21,7 +21,7 @@ with open(DATA_PATH / "data_cls.pkl", "rb") as f:
 
 config = {
     "mask_prob": 0.15,
-    "sample_size": 5000,
+    "sample_size": 512,
     "hidden_size": 256,
     "n_layers": 2,
     "dropout": 0,

@@ -18,9 +18,10 @@ class BERTModel(pl.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
+        self.max_len = max_len
         self.bert = BERT(
             model_init_seed=0,
-            max_len=max_len,
+            max_len=self.max_len,
             num_items=num_items,
             n_layers=n_layers,
             hidden_size=hidden_size,
@@ -36,9 +37,11 @@ class BERTModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         seqs, labels, _ = batch
+        seqs = seqs[:, -self.max_len :]
         logits = self.forward(
             seqs
         )  # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)
+
         logits = logits.view(-1, logits.size(-1))  # (B * T) x V
         labels = labels.view(-1)  # B * T
         loss = F.cross_entropy(logits, labels, ignore_index=0)
@@ -51,6 +54,7 @@ class BERTModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
+        seqs = seqs[:, -self.max_len :]
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
@@ -61,6 +65,7 @@ class BERTModel(pl.LightningModule):
 
     def test_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
+        seqs = seqs[:, -self.max_len :]
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C

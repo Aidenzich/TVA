@@ -1,11 +1,11 @@
 version: '3'
 services:
   recsys:
-    container_name: aidenrec
+    container_name: azrecsys
     build: .
     image: azrecsys
     ports:
-      - "8964:7777"
+      - "8265:8265"
       - "6006:6006"
     deploy:
       resources:
@@ -17,3 +17,4 @@ services:
     volumes:
       - "./data:/home/app/data"
       - "./logs:/home/app/logs"
+      - "./tune.py:/home/app/tune.py"
