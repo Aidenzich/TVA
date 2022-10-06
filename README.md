@@ -28,3 +28,8 @@
 ```
 docker compose up -d
 ```
+
+### Often use
+```
+scp -r ~/External/lightRec ikmnew:~/
+```

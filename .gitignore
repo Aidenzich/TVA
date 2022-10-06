@@ -196,6 +196,6 @@ pip-selfcheck.json
 Data/
 experiments/
 lightning_logs/
-logs/
+logs/*
 *.pkl
 .trash/

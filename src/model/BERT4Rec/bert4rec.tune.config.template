@@ -1,0 +1,28 @@
+{
+    "tune": true,
+    "tune_target": "recall@1",
+    "params": {
+        "batch_size": [12]
+        "mask_prob": [0.15],
+        "hidden_size": [64, 128, 256],
+        "n_layers": [2, 3],
+        "dropout": [0, 0.1, 0.2],
+        "max_len": [64, 128, 256, 512],
+        "head": [2, 4, 8, 16]
+    }
+}
+
+# tune_mode 會有 True 或 False? 是否有需要tune_mode ? 還是用指令控制就好？
+# hidden_size 跟 head 的數量要能整除，應該要設置防呆機制
+# 要加上 tune 的目標
+# 可以的話連 mask_prob, sample_size, batch_size 都要加進去
+# template 讓我們可以快速產生 config param，所以應該會有幾種方式會用到
+- 1. 當首次執行train時，直接產生一個 template.config.json 讓模型去training
+- 2. train 要可以選擇 config 名
+
+# template 放在該模型資料夾底下好了
+# 用 makefile 決定使用模式
+
+# 該如何讓用戶命名config?
+# config naming rule: {modelname}.{configname}.config.json
+# 還要有 Datasets class 選項

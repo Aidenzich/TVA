@@ -1,0 +1,12 @@
+{
+    "params": {
+        "mask_prob": 0.15,
+        "sample_size": 512,
+        "hidden_size": 256,
+        "n_layers": 2,
+        "dropout": 0,
+        "head": 8,
+        "max_len": 512,
+        "batch_size": 12
+    }    
+}
