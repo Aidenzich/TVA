@@ -99,4 +99,5 @@ if __name__ == "__main__":
             selected_config_path = answers["config"]
 
             config = json.load(open(selected_config_path))
-            config_adapter(config["params"])
+
+            config_adapter(config["params"], model_name=model_path.name)
