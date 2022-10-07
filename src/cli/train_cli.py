@@ -1,13 +1,23 @@
+import json
+import pickle
 import inquirer
 from pathlib import Path
 from ..config import CONFIG_PATH
-from ..adapters import config_adapter
-import json
+
+from src.config import DATA_PATH
+from src.models import TRAINER_FACTORY
+
+
+def select_trainer(model_name):
+    return TRAINER_FACTORY[model_name.lower()]
+    # print("\033[93m" + json.dumps(params_config, sort_keys=True, indent=4) + "\033[0m")
+    # with open(DATA_PATH / "data_cls.pkl", "rb") as f:
+    #     recsys_data = pickle.load(f)
 
 
 def get_models():
-    p = Path(r"./src/model/").iterdir()
-    models = [x for x in p if x.is_dir()]
+    p = Path(r"./src/models/").iterdir()
+    models = [x for x in p if x.is_dir() and "__" not in str(x)]
     return models
 
 
@@ -80,7 +90,7 @@ if __name__ == "__main__":
         print(f'No config of {answers["model"]} found')
         create_new_config_inquirer()
     else:
-        configs.append("🪑 create new config")
+        configs.append("🆕 create new config")
 
         which_configs = [
             inquirer.List(
@@ -92,7 +102,7 @@ if __name__ == "__main__":
 
         answers = inquirer.prompt(which_configs)
         print(answers)
-        if answers["config"] == "🪑 create new config":
+        if answers["config"] == "🆕 create new config":
             create_new_config_inquirer()
         else:
             print("Using existing config")
@@ -100,4 +110,9 @@ if __name__ == "__main__":
 
             config = json.load(open(selected_config_path))
 
-            config_adapter(config["params"], model_name=model_path.name)
+            trainer = select_trainer(model_name=model_path.name)
+
+            with open(DATA_PATH / "data_cls.pkl", "rb") as f:
+                recsys_data = pickle.load(f)
+
+            trainer(recsys_data, params_config=config["params"], istune=config["tune"])

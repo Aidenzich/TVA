@@ -1,4 +1,8 @@
-{        
+{
+    "data": {
+        "d": "d"
+    },
+    "tune": false,
     "params": {
         "mask_prob": 0.15,
         "sample_size": 512,
@@ -9,5 +13,5 @@
         "max_len": 512,
         "batch_size": 12,
         "max_epochs": 10
-    }    
+    }
 }

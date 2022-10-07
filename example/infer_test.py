@@ -10,7 +10,7 @@ sys.path.append("../")
 
 from src.datasets.seq_dset import SequenceDataset
 from src.datasets.negative_sampler import NegativeSampler
-from src.model.BERT4Rec.model import BERTModel
+from src.models.BERT4Rec.model import BERTModel
 from src.config import DATA_PATH, LOG_PATH
 
 #%%

@@ -8,9 +8,9 @@ from abc import ABCMeta, abstractmethod
 import torch
 
 
-class ABSTrain(metaclass=ABCMeta):
-    @classmethod
-    def fit(self, model, trainset, valset, config, testset=None):
+class ABSTrainer(metaclass=ABCMeta):
+    @staticmethod
+    def fit(model, trainset, valset, config, testset=None, callbacks=[]):
         train_loader = DataLoader(
             trainset,
             batch_size=config["batch_size"],
@@ -27,6 +27,7 @@ class ABSTrain(metaclass=ABCMeta):
         tb_logger = pl_loggers.TensorBoardLogger(save_dir=LOG_PATH)
 
         trainer = pl.Trainer(
+            callbacks=callbacks,
             limit_train_batches=10,  # FIXME
             max_epochs=config["max_epochs"],
             accelerator="gpu" if torch.cuda.is_available() else "cpu",
@@ -46,3 +47,12 @@ class ABSTrain(metaclass=ABCMeta):
     @abstractmethod
     def __init__(self):
         return NotImplemented
+
+    @abstractmethod
+    def train():
+        return NotImplemented
+    
+    @abstractmethod
+    def tuner():
+        return NotImplemented
+    

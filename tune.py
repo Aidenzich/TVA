@@ -14,7 +14,7 @@ from ray.tune.schedulers import ASHAScheduler, PopulationBasedTraining
 from torch.utils.data import DataLoader
 
 from src.datasets.seq_dset import SequenceDataset
-from src.model.BERT4Rec.model import BERTModel
+from src.models.BERT4Rec.model import BERTModel
 from src.datasets.negative_sampler import NegativeSampler
 from src.config import DATA_PATH, LOG_PATH
 

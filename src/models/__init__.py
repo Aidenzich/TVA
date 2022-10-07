@@ -1,11 +1,11 @@
-from .BERT4Rec.train import BERT4RecTrain
+from .BERT4Rec.trainer import BERT4RecTrainer
 
 # import .SASRec
 # import .VAECF
 # import .TiSASRec
 
-MODEL_FACTORY = {
-    "bert4rec": BERT4RecTrain,
+TRAINER_FACTORY = {
+    "bert4rec": BERT4RecTrainer,
     # "sasrec": SASRec,
     # "tisasrec": TiSASRec,
     # "vaecf": VAECF,
