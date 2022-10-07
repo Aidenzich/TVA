@@ -10,9 +10,6 @@ from src.models import TRAINER_FACTORY
 
 def select_trainer(model_name):
     return TRAINER_FACTORY[model_name.lower()]
-    # print("\033[93m" + json.dumps(params_config, sort_keys=True, indent=4) + "\033[0m")
-    # with open(DATA_PATH / "data_cls.pkl", "rb") as f:
-    #     recsys_data = pickle.load(f)
 
 
 def get_models():
@@ -115,4 +112,8 @@ if __name__ == "__main__":
             with open(DATA_PATH / "data_cls.pkl", "rb") as f:
                 recsys_data = pickle.load(f)
 
-            trainer(recsys_data, params_config=config["params"], istune=config["tune"])
+            trainer(
+                recdata=recsys_data,
+                model_params=config["model_params"],
+                trainer_config=config["trainer_config"],
+            )

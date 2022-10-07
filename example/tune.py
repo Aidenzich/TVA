@@ -23,10 +23,12 @@ def train_tune2(config, trainset, valset, epochs=5, accelerator="cpu"):
     early_stop_callback = EarlyStopping(
         monitor="Recall@1", patience=5, verbose=False, mode="max"
     )
-    tb_logger = pl_loggers.TensorBoardLogger(save_dir=tune.get_trial_dir())
+
     tune_callback = TuneReportCallback(
         {"loss": "train_loss", "recall": "Recall@1"}, on="validation_end"
     )
+
+    tb_logger = pl_loggers.TensorBoardLogger(save_dir=tune.get_trial_dir())
 
     trainer = Trainer(
         callbacks=[early_stop_callback, tune_callback],

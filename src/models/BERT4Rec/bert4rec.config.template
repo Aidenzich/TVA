@@ -1,9 +1,16 @@
 {
-    "data": {
-        "d": "d"
+    "trainer_config": {
+        "num_workers": 0,
+        "early_stopping": {
+            "monitor": "Recall@1",
+            "patience": 10,
+            "verbose": false,
+            "mode": "max"
+        },
+        "limit_train_batches": 0.2,
+        "max_epochs": 2
     },
-    "tune": false,
-    "params": {
+    "model_params": {
         "mask_prob": 0.15,
         "sample_size": 512,
         "hidden_size": 256,
@@ -11,7 +18,9 @@
         "dropout": 0,
         "heads": 8,
         "max_len": 512,
-        "batch_size": 12,
-        "max_epochs": 10
+        "batch_size": 12
+    },
+    "data": {
+        "d": "d"
     }
 }

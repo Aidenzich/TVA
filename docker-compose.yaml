@@ -12,9 +12,8 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 1 # default use all
+              count: 2
               capabilities: [ gpu ]
     volumes:
       - "./data:/home/app/data"
       - "./logs:/home/app/logs"
-      - "./tune.py:/home/app/tune.py"

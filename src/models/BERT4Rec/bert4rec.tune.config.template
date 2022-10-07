@@ -1,7 +1,22 @@
-{
-    "tune": true,
-    "tune_target": "recall@1",
-    "params": {
+{    
+    "trainer_config": {
+        "tune": {
+            "report": {
+                "loss": "train_loss",
+                "recall": "Recall@1"
+            }
+        },
+        "num_workers": 0,
+        "early_stopping": {
+            "monitor": "Recall@1",
+            "patience": 10,
+            "verbose": false,
+            "mode": "max"
+        },
+        "limit_train_batches": 0.2,
+        "max_epochs": 2
+    },
+    "model_params": {
         "max_epochs": 12,
         "batch_size": 32,
         "mask_prob": [

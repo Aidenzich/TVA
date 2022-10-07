@@ -5,21 +5,40 @@ from src.config import DATA_PATH, LOG_PATH
 from typing import Dict
 from torch.utils.data import Dataset
 from abc import ABCMeta, abstractmethod
+from ray.tune.integration.pytorch_lightning import TuneReportCallback
+from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 import torch
 
 
 class ABSTrainer(metaclass=ABCMeta):
     @staticmethod
-    def fit(model, trainset, valset, config, testset=None, callbacks=[]):
+    def fit(model, trainset, valset, trainer_config, model_params, testset=None, callbacks=[]):
+        tune_config = trainer_config.get("tune")
+        if tune_config:
+            tune_callback = TuneReportCallback(
+                tune_config["report"] , on="validation_end"
+            )
+            callbacks.append(tune_callback)
+        
+        early_stop_config = trainer_config.get("early_stopping")
+        if trainer_config.get("early_stopping"):
+            early_stop_callback = EarlyStopping(
+                monitor=early_stop_config.get("monitor"), 
+                patience=early_stop_config.get("patience"), 
+                verbose=early_stop_config.get("verbose"), 
+                mode=early_stop_config.get("mode")
+            )
+            callbacks.append(early_stop_callback)
+                    
         train_loader = DataLoader(
             trainset,
-            batch_size=config["batch_size"],
+            batch_size=model_params["batch_size"],
             shuffle=True,
             pin_memory=True,
         )
         val_loader = DataLoader(
             valset,
-            batch_size=config["batch_size"],
+            batch_size=model_params["batch_size"],
             shuffle=False,
             pin_memory=True,
         )
@@ -29,7 +48,7 @@ class ABSTrainer(metaclass=ABCMeta):
         trainer = pl.Trainer(
             callbacks=callbacks,
             limit_train_batches=10,  # FIXME
-            max_epochs=config["max_epochs"],
+            max_epochs=trainer_config["max_epochs"],
             accelerator="gpu" if torch.cuda.is_available() else "cpu",
             logger=tb_logger,
         )
@@ -38,7 +57,7 @@ class ABSTrainer(metaclass=ABCMeta):
         if testset != None:
             test_loader = DataLoader(
                 testset,
-                batch_size=config["batch_size"],
+                batch_size=model_params["batch_size"],
                 shuffle=False,
                 pin_memory=True,
             )

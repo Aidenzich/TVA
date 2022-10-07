@@ -7,28 +7,32 @@ from src.config import LOG_PATH
 
 
 class BERT4RecTrainer(ABSTrainer):
-    def __init__(self, recdata, params_config, istune=False):
+    def __init__(self, recdata, model_params, trainer_config):
         self.recdata = recdata
-        self.params_config = params_config
-        if not istune:
+        self.model_params = model_params
+        self.trainer_config = trainer_config
+
+        if not self.trainer_config.get("tune"):
             self.train()
         else:
-            print(params_config)
-            tune_config = {}
+            tune_model_params = {}
 
             # Convert list to tune.choice for hyperparameter tuning
-            for k, v in params_config.items():
+            for k, v in model_params.items():
                 if type(v) == list:
-                    tune_config[k] = tune.choice(v)
+                    tune_model_params[k] = tune.choice(v)
                 else:
-                    tune_config[k] = v
+                    tune_model_params[k] = v
 
-            self.params_config = tune_config
+            self.model_params = tune_model_params
             self.tuner()
 
     def train(self):
-        bert4rec_train(self.params_config, self.recdata)
-        pass
+        bert4rec_train(
+            model_params=self.model_params,
+            trainer_config=self.trainer_config,
+            recdata=self.recdata,
+        )
 
     def tuner(self):
         reporter = tune.CLIReporter(
@@ -37,7 +41,7 @@ class BERT4RecTrainer(ABSTrainer):
         )
         resources_per_trial = {"cpu": 12, "gpu": 1}
         train_fn_with_parameters = tune.with_parameters(
-            bert4rec_train, recdata=self.recdata
+            bert4rec_train, recdata=self.recdata, trainer_config=self.trainer_config
         )
 
         analysis = tune.run(
@@ -46,7 +50,7 @@ class BERT4RecTrainer(ABSTrainer):
             progress_reporter=reporter,
             metric="recall",
             mode="max",
-            config=self.params_config,
+            config=self.model_params,
             local_dir=LOG_PATH / "tune",
             num_samples=1,  # trials number
             # scheduler=scheduler,
@@ -55,12 +59,7 @@ class BERT4RecTrainer(ABSTrainer):
         print("Best hyperparameters found were: ", analysis.best_config)
 
 
-def bert4rec_train(config, recdata):
-    print("\033[93m")
-    print("===========================\n")
-    print(config)
-    print("===========================\n")
-    print("\033[0m")
+def bert4rec_train(model_params, trainer_config, recdata):
     # This can be store in the RecData class
     test_negative_sampler = NegativeSampler(
         train=recdata.train_seqs,
@@ -77,8 +76,8 @@ def bert4rec_train(config, recdata):
 
     trainset = SequenceDataset(
         mode="train",
-        max_len=config["max_len"],
-        mask_prob=config["mask_prob"],
+        max_len=model_params["max_len"],
+        mask_prob=model_params["mask_prob"],
         num_items=recdata.num_items,
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
@@ -87,7 +86,7 @@ def bert4rec_train(config, recdata):
 
     valset = SequenceDataset(
         mode="eval",
-        max_len=config["max_len"],
+        max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
@@ -96,7 +95,7 @@ def bert4rec_train(config, recdata):
 
     testset = SequenceDataset(
         mode="eval",
-        max_len=config["max_len"],
+        max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         u2answer=recdata.test_seqs,
@@ -104,18 +103,19 @@ def bert4rec_train(config, recdata):
     )
 
     model = BERTModel(
-        hidden_size=config["hidden_size"],
+        hidden_size=model_params["hidden_size"],
         num_items=recdata.num_items,
-        n_layers=config["n_layers"],
-        dropout=config["dropout"],
-        heads=config["heads"],
-        max_len=config["max_len"],
+        n_layers=model_params["n_layers"],
+        dropout=model_params["dropout"],
+        heads=model_params["heads"],
+        max_len=model_params["max_len"],
     )
 
     ABSTrainer.fit(
         model=model,
         trainset=trainset,
         valset=valset,
-        config=config,
+        trainer_config=trainer_config,
+        model_params=model_params,
         testset=testset,
     )
