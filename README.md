@@ -31,5 +31,5 @@ docker compose up -d
 
 ### Often use
 ```
-scp -r ~/External/lightRec ikmnew:~/
+scp -r ~/External/lightningRec ikmnew:~/
 ```

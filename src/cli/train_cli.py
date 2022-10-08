@@ -2,14 +2,9 @@ import json
 import pickle
 import inquirer
 from pathlib import Path
-from ..config import CONFIG_PATH
 
-from src.config import DATA_PATH
-from src.models import TRAINER_FACTORY
-
-
-def select_trainer(model_name):
-    return TRAINER_FACTORY[model_name.lower()]
+from src.configs import DATA_PATH, CONFIG_PATH
+from src.models.trainer import LightningTrainer
 
 
 def get_models():
@@ -28,8 +23,9 @@ def get_configs(model_name):
 
 def create_configs_from_template(model_path, tune=False, config_name="default"):
     template_path = model_path / (
-        model_path.name.lower() + (".tune" if tune else "") + ".config.template"
+        model_path.name.lower() + (".tune" if tune else "") + ".template.config.json"
     )
+
     print(f"Creating configs from template {template_path}")
     with open(template_path, "r") as f:
         content = f.read()
@@ -87,7 +83,7 @@ if __name__ == "__main__":
         print(f'No config of {answers["model"]} found')
         create_new_config_inquirer()
     else:
-        configs.append("🆕 create new config")
+        configs.append("➕ create new config")
 
         which_configs = [
             inquirer.List(
@@ -98,8 +94,8 @@ if __name__ == "__main__":
         ]
 
         answers = inquirer.prompt(which_configs)
-        print(answers)
-        if answers["config"] == "🆕 create new config":
+
+        if answers["config"] == "➕ create new config":
             create_new_config_inquirer()
         else:
             print("Using existing config")
@@ -107,13 +103,12 @@ if __name__ == "__main__":
 
             config = json.load(open(selected_config_path))
 
-            trainer = select_trainer(model_name=model_path.name)
-
             with open(DATA_PATH / "data_cls.pkl", "rb") as f:
                 recsys_data = pickle.load(f)
 
-            trainer(
+            LightningTrainer(
                 recdata=recsys_data,
                 model_params=config["model_params"],
                 trainer_config=config["trainer_config"],
+                model_name=model_path.name.lower(),
             )

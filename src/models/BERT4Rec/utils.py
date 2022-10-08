@@ -1,8 +1,5 @@
-from ...config import *
-
 import json
 import os
-import pprint as pp
 import random
 from datetime import date
 from pathlib import Path
@@ -11,6 +8,9 @@ import numpy as np
 import torch
 import torch.backends.cudnn as cudnn
 from torch import optim as optim
+
+STATE_DICT_KEY = "model_state_dict"
+OPTIMIZER_STATE_DICT_KEY = "optimizer_state_dict"
 
 
 def create_experiment_export_folder(args):
@@ -220,7 +220,7 @@ def recalls_and_ndcgs_for_ks(scores, labels, ks):
     for k in sorted(ks, reverse=True):
         cut = cut[:, :k]
         hits = labels_float.gather(1, cut)
-        metrics["Recall@%d" % k] = (
+        metrics["recall@%d" % k] = (
             (
                 hits.sum(1)
                 / torch.min(torch.Tensor([k]).to(labels.device), labels.sum(1).float())

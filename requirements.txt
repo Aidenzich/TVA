@@ -9,3 +9,4 @@ cornac==1.14.2
 inquirer==2.10.0
 ray[default]
 ray[tune]
+ray-lightning==0.3.0

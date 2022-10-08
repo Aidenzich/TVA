@@ -6,7 +6,7 @@ import pickle
 
 tqdm.pandas()
 
-from ..config import (
+from ..configs import (
     USER_COLUMN_NAME,
     ITEM_COLUMN_NAME,
     RATING_COLUMN_NAME,

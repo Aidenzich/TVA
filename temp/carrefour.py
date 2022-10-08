@@ -5,17 +5,9 @@ sys.path.append("../")
 sys.path.append("../../")
 
 
-import cornac
 import pandas as pd
-import pytorch_lightning as pl
-from pytorch_lightning import loggers as pl_loggers
-from torch.utils.data import DataLoader
-
 from src.datasets.common import RecsysData
-from src.datasets.seq_dset import SequenceDataset
-from src.datasets.negative_sampler import NegativeSampler
-from src.models.BERT4Rec.model import BERTModel
-from src.config import DATA_PATH, LOG_PATH
+from src.configs import DATA_PATH
 
 # %%
 pd_data = pd.read_pickle(DATA_PATH / "carrefour.pkl")

@@ -37,7 +37,6 @@ class BERTModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         seqs, labels, _ = batch
-        seqs = seqs[:, -self.max_len :]
         logits = self.forward(
             seqs
         )  # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)
@@ -45,6 +44,7 @@ class BERTModel(pl.LightningModule):
         logits = logits.view(-1, logits.size(-1))  # (B * T) x V
         labels = labels.view(-1)  # B * T
         loss = F.cross_entropy(logits, labels, ignore_index=0)
+
         self.log("train_loss", loss)
         return loss
 
@@ -54,18 +54,16 @@ class BERTModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
-        seqs = seqs[:, -self.max_len :]
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
         metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 5, 10, 20, 50, 100])
         for i in metrics.keys():
-            if "Recall" in i:
+            if "recall" in i:
                 self.log(i, metrics[i])
 
     def test_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
-        seqs = seqs[:, -self.max_len :]
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
