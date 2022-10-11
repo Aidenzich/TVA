@@ -35,6 +35,7 @@ class RecsysData:
             self.test_seqs,
             self.users_seqs,
         ) = self._split_df_u2seq(split_method="leave_one_out")
+        self.prepare_matrix()
 
     def prepare(self):
         if self.mode == "seq":
@@ -44,7 +45,41 @@ class RecsysData:
                 self.test_seqs,
                 self.users_seqs,
             ) = self._split_df_u2seq(split_method="leave_one_out")
+        # if self.mode == "cf":
+        #     for idx, (uid, iid, rating, *_) in enumerate(data):
+        #         if exclude_unknowns and (
+        #             uid not in global_uid_map or iid not in global_iid_map
+        #         ):
+        #             continue
+
+        #         if (uid, iid) in ui_set:
+        #             dup_count += 1
+        #             continue
+        #         ui_set.add((uid, iid))
+
+        #         uid_map[uid] = global_uid_map.setdefault(uid, len(global_uid_map))
+        #         iid_map[iid] = global_iid_map.setdefault(iid, len(global_iid_map))
+
+        #         u_indices.append(uid_map[uid])
+        #         i_indices.append(iid_map[iid])
+        #         r_values.append(float(rating))
+        #         valid_idx.append(idx)
         print()
+
+    def prepare_matrix(self):
+        uir_df = self.dataframe[
+            [USER_COLUMN_NAME, ITEM_COLUMN_NAME, RATING_COLUMN_NAME]
+        ]
+        uir_vals = uir_df.values
+        print(uir_vals)
+        u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
+
+        from scipy.sparse import csr_matrix
+
+        self.matrix = csr_matrix(
+            (r_values, (u_indices, i_indices)),
+            shape=(self.num_users, self.num_items),
+        )
 
     def _split_df_u2seq(
         self, split_method: str = "leave_one_out"

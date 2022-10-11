@@ -10,9 +10,9 @@ from src.configs import LOG_PATH
 def fit(
     model,
     trainset,
-    valset,
     trainer_config,
     model_params,
+    valset=None,
     testset=None,
     callbacks=[],
 ):
@@ -33,12 +33,15 @@ def fit(
         shuffle=True,
         pin_memory=True,
     )
-    val_loader = DataLoader(
-        valset,
-        batch_size=model_params["batch_size"],
-        shuffle=False,
-        pin_memory=True,
-    )
+    if valset != None:
+        val_loader = DataLoader(
+            valset,
+            batch_size=model_params["batch_size"],
+            shuffle=False,
+            pin_memory=True,
+        )
+    else:
+        val_loader = None
 
     tb_logger = pl.loggers.TensorBoardLogger(save_dir=LOG_PATH)
 
