@@ -199,3 +199,6 @@ lightning_logs/
 logs/*
 *.pkl
 .trash/
+
+**/*.csv
+**/*.csv.tar.gz

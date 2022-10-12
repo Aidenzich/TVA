@@ -22,5 +22,8 @@ preprocess:
 train:
 	python -m src.cli.train_cli
 
+pp:
+	python -m src.cli.preprocess_cli
+
 clearlogs:
 	rm -rf logs/*

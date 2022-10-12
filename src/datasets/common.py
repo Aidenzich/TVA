@@ -11,12 +11,13 @@ from ..configs import (
     ITEM_COLUMN_NAME,
     RATING_COLUMN_NAME,
     TIMESTAMP_COLUMN_NAME,
-    DATA_PATH,
+    DATACLASS_PATH,
 )
 
 
 class RecsysData:
-    def __init__(self, df: pd.DataFrame):
+    def __init__(self, df: pd.DataFrame, filename=""):
+        self.filename = filename
         self.dataframe = df
         (
             self.u2cat,
@@ -37,34 +38,27 @@ class RecsysData:
         ) = self._split_df_u2seq(split_method="leave_one_out")
         self.prepare_matrix()
 
-    def prepare(self):
-        if self.mode == "seq":
-            (
-                self.train_seqs,
-                self.val_seqs,
-                self.test_seqs,
-                self.users_seqs,
-            ) = self._split_df_u2seq(split_method="leave_one_out")
-        # if self.mode == "cf":
-        #     for idx, (uid, iid, rating, *_) in enumerate(data):
-        #         if exclude_unknowns and (
-        #             uid not in global_uid_map or iid not in global_iid_map
-        #         ):
-        #             continue
+    def _split_matrix_by_user(self):
+        print("Splitting")
+        # split to train val and test
+        users = list(self.u2cat.values())
+        import random
 
-        #         if (uid, iid) in ui_set:
-        #             dup_count += 1
-        #             continue
-        #         ui_set.add((uid, iid))
+        random.shuffle(users)
+        train_num = int(len(users) * 0.8)
+        test_num = int(len(users) * 0.1)
+        # val_num = len(users) - train_num - test_num
+        print(len(users[:train_num]))
 
-        #         uid_map[uid] = global_uid_map.setdefault(uid, len(global_uid_map))
-        #         iid_map[iid] = global_iid_map.setdefault(iid, len(global_iid_map))
+        train_users = users[:train_num]
+        test_users = users[-test_num:]
+        val_users = users[train_num:-test_num]
 
-        #         u_indices.append(uid_map[uid])
-        #         i_indices.append(iid_map[iid])
-        #         r_values.append(float(rating))
-        #         valid_idx.append(idx)
-        print()
+        train_matrix = self.matrix[train_users, :]
+        test_matrix = self.matrix[test_users, :]
+        val_matrix = self.matrix[val_users, :]
+
+        return train_matrix, test_matrix, val_matrix
 
     def prepare_matrix(self):
         uir_df = self.dataframe[
@@ -80,6 +74,11 @@ class RecsysData:
             (r_values, (u_indices, i_indices)),
             shape=(self.num_users, self.num_items),
         )
+        (
+            self.train_matrix,
+            self.test_matrix,
+            self.val_matrix,
+        ) = self._split_matrix_by_user()
 
     def _split_df_u2seq(
         self, split_method: str = "leave_one_out"
@@ -174,7 +173,7 @@ class RecsysData:
             pickle.dump(self, f)
 
     def _get_save_path(self):
+        self.filename
 
-        filename = "data_cls.pkl"
-
-        return DATA_PATH / filename
+        savename = self.filename + "_cls.pkl"
+        return DATACLASS_PATH / savename

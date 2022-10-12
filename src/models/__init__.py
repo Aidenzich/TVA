@@ -5,3 +5,6 @@ TRAIN_FACTORY = {
     "bert4rec": bert4rec_train,
     "vaecf": vaecf_train,
 }
+
+
+INFER_FACTORY = {}

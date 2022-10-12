@@ -9,9 +9,11 @@ def vaecf_train(
     recdata,
     callbacks: list = [],
 ):
-    trainset = MatrixDataset(recdata.matrix)
+    trainset = MatrixDataset(recdata.train_matrix)
+    testset = MatrixDataset(recdata.test_matrix)
+    valset = MatrixDataset(recdata.val_matrix)
     model = VAECF(
-        k=model_params["k"],
+        hidden_dim=model_params["hidden_dim"],
         item_dim=recdata.num_items,
         act_fn=model_params["act_fn"],
         autoencoder_structure=model_params["autoencoder_structure"],
@@ -19,10 +21,12 @@ def vaecf_train(
         beta=model_params["beta"],
     )
 
+    print(model_params)
+
     fit(
         model=model,
         trainset=trainset,
-        valset=None,
+        valset=valset,
         trainer_config=trainer_config,
         model_params=model_params,
         testset=None,

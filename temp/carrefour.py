@@ -25,9 +25,41 @@ pd_data = pd_data[pd_data.user_id.isin(user10index)]
 pd_data
 # %%
 myData = RecsysData(pd_data)
+myData.save()
+# %%
+print(myData.matrix.shape)
+print(myData.train_matrix.shape)
+print(myData.test_matrix.shape)
+print(myData.val_matrix.shape)
+
+#%%
+data = pd.read_csv(DATA_PATH / "carrefour_sales.csv", header=None)
+
+data.columns = [
+    "id",
+    "order_date",
+    "product",
+    "sales_price",
+    "quantity",
+    "department",
+    "store",
+    "city",
+    "district",
+    "customer",
+    "sex",
+    "age_group",
+]
+
+#%%
+data
 
 # %%
-myData.cat2i
+data.to_pickle(DATA_PATH / "carrefour_all.pkl")
+data.to_csv(DATA_PATH / "carrefour_sales.csv", index=False)
+
 # %%
-myData.save()
+# data.order_date.astype("datetime64").astype("int64") // 1000000000
+# %%
+
+# str(pd_data.dtypes["timestamp"])
 # %%

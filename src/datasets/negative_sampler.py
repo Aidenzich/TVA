@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 from tqdm import trange
 from collections import Counter
-from src.configs import DATA_PATH
+from src.configs import NEGATIVE_SAMPLE_PATH
 
 
 class NegativeSampler(metaclass=ABCMeta):
@@ -112,4 +112,4 @@ class NegativeSampler(metaclass=ABCMeta):
             self.method, self.sample_size, self.seed
         )
 
-        return DATA_PATH / filename
+        return NEGATIVE_SAMPLE_PATH / filename

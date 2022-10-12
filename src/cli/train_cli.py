@@ -3,7 +3,7 @@ import pickle
 import inquirer
 from pathlib import Path
 
-from src.configs import DATA_PATH, CONFIG_PATH
+from src.configs import DATACLASS_PATH, CONFIG_PATH
 from src.models.trainer import LightningTrainer
 
 
@@ -104,8 +104,11 @@ if __name__ == "__main__":
             selected_config_path = answers["config"]
 
             config = json.load(open(selected_config_path))
+            config["trainer_config"]["config_name"] = selected_config_path.name.replace(
+                ".json", ""
+            )
 
-            with open(DATA_PATH / "data_cls.pkl", "rb") as f:
+            with open(DATACLASS_PATH / config["data_class"], "rb") as f:
                 recsys_data = pickle.load(f)
 
             LightningTrainer(

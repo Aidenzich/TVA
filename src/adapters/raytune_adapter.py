@@ -8,6 +8,7 @@ def tuner(model_params, trainer_config, dataclass, model_name):
     __list2tunechoice__(model_params)
     tune_config = trainer_config["tune"]["tune_config"]
     resources_per_trial = trainer_config["tune"]["resources_per_trial"]
+    dataclass.dataframe = None
     config = __get_tuneconfig__(model_params, trainer_config, dataclass, model_name)
     analysis = tune.Tuner(
         tune.with_resources(__trainable_function__, resources_per_trial),
@@ -17,7 +18,9 @@ def tuner(model_params, trainer_config, dataclass, model_name):
             num_samples=tune_config["num_samples"],
         ),
         param_space=config,
-        run_config=air.RunConfig(name="tune_logs", local_dir=LOG_PATH),
+        run_config=air.RunConfig(
+            name=trainer_config["config_name"], local_dir=LOG_PATH
+        ),
     ).fit()
 
     print("Best hyperparameters found were: ", analysis.get_best_result().config)

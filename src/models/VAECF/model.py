@@ -4,12 +4,13 @@ import torch.nn as nn
 from tqdm.auto import trange
 import pytorch_lightning as pl
 from typing import List
+from .utils import split_matrix_by_mask, recall_calculate
 
 
 class VAECF(pl.LightningModule):
     def __init__(
         self,
-        k: int,
+        hidden_dim: int,
         item_dim: int,
         act_fn: str,
         autoencoder_structure: List[int],
@@ -18,22 +19,48 @@ class VAECF(pl.LightningModule):
     ):
         super().__init__()
         self.save_hyperparameters()
-        self.k = k
+        self.hidden_dim = hidden_dim
         self.act_fn = act_fn
         self.likelihood = likelihood
         self.autoencoder_structure = autoencoder_structure
         self.beta = beta
         self.vae = VAE(
-            z_dim=self.k,
-            ae_structur=[item_dim] + self.ae_structure,
+            z_dim=self.hidden_dim,
+            ae_structure=[item_dim] + self.autoencoder_structure,
             activation_function=self.act_fn,
             likelihood=self.likelihood,
         )
 
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        return optimizer
+
     def training_step(self, batch, batch_idx):
         _batch, mu, logvar = self.vae(batch)
         loss = self.vae.loss(batch, _batch, mu, logvar, self.beta)
-        return loss
+
+        self.log("train_loss", loss / len(batch))
+
+        return loss / len(batch)
+
+    def validation_step(self, batch, batch_idx):
+        x, true_y, _ = split_matrix_by_mask(batch)
+        z_u, _ = self.vae.encode(x)
+        pred_y = self.vae.decode(z_u)
+        seen = x != 0
+        pred_y[seen] = 0
+        recall = recall_calculate(true_y, pred_y, k=100)
+        self.log("val_recall", recall)
+
+    def test_step(self, batch, batch_idx):
+        x, true_y, _ = split_matrix_by_mask(batch)
+        z_u, _ = self.vae.encode(x)
+        pred_y = self.vae.decode(z_u)
+        seen = x != 0
+        pred_y[seen] = 0
+        recall = recall_calculate(true_y, pred_y, k=100)
+        self.log("test_recall", recall)
+        
 
 
 EPS = 1e-10

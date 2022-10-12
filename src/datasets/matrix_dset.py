@@ -1,5 +1,6 @@
 from torch.utils.data import Dataset
 import torch
+import numpy as np
 
 
 class MatrixDataset(Dataset):
@@ -10,5 +11,8 @@ class MatrixDataset(Dataset):
         return self.data.shape[0]
 
     def __getitem__(self, idx):
-        buy_items = self.data[idx, :].A[0]
-        return torch.tensor(buy_items, dtype=torch.float32)
+        udata = self.data[idx, :]
+        udata.data = np.ones(len(udata.data))
+        udata = self.data[idx, :].A[0]
+
+        return torch.tensor(udata, dtype=torch.float32)

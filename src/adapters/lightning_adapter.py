@@ -43,7 +43,9 @@ def fit(
     else:
         val_loader = None
 
-    tb_logger = pl.loggers.TensorBoardLogger(save_dir=LOG_PATH)
+    tb_logger = pl.loggers.TensorBoardLogger(
+        save_dir=LOG_PATH, name=trainer_config["config_name"]
+    )
 
     trainer = pl.Trainer(
         callbacks=callbacks,
