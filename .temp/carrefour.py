@@ -34,7 +34,7 @@ print(myData.val_matrix.shape)
 
 #%%
 data = pd.read_csv(DATA_PATH / "carrefour_sales.csv", header=None)
-
+print(len(data))
 data.columns = [
     "id",
     "order_date",
@@ -54,8 +54,8 @@ data.columns = [
 data
 
 # %%
-data.to_pickle(DATA_PATH / "carrefour_all.pkl")
-data.to_csv(DATA_PATH / "carrefour_sales.csv", index=False)
+# data.to_pickle(DATA_PATH / "carrefour_all.pkl")
+# data.to_csv(DATA_PATH / "carrefour_sales.csv", index=False)
 
 # %%
 # data.order_date.astype("datetime64").astype("int64") // 1000000000
@@ -63,3 +63,13 @@ data.to_csv(DATA_PATH / "carrefour_sales.csv", index=False)
 
 # str(pd_data.dtypes["timestamp"])
 # %%
+df = pd.read_csv(DATA_PATH / "carrefour_new.csv")
+
+#%%
+data[:100000].to_csv(DATA_PATH / "carrefour_new.csv", index=False)
+
+#%%
+len(df)
+
+# %%
+data[:100000]

@@ -12,8 +12,9 @@ services:
         reservations:
           devices:
             - driver: nvidia
-              count: 2
+              count: 1
               capabilities: [ gpu ]
     volumes:
       - "./data:/home/app/data"
       - "./logs:/home/app/logs"
+      - "./out:/home/app/out"

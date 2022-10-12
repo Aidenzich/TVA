@@ -1,5 +1,5 @@
 from pathlib import Path
-from src.configs.paths import DATACLASS_PATH, LOG_PATH, DATA_PATH, ROOT_PATH
+from src.configs.paths import DATACLASS_PATH, LOG_PATH, DATA_PATH
 
 AVAILABLE_EXTENSIONS = ["csv", "pickle", "pkl"]
 

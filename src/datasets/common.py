@@ -48,7 +48,7 @@ class RecsysData:
         train_num = int(len(users) * 0.8)
         test_num = int(len(users) * 0.1)
         # val_num = len(users) - train_num - test_num
-        print(len(users[:train_num]))
+        # print(len(users[:train_num]))
 
         train_users = users[:train_num]
         test_users = users[-test_num:]
@@ -65,7 +65,7 @@ class RecsysData:
             [USER_COLUMN_NAME, ITEM_COLUMN_NAME, RATING_COLUMN_NAME]
         ]
         uir_vals = uir_df.values
-        print(uir_vals)
+        # print(uir_vals)
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
 
         from scipy.sparse import csr_matrix

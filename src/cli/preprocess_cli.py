@@ -30,7 +30,7 @@ def handle_dataframe(df, config):
     user_val_count = df[USER_COLUMN_NAME].value_counts()
     user_index = user_val_count[user_val_count > config["least_threshold"]].index
     df = df[df[USER_COLUMN_NAME].isin(user_index)]
-
+    df[RATING_COLUMN_NAME] = df[RATING_COLUMN_NAME].astype(int)
     if dtypes[config[TIMESTAMP_COLUMN_NAME]] == "object":
         df[TIMESTAMP_COLUMN_NAME] = (
             df[config[TIMESTAMP_COLUMN_NAME]].astype("datetime64").astype("int64")

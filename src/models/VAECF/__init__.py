@@ -34,7 +34,7 @@ def train_vaecf(
     )
 
 
-def infer_vaecf(model_path, recdata, rec_ks=10):
+def infer_vaecf(model_path, recdata, rec_ks=100):
     from torch.utils.data import DataLoader
     import torch
     from tqdm import tqdm

@@ -2,20 +2,23 @@ import json
 import pickle
 import inquirer
 
-from .utils import get_models, get_configs
+from .utils import get_models, get_configs, get_dataclass
 from src.configs import DATACLASS_PATH, CONFIG_PATH
 from src.models.trainer import LightningTrainer
 
 
-def create_configs_from_template(model_path, tune=False, config_name="default"):
+def create_configs_from_template(
+    model_path, data_class_name, tune=False, config_name="default"
+):
     template_path = model_path / (
         model_path.name.lower() + (".tune" if tune else "") + ".template.config.json"
     )
 
     print(f"Creating configs from template {template_path}")
-    with open(template_path, "r") as f:
-        content = f.read()
-
+    # with open(template_path, "r") as f:
+    #     content = f.read()
+    config = json.load(open(template_path, "r"))
+    config["data_class"] = data_class_name
     new_config_path = CONFIG_PATH / (
         model_path.name.lower()
         + f".{config_name}"
@@ -23,23 +26,34 @@ def create_configs_from_template(model_path, tune=False, config_name="default"):
         + ".config.json"
     )
 
-    with open(new_config_path, "w+") as f:
-        f.write(content)
+    # with open(new_config_path, "w+") as f:
+    #     f.write(content)
+    json.dump(config, open(new_config_path, "w"), indent=2)
 
     print(f"Created {new_config_path} successfully")
     return new_config_path
 
 
 def create_new_config_inquirer():
+    data_classes, data_classes_paths = get_dataclass()
+    assert data_classes != [], "No dataclass found"
+
     questions = [
         inquirer.List(
             "istune",
             message="Do you want to auto-tune your model?",
             choices=["yes", "no"],
         ),
+        inquirer.List(
+            "data_class",
+            message="Which data class do you need? (Check in data/cache/dataclass)",
+            choices=data_classes,
+        ),
         inquirer.Text("config_name", message="What's config name? (blank: default)"),
     ]
     answers = inquirer.prompt(questions)
+    dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
+    data_class_name = dcls_path.name
 
     tune = False
     if answers["istune"] == "yes":
@@ -47,7 +61,7 @@ def create_new_config_inquirer():
 
     config_name = answers["config_name"] if answers["config_name"] else "default"
     selected_config_path = create_configs_from_template(
-        model_path, tune=tune, config_name=config_name
+        model_path, tune=tune, config_name=config_name, data_class_name=data_class_name
     )
 
 
@@ -64,7 +78,6 @@ if __name__ == "__main__":
     answers = inquirer.prompt(which_models)
 
     midx = models.index(answers["model"])
-    print(midx)
     model_path = models_path[midx]
     configs = get_configs(model_path.name)
 
