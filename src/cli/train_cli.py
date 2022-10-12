@@ -1,26 +1,10 @@
 import json
 import pickle
 import inquirer
-from pathlib import Path
 
+from .utils import get_models, get_configs
 from src.configs import DATACLASS_PATH, CONFIG_PATH
 from src.models.trainer import LightningTrainer
-
-
-def get_models():
-    p = Path(r"./src/models/").iterdir()
-    models = [x for x in p if x.is_dir() and "__" not in str(x)]
-    return models
-
-
-def get_configs(model_name):
-    p = Path(r"./configs").glob("**/*")
-    configs = [
-        x
-        for x in p
-        if x.is_file() and (model_name.lower() in str(x) and "config.json" in str(x))
-    ]
-    return configs
 
 
 def create_configs_from_template(model_path, tune=False, config_name="default"):
@@ -68,7 +52,7 @@ def create_new_config_inquirer():
 
 
 if __name__ == "__main__":
-    models = get_models()
+    models, models_path = get_models()
     which_models = [
         inquirer.List(
             "model",
@@ -78,7 +62,10 @@ if __name__ == "__main__":
     ]
 
     answers = inquirer.prompt(which_models)
-    model_path = answers["model"]
+
+    midx = models.index(answers["model"])
+    print(midx)
+    model_path = models_path[midx]
     configs = get_configs(model_path.name)
 
     if configs == []:

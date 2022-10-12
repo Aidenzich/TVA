@@ -1,10 +1,4 @@
 #%%
-import sys
-
-from matplotlib.style import available
-from regex import D
-
-from src.configs.paths import DATA_PATH, ROOT_PATH, DATACLASS_PATH, CONFIG_PATH
 from src.configs import (
     USER_COLUMN_NAME,
     ITEM_COLUMN_NAME,
@@ -13,33 +7,10 @@ from src.configs import (
 )
 
 from src.datasets.common import RecsysData
+from .utils import get_data
 import pandas as pd
 
 import inquirer
-from pathlib import Path
-
-AVAILABLE_EXTENSIONS = ["csv", "pickle", "pkl"]
-
-
-def get_data():
-    p = Path(DATA_PATH).glob("*")
-    p2 = Path(DATA_PATH).glob("*")  # Python can't clone a generator
-    data = [
-        x.name
-        for x in p
-        if (x.is_file())
-        and (not x.is_dir())
-        and (x.name.split(".")[-1] in AVAILABLE_EXTENSIONS)
-    ]
-
-    data_path = [
-        x
-        for x in p2
-        if (x.is_file())
-        and (not x.is_dir())
-        and (x.name.split(".")[-1] in AVAILABLE_EXTENSIONS)
-    ]
-    return data, data_path
 
 
 def handle_dataframe(df, config):

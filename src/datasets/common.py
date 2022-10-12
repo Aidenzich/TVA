@@ -177,3 +177,14 @@ class RecsysData:
 
         savename = self.filename + "_cls.pkl"
         return DATACLASS_PATH / savename
+
+    @staticmethod
+    def reverse_ids(data_cls, pred_result):
+
+        reversed_pred_result = {}
+        for user in tqdm(pred_result.keys()):
+            reversed_pred_result[data_cls.cat2u[user]] = [
+                data_cls.cat2i[item] for item in pred_result[user]
+            ]
+
+        return reversed_pred_result

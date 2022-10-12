@@ -7,7 +7,7 @@ from typing import List
 from .utils import split_matrix_by_mask, recall_calculate
 
 
-class VAECF(pl.LightningModule):
+class VAECFModel(pl.LightningModule):
     def __init__(
         self,
         hidden_dim: int,
@@ -60,7 +60,6 @@ class VAECF(pl.LightningModule):
         pred_y[seen] = 0
         recall = recall_calculate(true_y, pred_y, k=100)
         self.log("test_recall", recall)
-        
 
 
 EPS = 1e-10

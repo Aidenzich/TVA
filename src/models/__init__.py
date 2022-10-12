@@ -1,10 +1,10 @@
-from .BERT4Rec.trainer import bert4rec_train
-from .VAECF.trainer import vaecf_train
+from .BERT4Rec import train_bert4rec, infer_bert4rec
+from .VAECF import train_vaecf, infer_vaecf
 
 TRAIN_FACTORY = {
-    "bert4rec": bert4rec_train,
-    "vaecf": vaecf_train,
+    "bert4rec": train_bert4rec,
+    "vaecf": train_vaecf,
 }
 
 
-INFER_FACTORY = {}
+INFER_FACTORY = {"bert4rec": infer_bert4rec, "vaecf": infer_vaecf}
