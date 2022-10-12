@@ -1,6 +1,5 @@
 from pathlib import Path
-from src.configs import DATA_PATH
-from src.configs.paths import DATACLASS_PATH
+from src.configs.paths import DATACLASS_PATH, LOG_PATH, DATA_PATH, ROOT_PATH
 
 AVAILABLE_EXTENSIONS = ["csv", "pickle", "pkl"]
 
@@ -37,7 +36,14 @@ def get_data():
 
 
 def get_dataclass():
-    p = Path(DATACLASS_PATH).glob("*")
-    data_classes_path = [x for x in p if x.is_file() and "pkl" in str(x)]
+    p = Path(DATACLASS_PATH).glob("*.pkl")
+    data_classes_path = [x for x in p if x.is_file()]
     data_classes = [x.name for x in data_classes_path]
     return data_classes, data_classes_path
+
+
+def get_checkpoint_path(model_lower_name):
+    p = Path(LOG_PATH).glob(f"*{model_lower_name}*/**/*.ckpt")
+    ckpt_paths = [x for x in p if x.is_file()]
+    ckpts = [str(x).replace(str(LOG_PATH), "")[1:] for x in ckpt_paths]
+    return ckpts, ckpt_paths

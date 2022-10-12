@@ -25,5 +25,8 @@ train:
 pp:
 	python -m src.cli.preprocess_cli
 
+infer:
+	python -m src.cli.inference_cli
+
 clearlogs:
 	rm -rf logs/*

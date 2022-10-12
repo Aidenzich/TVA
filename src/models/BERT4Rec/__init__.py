@@ -67,7 +67,7 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
     )
 
 
-def infer_bert4rec(model_path, recdata, rec_ks=10, negative_samples=None):
+def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     """rec k is the number of items to recommend"""
     ##### INFER ######
     import torch
@@ -78,7 +78,7 @@ def infer_bert4rec(model_path, recdata, rec_ks=10, negative_samples=None):
 
     torch.cuda.empty_cache()
 
-    model = BERTModel.load_from_checkpoint(model_path)
+    model = BERTModel.load_from_checkpoint(ckpt_path)
 
     if negative_samples == None:
         negative_sampler = NegativeSampler(

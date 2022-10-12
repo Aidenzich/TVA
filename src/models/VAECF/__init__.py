@@ -34,7 +34,7 @@ def train_vaecf(
     )
 
 
-def infer_vaecf(model_path, recdata):
+def infer_vaecf(model_path, recdata, rec_ks=10):
     from torch.utils.data import DataLoader
     import torch
     from tqdm import tqdm
@@ -50,12 +50,11 @@ def infer_vaecf(model_path, recdata):
     with torch.no_grad():
         for batch in tqdm(infer_loader):
             batch = batch.to(device)
-            print(len(batch))
             z_u, _ = model.vae.encode(batch)
             y = model.vae.decode(z_u)
             seen = batch != 0
             y[seen] = 0
-            top_k = y.topk(10, dim=1)[1]
+            top_k = y.topk(rec_ks, dim=1)[1]
 
             for i in range(batch.shape[0]):
                 predict_result[user_count] = top_k[i].tolist()
