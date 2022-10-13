@@ -8,26 +8,24 @@ from src.models.trainer import LightningTrainer
 
 
 def create_configs_from_template(
-    model_path, data_class_name, tune=False, config_name="default"
+    model_path, data_class_name, data_class_stem, tune=False, config_name="default"
 ):
     template_path = model_path / (
         model_path.name.lower() + (".tune" if tune else "") + ".template.config.json"
     )
 
     print(f"Creating configs from template {template_path}")
-    # with open(template_path, "r") as f:
-    #     content = f.read()
+
     config = json.load(open(template_path, "r"))
     config["data_class"] = data_class_name
     new_config_path = CONFIG_PATH / (
         model_path.name.lower()
         + f".{config_name}"
+        + f".{data_class_stem}"
         + (".tune" if tune else "")
         + ".config.json"
     )
 
-    # with open(new_config_path, "w+") as f:
-    #     f.write(content)
     json.dump(config, open(new_config_path, "w"), indent=2)
 
     print(f"Created {new_config_path} successfully")
@@ -53,7 +51,6 @@ def create_new_config_inquirer():
     ]
     answers = inquirer.prompt(questions)
     dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
-    data_class_name = dcls_path.name
 
     tune = False
     if answers["istune"] == "yes":
@@ -61,7 +58,11 @@ def create_new_config_inquirer():
 
     config_name = answers["config_name"] if answers["config_name"] else "default"
     selected_config_path = create_configs_from_template(
-        model_path, tune=tune, config_name=config_name, data_class_name=data_class_name
+        model_path,
+        tune=tune,
+        config_name=config_name,
+        data_class_name=dcls_path.name.lower(),
+        data_class_stem=dcls_path.stem.lower(),
     )
 
 

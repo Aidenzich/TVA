@@ -30,11 +30,14 @@ if __name__ == "__main__":
 
     answers = inquirer.prompt(question)
     dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
+
     model_path = model_paths[models.index(answers["model"])]
 
     # mymodel = VAECFModel.load_from_checkpoint()
-    ckpts, ckpt_paths = get_checkpoint_path(model_path.name.lower())
-
+    ckpts, ckpt_paths = get_checkpoint_path(
+        model_path.name.lower(), dcls_path.stem.lower()
+    )
+    # assert ckpt_paths != [], "No checkpoint found"
     question = [
         inquirer.List(
             "checkpoint",
@@ -44,7 +47,7 @@ if __name__ == "__main__":
     ]
     answers = inquirer.prompt(question)
     ckpt_path = ckpt_paths[ckpts.index(answers["checkpoint"])]
-    print(ckpt_path)
+    # print(ckpt_path)
 
     print("Loading dataclass")
 
@@ -58,6 +61,10 @@ if __name__ == "__main__":
 
     json.dump(
         predict_result,
-        open(OUTPUT_PATH / f"{model_path.name.lower()}.{ckpt_path.name}.json", "w"),
+        open(
+            OUTPUT_PATH
+            / f"{model_path.name.lower()}.{ckpt_path.parent.parent.parent.name}.{ckpt_path.stem.lower()}.json",
+            "w",
+        ),
         indent=2,
     )

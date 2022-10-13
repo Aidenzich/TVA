@@ -42,8 +42,9 @@ def get_dataclass():
     return data_classes, data_classes_path
 
 
-def get_checkpoint_path(model_lower_name):
-    p = Path(LOG_PATH).glob(f"*{model_lower_name}*/**/*.ckpt")
+def get_checkpoint_path(model_lower_name, data_class_stem):
+    find_path = f"*{model_lower_name}*{data_class_stem}*/**/*.ckpt"
+    p = Path(LOG_PATH).glob(find_path)
     ckpt_paths = [x for x in p if x.is_file()]
     ckpts = [str(x).replace(str(LOG_PATH), "")[1:] for x in ckpt_paths]
     return ckpts, ckpt_paths
