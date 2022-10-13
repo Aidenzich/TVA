@@ -37,7 +37,7 @@ if __name__ == "__main__":
     ckpts, ckpt_paths = get_checkpoint_path(
         model_path.name.lower(), dcls_path.stem.lower()
     )
-    # assert ckpt_paths != [], "No checkpoint found"
+    assert ckpt_paths != [], "No checkpoint found"
     question = [
         inquirer.List(
             "checkpoint",
