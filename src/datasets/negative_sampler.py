@@ -16,8 +16,10 @@ class NegativeSampler(metaclass=ABCMeta):
         item_count,
         sample_size,
         seed,
+        dataclass_name,
         method="random",
     ):
+        self.dataclass_name = dataclass_name
         self.train = train
         self.val = val
         self.test = test
@@ -26,6 +28,10 @@ class NegativeSampler(metaclass=ABCMeta):
         self.sample_size = sample_size
         self.seed = seed
         self.method = method
+        if self.sample_size > self.item_count:
+            raise ValueError(
+                "Sample size is larger than item count, please check your config"
+            )
 
     def items_by_popularity(self):
         popularity = Counter()
@@ -78,10 +84,6 @@ class NegativeSampler(metaclass=ABCMeta):
                 item = np.random.choice(self.item_count) + 1
                 looping_count = 0
                 while item in seen or item in samples:
-                    # 資料太少會無窮迴圈
-                    if looping_count > 10:
-                        break
-
                     item = np.random.choice(self.item_count) + 1
                     looping_count += 1
                 samples.append(item)
@@ -114,8 +116,8 @@ class NegativeSampler(metaclass=ABCMeta):
 
     def _get_save_path(self):
 
-        filename = "{}-sample_size{}-seed{}.pkl".format(
-            self.method, self.sample_size, self.seed
+        filename = "{}.{}-sample_size{}-seed{}.pkl".format(
+            self.dataclass_name, self.method, self.sample_size, self.seed
         )
 
         return NEGATIVE_SAMPLE_PATH / filename

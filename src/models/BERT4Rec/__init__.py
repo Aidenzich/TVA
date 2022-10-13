@@ -15,6 +15,7 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
         sample_size=trainer_config["sample_size"],
         method="random",
         seed=trainer_config["seed"],
+        dataclass_name=recdata.filename,
     )
 
     test_negative_samples = test_negative_sampler.get_negative_samples()
@@ -87,7 +88,10 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
             test=recdata.test_seqs,
             user_count=recdata.num_users,
             item_count=recdata.num_items,
-            sample_size=3000,
+            sample_size=3000
+            if recdata.num_items * 0.8 > 3000
+            else int(recdata.num_items * 0.8),
+            dataclass_name=recdata.filename,
             seed=12345,
         )
         negative_samples = negative_sampler.get_negative_samples()
