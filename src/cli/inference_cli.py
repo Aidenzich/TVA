@@ -4,16 +4,16 @@ import json
 import inquirer
 
 from .utils import get_dataclass, get_checkpoint_path
-from src.configs import OUTPUT_PATH
+from src.configs import OUTPUT_PATH, RED_COLOR, END_COLOR
 from src.cli.utils import get_models
 from src.models import INFER_FACTORY
 
 if __name__ == "__main__":
     data_classes, data_classes_paths = get_dataclass()
-    assert data_classes != [], "No dataclass found"
+    assert data_classes != [], RED_COLOR + "No dataclass found" + END_COLOR
 
     models, model_paths = get_models()
-    assert models != [], "No dataclass found"
+    assert models != [], RED_COLOR + "No dataclass found" + END_COLOR
 
     question = [
         inquirer.List(
@@ -38,7 +38,7 @@ if __name__ == "__main__":
         model_path.name.lower(), dcls_path.stem.lower()
     )
 
-    assert ckpt_paths != [], "No checkpoint found"
+    assert ckpt_paths != [], RED_COLOR + "No checkpoint found" + END_COLOR
     question = [
         inquirer.List(
             "checkpoint",

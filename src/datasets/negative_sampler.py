@@ -3,7 +3,7 @@ import pickle
 import numpy as np
 from tqdm import trange
 from collections import Counter
-from src.configs import NEGATIVE_SAMPLE_PATH
+from src.configs import NEGATIVE_SAMPLE_PATH, RED_COLOR, END_COLOR
 
 
 class NegativeSampler(metaclass=ABCMeta):
@@ -30,7 +30,9 @@ class NegativeSampler(metaclass=ABCMeta):
         self.method = method
         if self.sample_size > self.item_count:
             raise ValueError(
-                "Sample size is larger than item count, please check your config"
+                RED_COLOR
+                + f"Sample size {self.sample_size} is larger than item nums {self.item_count}, please check your config"
+                + END_COLOR
             )
 
     def items_by_popularity(self):
@@ -65,7 +67,9 @@ class NegativeSampler(metaclass=ABCMeta):
             raise ValueError("Invalid method")
 
     def _generate_random_negative_samples(self):
-        assert self.seed is not None, "Specify seed for random sampling"
+        assert self.seed is not None, (
+            RED_COLOR + "Specify seed for random sampling" + END_COLOR
+        )
         np.random.seed(self.seed)
         negative_samples = {}
         print("Sampling random negative items")
@@ -82,10 +86,17 @@ class NegativeSampler(metaclass=ABCMeta):
             samples = []
             for _ in range(self.sample_size):
                 item = np.random.choice(self.item_count) + 1
-                looping_count = 0
+                wait_patience = 0
                 while item in seen or item in samples:
                     item = np.random.choice(self.item_count) + 1
-                    looping_count += 1
+                    if wait_patience > 10:
+                        assert False, (
+                            RED_COLOR
+                            + "Too many patience. Please check your config, sample_size might be too large"
+                            + END_COLOR
+                        )
+                    wait_patience += 1
+
                 samples.append(item)
 
             negative_samples[user] = samples

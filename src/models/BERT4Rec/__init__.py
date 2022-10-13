@@ -93,6 +93,7 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
             else int(recdata.num_items * 0.8),
             dataclass_name=recdata.filename,
             seed=12345,
+            method="popular",
         )
         negative_samples = negative_sampler.get_negative_samples()
 

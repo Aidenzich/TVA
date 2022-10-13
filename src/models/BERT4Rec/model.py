@@ -3,6 +3,8 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch
 import math
+
+from src.configs import RED_COLOR, END_COLOR
 from .utils import fix_random_seed_as, recalls_and_ndcgs_for_ks
 
 # BERTModel
@@ -217,7 +219,9 @@ class MultiHeadedAttention(nn.Module):
     def __init__(self, h, d_model, dropout=0.1):
         super().__init__()
 
-        assert d_model % h == 0
+        assert d_model % h == 0, (
+            RED_COLOR + "model size must be divisible by head size" + END_COLOR
+        )
 
         # We assume d_v always equals d_k
         self.d_k = d_model // h
