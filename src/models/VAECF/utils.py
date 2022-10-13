@@ -44,8 +44,3 @@ def recall_calculate(pred_tensor, true_tensor, k=100):
     # print(len(top_2_matches))
     # print(len(true_idxs))
     return recall
-
-
-# 建立一個與 testuser_matrix 一樣大小的矩陣，並將其填滿0
-# binary_test_matrix = np.zeros_like(matrix)
-# binary_test_matrix[masked_idx] = 1

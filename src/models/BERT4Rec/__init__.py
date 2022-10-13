@@ -87,7 +87,7 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
             test=recdata.test_seqs,
             user_count=recdata.num_users,
             item_count=recdata.num_items,
-            sample_size=5000,
+            sample_size=3000,
             seed=12345,
         )
         negative_samples = negative_sampler.get_negative_samples()
