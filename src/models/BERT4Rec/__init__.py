@@ -90,7 +90,7 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
             item_count=recdata.num_items,
             sample_size=3000
             if recdata.num_items * 0.8 > 3000
-            else int(recdata.num_items * 0.8),
+            else int(recdata.num_items * 0.8),  # Define the lower bound and upper bound
             dataclass_name=recdata.filename,
             seed=12345,
             method="popular",
