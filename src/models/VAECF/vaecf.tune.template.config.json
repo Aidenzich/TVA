@@ -1,0 +1,63 @@
+{
+    "data_class": "carrefour_all_cls.pkl",
+    "trainer_config": {
+        "tune": {
+            "metrics": {
+                "recall": "val_recall"
+            },
+            "resources_per_trial": {
+                "cpu": 12,
+                "gpu": 1
+            },
+            "tune_config": {
+                "metric": "recall",
+                "mode": "max",
+                "num_samples": 4
+            }
+        },
+        "early_stopping": {
+            "monitor": "val_recall",
+            "patience": 10,
+            "verbose": false,
+            "mode": "max"
+        },
+        "limit_train_batches": 1.0,
+        "max_epochs": 10
+    },
+    "model_params": {
+        "batch_size": 128,
+        "hidden_dim": [
+            16,
+            64,
+            128,
+            512,
+            1024
+        ],
+        "act_fn": [
+            "tanh",
+            "sigmoid",
+            "relu"
+        ],
+        "autoencoder_structure": [
+            [
+                10
+            ],
+            [
+                100
+            ],
+            [
+                1000
+            ]
+        ],
+        "likelihood": [
+            "mult",
+            "gaus",
+            "pois"
+        ],
+        "beta": [
+            1.0,
+            0.5,
+            0.2
+        ]
+    }
+}
