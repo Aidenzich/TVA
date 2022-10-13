@@ -1,0 +1,17 @@
+{
+    "data_class": "carrefour_all_cls.pkl",
+    "trainer_config": {
+        "limit_train_batches": 1.0,
+        "max_epochs": 10
+    },
+    "model_params": {
+        "batch_size": 100,
+        "hidden_dim": 20,
+        "act_fn": "tanh",
+        "autoencoder_structure": [
+            1000
+        ],
+        "likelihood": "mult",
+        "beta": 1.0
+    }
+}
