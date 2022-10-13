@@ -76,8 +76,14 @@ class NegativeSampler(metaclass=ABCMeta):
             samples = []
             for _ in range(self.sample_size):
                 item = np.random.choice(self.item_count) + 1
+                looping_count = 0
                 while item in seen or item in samples:
+                    # 資料太少會無窮迴圈
+                    if looping_count > 10:
+                        break
+
                     item = np.random.choice(self.item_count) + 1
+                    looping_count += 1
                 samples.append(item)
 
             negative_samples[user] = samples

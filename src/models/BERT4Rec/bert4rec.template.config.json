@@ -8,11 +8,12 @@
             "mode": "max"
         },
         "limit_train_batches": 1.0,
-        "max_epochs": 10
+        "max_epochs": 10,
+        "sample_size": 300,
+        "seed": 12345
     },
     "model_params": {
         "mask_prob": 0.15,
-        "sample_size": 512,
         "hidden_size": 256,
         "n_layers": 2,
         "dropout": 0,
