@@ -18,3 +18,4 @@ services:
       - "./data:/home/app/data"
       - "./logs:/home/app/logs"
       - "./out:/home/app/out"
+      - "./configs:/home/app/configs"

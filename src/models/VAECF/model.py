@@ -4,7 +4,7 @@ import torch.nn as nn
 from tqdm.auto import trange
 import pytorch_lightning as pl
 from typing import List
-from .utils import split_matrix_by_mask, recall_calculate
+from .utils import split_matrix_by_mask, recall_precision_f1_calculate
 
 
 class VAECFModel(pl.LightningModule):
@@ -49,7 +49,7 @@ class VAECFModel(pl.LightningModule):
         pred_y = self.vae.decode(z_u)
         seen = x != 0
         pred_y[seen] = 0
-        recall = recall_calculate(true_y, pred_y, k=100)
+        recall = recall_precision_f1_calculate(true_y, pred_y, k=100)
         self.log("val_recall", recall)
 
     def test_step(self, batch, batch_idx):
@@ -58,7 +58,7 @@ class VAECFModel(pl.LightningModule):
         pred_y = self.vae.decode(z_u)
         seen = x != 0
         pred_y[seen] = 0
-        recall = recall_calculate(true_y, pred_y, k=100)
+        recall = recall_precision_f1_calculate(true_y, pred_y, k=100)
         self.log("test_recall", recall)
 
 

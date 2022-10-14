@@ -1,5 +1,6 @@
 from turtle import shape
 import numpy as np
+from sklearn.metrics import f1_score
 import torch
 
 
@@ -34,13 +35,14 @@ def split_matrix_by_mask(matrix):
     return non_masked_matrix, masked_matrix, masked_idx
 
 
-def recall_calculate(pred_tensor, true_tensor, k=100):
+def recall_precision_f1_calculate(pred_tensor, true_tensor, k=100):
     true_idxs = true_tensor != 0
     pred_top_idx = pred_tensor.topk(k, dim=1).indices
     index_indicator = pred_top_idx == true_tensor.argmax(dim=1).unsqueeze(dim=1)
     row_indicator = index_indicator.any(dim=1)
     top_2_matches = torch.arange(len(row_indicator))[row_indicator]
     recall = len(top_2_matches) / len(true_idxs)
-    # print(len(top_2_matches))
-    # print(len(true_idxs))
-    return recall
+    precision = len(top_2_matches) / k
+    f1_score = 2 * (precision*recall) / (precision + recall)
+    return recall, precision, f1_score
+
