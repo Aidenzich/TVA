@@ -14,11 +14,14 @@ def random_neq(l, r, s):
     return t
 
 
-def sample_function(user_train, usernum, itemnum, batch_size, maxlen, result_queue, SEED):
+def sample_function(
+    user_train, usernum, itemnum, batch_size, maxlen, result_queue, SEED
+):
     def sample():
 
         user = np.random.randint(1, usernum + 1)
-        while len(user_train[user]) <= 1: user = np.random.randint(1, usernum + 1)
+        while len(user_train[user]) <= 1:
+            user = np.random.randint(1, usernum + 1)
 
         seq = np.zeros([maxlen], dtype=np.int32)
         pos = np.zeros([maxlen], dtype=np.int32)
@@ -30,10 +33,12 @@ def sample_function(user_train, usernum, itemnum, batch_size, maxlen, result_que
         for i in reversed(user_train[user][:-1]):
             seq[idx] = i
             pos[idx] = nxt
-            if nxt != 0: neg[idx] = random_neq(1, itemnum + 1, ts)
+            if nxt != 0:
+                neg[idx] = random_neq(1, itemnum + 1, ts)
             nxt = i
             idx -= 1
-            if idx == -1: break
+            if idx == -1:
+                break
 
         return (user, seq, pos, neg)
 
@@ -52,14 +57,19 @@ class WarpSampler(object):
         self.processors = []
         for i in range(n_workers):
             self.processors.append(
-                Process(target=sample_function, args=(User,
-                                                      usernum,
-                                                      itemnum,
-                                                      batch_size,
-                                                      maxlen,
-                                                      self.result_queue,
-                                                      np.random.randint(2e9)
-                                                      )))
+                Process(
+                    target=sample_function,
+                    args=(
+                        User,
+                        usernum,
+                        itemnum,
+                        batch_size,
+                        maxlen,
+                        self.result_queue,
+                        np.random.randint(2e9),
+                    ),
+                )
+            )
             self.processors[-1].daemon = True
             self.processors[-1].start()
 
@@ -81,9 +91,9 @@ def data_partition(fname):
     user_valid = {}
     user_test = {}
     # assume user/item index starting from 1
-    f = open('data/%s.txt' % fname, 'r')
+    f = open("data/%s.txt" % fname, "r")
     for line in f:
-        u, i = line.rstrip().split(' ')
+        u, i = line.rstrip().split(" ")
         u = int(u)
         i = int(i)
         usernum = max(u, usernum)
@@ -104,22 +114,24 @@ def data_partition(fname):
             user_test[user].append(User[user][-1])
     return [user_train, user_valid, user_test, usernum, itemnum]
 
+
 # TODO: merge evaluate functions for test and val set
 # evaluate on test set
 def evaluate(model, dataset, args):
     [train, valid, test, usernum, itemnum] = copy.deepcopy(dataset)
 
-    NDCG = 0.0
+    ndcg = 0.0
     HT = 0.0
     valid_user = 0.0
 
-    if usernum>10000:
+    if usernum > 10000:
         users = random.sample(range(1, usernum + 1), 10000)
     else:
         users = range(1, usernum + 1)
     for u in users:
 
-        if len(train[u]) < 1 or len(test[u]) < 1: continue
+        if len(train[u]) < 1 or len(test[u]) < 1:
+            continue
 
         seq = np.zeros([args.maxlen], dtype=np.int32)
         idx = args.maxlen - 1
@@ -128,59 +140,64 @@ def evaluate(model, dataset, args):
         for i in reversed(train[u]):
             seq[idx] = i
             idx -= 1
-            if idx == -1: break
+            if idx == -1:
+                break
         rated = set(train[u])
         rated.add(0)
         item_idx = [test[u][0]]
         for _ in range(100):
             t = np.random.randint(1, itemnum + 1)
-            while t in rated: t = np.random.randint(1, itemnum + 1)
+            while t in rated:
+                t = np.random.randint(1, itemnum + 1)
             item_idx.append(t)
 
         predictions = -model.predict(*[np.array(l) for l in [[u], [seq], item_idx]])
-        predictions = predictions[0] # - for 1st argsort DESC
+        predictions = predictions[0]  # - for 1st argsort DESC
 
         rank = predictions.argsort().argsort()[0].item()
 
         valid_user += 1
 
         if rank < 10:
-            NDCG += 1 / np.log2(rank + 2)
+            ndcg += 1 / np.log2(rank + 2)
             HT += 1
         if valid_user % 100 == 0:
-            print('.', end="")
+            print(".", end="")
             sys.stdout.flush()
 
-    return NDCG / valid_user, HT / valid_user
+    return ndcg / valid_user, HT / valid_user
 
 
 # evaluate on val set
 def evaluate_valid(model, dataset, args):
     [train, valid, test, usernum, itemnum] = copy.deepcopy(dataset)
 
-    NDCG = 0.0
+    ndcg = 0.0
     valid_user = 0.0
     HT = 0.0
-    if usernum>10000:
+    if usernum > 10000:
         users = random.sample(range(1, usernum + 1), 10000)
     else:
         users = range(1, usernum + 1)
     for u in users:
-        if len(train[u]) < 1 or len(valid[u]) < 1: continue
+        if len(train[u]) < 1 or len(valid[u]) < 1:
+            continue
 
         seq = np.zeros([args.maxlen], dtype=np.int32)
         idx = args.maxlen - 1
         for i in reversed(train[u]):
             seq[idx] = i
             idx -= 1
-            if idx == -1: break
+            if idx == -1:
+                break
 
         rated = set(train[u])
         rated.add(0)
         item_idx = [valid[u][0]]
         for _ in range(100):
             t = np.random.randint(1, itemnum + 1)
-            while t in rated: t = np.random.randint(1, itemnum + 1)
+            while t in rated:
+                t = np.random.randint(1, itemnum + 1)
             item_idx.append(t)
 
         predictions = -model.predict(*[np.array(l) for l in [[u], [seq], item_idx]])
@@ -191,10 +208,10 @@ def evaluate_valid(model, dataset, args):
         valid_user += 1
 
         if rank < 10:
-            NDCG += 1 / np.log2(rank + 2)
+            ndcg += 1 / np.log2(rank + 2)
             HT += 1
         if valid_user % 100 == 0:
-            print('.', end="")
+            print(".", end="")
             sys.stdout.flush()
 
-    return NDCG / valid_user, HT / valid_user
+    return ndcg / valid_user, HT / valid_user

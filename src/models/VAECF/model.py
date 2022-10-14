@@ -49,8 +49,10 @@ class VAECFModel(pl.LightningModule):
         pred_y = self.vae.decode(z_u)
         seen = x != 0
         pred_y[seen] = 0
-        recall = recall_precision_f1_calculate(true_y, pred_y, k=100)
+        recall, precision, f1 = recall_precision_f1_calculate(true_y, pred_y, k=100)
         self.log("val_recall", recall)
+        self.log("val_precision", precision)
+        self.log("val_f1", f1)
 
     def test_step(self, batch, batch_idx):
         x, true_y, _ = split_matrix_by_mask(batch)
@@ -58,8 +60,10 @@ class VAECFModel(pl.LightningModule):
         pred_y = self.vae.decode(z_u)
         seen = x != 0
         pred_y[seen] = 0
-        recall = recall_precision_f1_calculate(true_y, pred_y, k=100)
+        recall, precision, f1 = recall_precision_f1_calculate(true_y, pred_y, k=100)
         self.log("test_recall", recall)
+        self.log("test_precision", precision)
+        self.log("test_f1", f1)
 
 
 EPS = 1e-10

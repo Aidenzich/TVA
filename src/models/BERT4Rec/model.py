@@ -5,7 +5,7 @@ import torch
 import math
 
 from src.configs import RED_COLOR, END_COLOR
-from .utils import fix_random_seed_as, recalls_and_ndcgs_for_ks
+from .utils import fix_random_seed_as, recalls_and_ndcgs_for_ks, rpf1_for_ks
 
 # BERTModel
 class BERTModel(pl.LightningModule):
@@ -59,17 +59,18 @@ class BERTModel(pl.LightningModule):
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
+        metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 50])
+        # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
         for i in metrics.keys():
-            if "recall" in i:
-                self.log(i, metrics[i])
+            self.log(i, metrics[i])
 
     def test_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
+        metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 50])
+        # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
         for i in metrics.keys():
             self.log(i, metrics[i])
 

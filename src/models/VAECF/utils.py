@@ -43,6 +43,8 @@ def recall_precision_f1_calculate(pred_tensor, true_tensor, k=100):
     top_2_matches = torch.arange(len(row_indicator))[row_indicator]
     recall = len(top_2_matches) / len(true_idxs)
     precision = len(top_2_matches) / k
-    f1_score = 2 * (precision*recall) / (precision + recall)
+    if precision + recall == 0:
+        f1_score = 0
+    else:
+        f1_score = 2 * (precision * recall) / (precision + recall)
     return recall, precision, f1_score
-
