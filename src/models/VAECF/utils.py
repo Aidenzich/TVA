@@ -1,6 +1,5 @@
 from turtle import shape
 import numpy as np
-from sklearn.metrics import f1_score
 import torch
 
 

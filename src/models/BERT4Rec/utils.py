@@ -5,7 +5,6 @@ from datetime import date
 from pathlib import Path
 
 import numpy as np
-from sklearn.metrics import f1_score, precision_recall_curve
 import torch
 import torch.backends.cudnn as cudnn
 from torch import optim as optim
