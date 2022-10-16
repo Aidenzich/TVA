@@ -7,10 +7,10 @@
             "verbose": false,
             "mode": "max"
         },
-        "limit_train_batches": 1.0,
-        "max_epochs": 10,
-        "sample_size": 300,
-        "sample_method": "popular",
+        "limit_train_batches": 0.5,
+        "max_epochs": 5,
+        "sample_size": 128,
+        "sample_method": "random",
         "seed": 12345
     },
     "model_params": {
