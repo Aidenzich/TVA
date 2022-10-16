@@ -13,7 +13,7 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
         user_count=recdata.num_users,
         item_count=recdata.num_items,
         sample_size=trainer_config["sample_size"],
-        method="random",
+        method=trainer_config["sample_method"],
         seed=trainer_config["seed"],
         dataclass_name=recdata.filename,
     )

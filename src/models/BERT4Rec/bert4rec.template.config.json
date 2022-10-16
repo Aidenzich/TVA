@@ -10,6 +10,7 @@
         "limit_train_batches": 1.0,
         "max_epochs": 10,
         "sample_size": 300,
+        "sample_method": "popular",
         "seed": 12345
     },
     "model_params": {
