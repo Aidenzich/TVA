@@ -3,7 +3,7 @@
     "trainer_config": {
         "tune": {
             "metrics": {
-                "recall": "val_recall"
+                "recall": "vae_recall@100"
             },
             "resources_per_trial": {
                 "cpu": 12,
@@ -16,7 +16,7 @@
             }
         },
         "early_stopping": {
-            "monitor": "val_recall",
+            "monitor": "vae_recall@100",
             "patience": 10,
             "verbose": false,
             "mode": "max"

@@ -2,7 +2,7 @@
     "data_class": "carrefour_all_cls.pkl",
     "trainer_config": {
         "early_stopping": {
-            "monitor": "recall@1",
+            "monitor": "bert_recall@1",
             "patience": 10,
             "verbose": false,
             "mode": "max"
