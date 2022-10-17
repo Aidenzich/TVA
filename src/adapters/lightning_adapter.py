@@ -14,7 +14,7 @@ def fit(
     model_params,
     valset=None,
     testset=None,
-    callbacks=[],
+    callbacks=[],    
 ):
 
     early_stop_config = trainer_config.get("early_stopping")
@@ -32,6 +32,7 @@ def fit(
         batch_size=model_params["batch_size"],
         shuffle=True,
         pin_memory=True,
+        num_workers=trainer_config["num_workers"]
     )
     if valset != None:
         val_loader = DataLoader(
@@ -39,6 +40,7 @@ def fit(
             batch_size=model_params["batch_size"],
             shuffle=False,
             pin_memory=True,
+            num_workers=trainer_config["num_workers"]
         )
     else:
         val_loader = None
@@ -62,5 +64,6 @@ def fit(
             batch_size=model_params["batch_size"],
             shuffle=False,
             pin_memory=True,
+            num_workers=trainer_config["num_workers"]
         )
         trainer.test(model, test_loader)

@@ -3,6 +3,7 @@ services:
   recsys:
     container_name: azrecsys
     build: .
+    shm_size: "10.24gb"
     image: azrecsys
     ports:
       - "8265:8265"

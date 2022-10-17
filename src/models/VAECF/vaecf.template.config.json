@@ -5,7 +5,7 @@
         "max_epochs": 10
     },
     "model_params": {
-        "batch_size": 100,
+        "batch_size": 64,
         "hidden_dim": 20,
         "act_fn": "tanh",
         "autoencoder_structure": [

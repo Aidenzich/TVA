@@ -30,3 +30,10 @@ infer:
 
 clearlogs:
 	rm -rf logs/*
+
+init:
+	rm -rf logs/*
+	rm data/cache/dataclass/*
+	rm data/cache/nsample/*
+	rm configs/*
+	rm out/*

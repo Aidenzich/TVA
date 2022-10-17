@@ -54,9 +54,9 @@ class VAECFModel(pl.LightningModule):
         recall, precision, f1 = recall_precision_f1_calculate(
             true_y, pred_y, k=self.top_k
         )
-        self.log("vae_recall@{k}", recall)
-        self.log("vae_precision@{k}", precision)
-        self.log("vae_f1@{k}", f1)
+        self.log(f"vae_recall@{self.top_k}", recall)
+        self.log(f"vae_precision@{self.top_k}", precision)
+        self.log(f"vae_f1@{self.top_k}", f1)
 
     def test_step(self, batch, batch_idx):
         x, true_y, _ = split_matrix_by_mask(batch)

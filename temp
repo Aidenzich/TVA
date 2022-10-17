@@ -1,0 +1,311 @@
+Using existing config
+2022-10-17 02:33:33,377 INFO worker.py:1509 -- Started a local Ray instance. View the dashboard at http://127.0.0.1:8265 
+2022-10-17 02:33:34,212 WARNING function_trainable.py:619 -- Function checkpointing is disabled. This may result in unexpected behavior when using checkpointing features or certain schedulers. To enable, set the train function arguments to be `func(config, checkpoint_dir=None)`.
+== Status ==
+Current time: 2022-10-17 02:33:36 (running for 00:00:02.17)
+Memory usage on this node: 2.8/62.7 GiB
+Using FIFO scheduling algorithm.
+Resources requested: 12.0/12 CPUs, 1.0/1 GPUs, 0.0/46.4 GiB heap, 0.0/9.73 GiB objects (0.0/1.0 accelerator_type:G)
+Result logdir: /home/app/logs/vaecf.default.carrefour_sales.sample_cls.tune.config
+Number of trials: 4/4 (3 PENDING, 1 RUNNING)
++------------------------------------+----------+----------------+----------+------------------------+--------------+--------+--------------+--------------+
+| Trial name                         | status   | loc            | act_fn   | autoencoder_struc...   |   batch_size |   beta |   hidden_dim | likelihood   |
+|------------------------------------+----------+----------------+----------+------------------------+--------------+--------+--------------+--------------|
+| __trainable_function___18ba5_00000 | RUNNING  | 172.20.0.2:545 | sigmoid  | [100]                  |           64 |    0.2 |         1024 | gaus         |
+| __trainable_function___18ba5_00001 | PENDING  |                | sigmoid  | [1000]                 |           64 |    1   |           64 | mult         |
+| __trainable_function___18ba5_00002 | PENDING  |                | relu     | [100]                  |           64 |    0.2 |           16 | mult         |
+| __trainable_function___18ba5_00003 | PENDING  |                | sigmoid  | [10]                   |           64 |    0.2 |          512 | mult         |
++------------------------------------+----------+----------------+----------+------------------------+--------------+--------+--------------+--------------+
+
+
+(__trainable_function__ pid=545) GPU available: True (cuda), used: True
+(__trainable_function__ pid=545) TPU available: False, using: 0 TPU cores
+(__trainable_function__ pid=545) IPU available: False, using: 0 IPUs
+(__trainable_function__ pid=545) HPU available: False, using: 0 HPUs
+(__trainable_function__ pid=545) `Trainer(limit_train_batches=1.0)` was configured so 100% of the batches per epoch will be used..
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/configuration_validator.py:229: LightningDeprecationWarning: The `on_init_start` callback hook was deprecated in v1.6 and will be removed in v1.8.
+(__trainable_function__ pid=545)   rank_zero_deprecation(
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/configuration_validator.py:233: LightningDeprecationWarning: The `on_init_end` callback hook was deprecated in v1.6 and will be removed in v1.8.
+(__trainable_function__ pid=545)   rank_zero_deprecation("The `on_init_end` callback hook was deprecated in v1.6 and will be removed in v1.8.")
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/configuration_validator.py:258: LightningDeprecationWarning: The `Callback.on_batch_start` hook was deprecated in v1.6 and will be removed in v1.8. Please use `Callback.on_train_batch_start` instead.
+(__trainable_function__ pid=545)   rank_zero_deprecation(
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/configuration_validator.py:258: LightningDeprecationWarning: The `Callback.on_batch_end` hook was deprecated in v1.6 and will be removed in v1.8. Please use `Callback.on_train_batch_end` instead.
+(__trainable_function__ pid=545)   rank_zero_deprecation(
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/configuration_validator.py:267: LightningDeprecationWarning: The `Callback.on_epoch_start` hook was deprecated in v1.6 and will be removed in v1.8. Please use `Callback.on_<train/validation/test>_epoch_start` instead.
+(__trainable_function__ pid=545)   rank_zero_deprecation(
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/configuration_validator.py:267: LightningDeprecationWarning: The `Callback.on_epoch_end` hook was deprecated in v1.6 and will be removed in v1.8. Please use `Callback.on_<train/validation/test>_epoch_end` instead.
+(__trainable_function__ pid=545)   rank_zero_deprecation(
+(__trainable_function__ pid=545) LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+(__trainable_function__ pid=545) 
+(__trainable_function__ pid=545)   | Name | Type | Params
+(__trainable_function__ pid=545) ------------------------------
+(__trainable_function__ pid=545) 0 | vae  | VAE  | 357 K 
+(__trainable_function__ pid=545) ------------------------------
+(__trainable_function__ pid=545) 357 K     Trainable params
+(__trainable_function__ pid=545) 0         Non-trainable params
+(__trainable_function__ pid=545) 357 K     Total params
+(__trainable_function__ pid=545) 1.430     Total estimated model params size (MB)
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:236: PossibleUserWarning: The dataloader, val_dataloader 0, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 12 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+(__trainable_function__ pid=545)   rank_zero_warn(
+Sanity Checking DataLoader 0:   0%|          | 0/1 [00:00<?, ?it/s]
+Result for __trainable_function___18ba5_00000:
+  date: 2022-10-17_02-33-38
+  done: false
+  experiment_id: 0043765cc6db46289eb4b2d33f7a5e27
+  hostname: 4b1a2f59063b
+  iterations_since_restore: 1
+  node_ip: 172.20.0.2
+  pid: 545
+  recall: 0.5
+  time_since_restore: 1.7603225708007812
+  time_this_iter_s: 1.7603225708007812
+  time_total_s: 1.7603225708007812
+  timestamp: 1665974018
+  timesteps_since_restore: 0
+  training_iteration: 1
+  trial_id: 18ba5_00000
+  warmup_time: 0.0042514801025390625
+  
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/connectors/data_connector.py:236: PossibleUserWarning: The dataloader, train_dataloader, does not have many workers which may be a bottleneck. Consider increasing the value of the `num_workers` argument` (try 12 which is the number of cpus on this machine) in the `DataLoader` init to improve performance.
+(__trainable_function__ pid=545)   rank_zero_warn(
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/trainer.py:1892: PossibleUserWarning: The number of training batches (1) is smaller than the logging interval Trainer(log_every_n_steps=50). Set a lower value for log_every_n_steps if you want to see logs for the training epoch.
+(__trainable_function__ pid=545)   rank_zero_warn(
+Epoch 0: 100%|██████████| 2/2 [00:00<00:00, 77.75it/s, loss=9, v_num=6]    
+Epoch 4: 100%|██████████| 2/2 [00:00<00:00, 117.67it/s, loss=8.06, v_num=6]
+(__trainable_function__ pid=545) /usr/local/lib/python3.8/site-packages/pytorch_lightning/trainer/connectors/logger_connector/result.py:231: UserWarning: You called `self.log('vae_f1@100', ...)` in your `validation_step` but the value needs to be floating point. Converting it to torch.float32.
+(__trainable_function__ pid=545)   warning_cache.warn(
+Epoch 8: 100%|██████████| 2/2 [00:00<00:00, 134.67it/s, loss=7.45, v_num=6]
+Result for __trainable_function___18ba5_00000:[00:00<00:00, 220.60it/s]
+  date: 2022-10-17_02-33-38
+  done: true
+  experiment_id: 0043765cc6db46289eb4b2d33f7a5e27
+  experiment_tag: 0_act_fn=sigmoid,autoencoder_structure=100,batch_size=64,beta=0.2000,hidden_dim=1024,likelihood=gaus
+  hostname: 4b1a2f59063b
+  iterations_since_restore: 10
+  node_ip: 172.20.0.2
+  pid: 545
+  recall: 0.0
+  time_since_restore: 2.0105135440826416
+  time_this_iter_s: 0.026560306549072266
+  time_total_s: 2.0105135440826416
+  timestamp: 1665974018
+  timesteps_since_restore: 0
+  training_iteration: 10
+  trial_id: 18ba5_00000
+  warmup_time: 0.0042514801025390625
+  
+(__trainable_function__ pid=545) `Trainer.fit` stopped: `max_epochs=10` reached.
+Epoch 9: 100%|██████████| 2/2 [00:00<00:00, 76.76it/s, loss=7.32, v_num=6] 
+(__trainable_function__ pid=545) GPU available: True (cuda), used: True
+(__trainable_function__ pid=545) TPU available: False, using: 0 TPU cores
+(__trainable_function__ pid=545) IPU available: False, using: 0 IPUs
+(__trainable_function__ pid=545) HPU available: False, using: 0 HPUs
+(__trainable_function__ pid=545) `Trainer(limit_train_batches=1.0)` was configured so 100% of the batches per epoch will be used..
+(__trainable_function__ pid=545) LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+(__trainable_function__ pid=545) 
+(__trainable_function__ pid=545)   | Name | Type | Params
+(__trainable_function__ pid=545) ------------------------------
+(__trainable_function__ pid=545) 0 | vae  | VAE  | 672 K 
+(__trainable_function__ pid=545) ------------------------------
+(__trainable_function__ pid=545) 672 K     Trainable params
+(__trainable_function__ pid=545) 0         Non-trainable params
+(__trainable_function__ pid=545) 672 K     Total params
+(__trainable_function__ pid=545) 2.689     Total estimated model params size (MB)
+Epoch 0:   0%|          | 0/2 [00:00<?, ?it/s]                              
+Result for __trainable_function___18ba5_00001:
+  date: 2022-10-17_02-33-38
+  done: false
+  experiment_id: 0043765cc6db46289eb4b2d33f7a5e27
+  hostname: 4b1a2f59063b
+  iterations_since_restore: 1
+  node_ip: 172.20.0.2
+  pid: 545
+  recall: 0.0
+  time_since_restore: 0.26273107528686523
+  time_this_iter_s: 0.26273107528686523
+  time_total_s: 0.26273107528686523
+  timestamp: 1665974018
+  timesteps_since_restore: 0
+  training_iteration: 1
+  trial_id: 18ba5_00001
+  warmup_time: 0.0042514801025390625
+  
+Epoch 2: 100%|██████████| 2/2 [00:00<00:00, 76.66it/s, loss=13.5, v_num=7] 
+Epoch 6:   0%|          | 0/2 [00:00<?, ?it/s, loss=13.3, v_num=7]         
+Epoch 9: 100%|██████████| 2/2 [00:00<00:00, 163.09it/s, loss=13.2, v_num=7]
+Result for __trainable_function___18ba5_00001:[00:00<00:00, 563.90it/s]
+  date: 2022-10-17_02-33-38
+  done: true
+  experiment_id: 0043765cc6db46289eb4b2d33f7a5e27
+  experiment_tag: 1_act_fn=sigmoid,autoencoder_structure=1000,batch_size=64,beta=1.0000,hidden_dim=64,likelihood=mult
+  hostname: 4b1a2f59063b
+  iterations_since_restore: 10
+  node_ip: 172.20.0.2
+  pid: 545
+  recall: 1.0
+  time_since_restore: 0.5550277233123779
+  time_this_iter_s: 0.030333518981933594
+  time_total_s: 0.5550277233123779
+  timestamp: 1665974018
+  timesteps_since_restore: 0
+  training_iteration: 10
+  trial_id: 18ba5_00001
+  warmup_time: 0.0042514801025390625
+  
+(__trainable_function__ pid=545) `Trainer.fit` stopped: `max_epochs=10` reached.
+Epoch 9: 100%|██████████| 2/2 [00:00<00:00, 65.29it/s, loss=13.2, v_num=7] 
+(__trainable_function__ pid=545) GPU available: True (cuda), used: True
+(__trainable_function__ pid=545) TPU available: False, using: 0 TPU cores
+(__trainable_function__ pid=545) IPU available: False, using: 0 IPUs
+(__trainable_function__ pid=545) HPU available: False, using: 0 HPUs
+Result for __trainable_function___18ba5_00002:
+  date: 2022-10-17_02-33-39
+  done: false
+  experiment_id: 0043765cc6db46289eb4b2d33f7a5e27
+  hostname: 4b1a2f59063b
+  iterations_since_restore: 1
+  node_ip: 172.20.0.2
+  pid: 545
+  recall: 1.0
+  time_since_restore: 0.25600218772888184
+  time_this_iter_s: 0.25600218772888184
+  time_total_s: 0.25600218772888184
+  timestamp: 1665974019
+  timesteps_since_restore: 0
+  training_iteration: 1
+  trial_id: 18ba5_00002
+  warmup_time: 0.0042514801025390625
+  
+(__trainable_function__ pid=545) `Trainer(limit_train_batches=1.0)` was configured so 100% of the batches per epoch will be used..
+(__trainable_function__ pid=545) LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+(__trainable_function__ pid=545) 
+(__trainable_function__ pid=545)   | Name | Type | Params
+(__trainable_function__ pid=545) ------------------------------
+(__trainable_function__ pid=545) 0 | vae  | VAE  | 53.1 K
+(__trainable_function__ pid=545) ------------------------------
+(__trainable_function__ pid=545) 53.1 K    Trainable params
+(__trainable_function__ pid=545) 0         Non-trainable params
+(__trainable_function__ pid=545) 53.1 K    Total params
+(__trainable_function__ pid=545) 0.212     Total estimated model params size (MB)
+Epoch 1:   0%|          | 0/2 [00:00<?, ?it/s, loss=13.5, v_num=8]          
+Epoch 1:  50%|█████     | 1/2 [00:00<00:00, 128.81it/s, loss=13.5, v_num=8]
+Epoch 5: 100%|██████████| 2/2 [00:00<00:00, 164.58it/s, loss=13.5, v_num=8]
+Epoch 5: 100%|██████████| 2/2 [00:00<00:00, 123.45it/s, loss=13.5, v_num=8]
+Epoch 5: 100%|██████████| 2/2 [00:00<00:00, 114.99it/s, loss=13.5, v_num=8]
+== Status ==
+Current time: 2022-10-17 02:33:39 (running for 00:00:05.20)
+Memory usage on this node: 4.8/62.7 GiB
+Using FIFO scheduling algorithm.
+Resources requested: 12.0/12 CPUs, 1.0/1 GPUs, 0.0/46.4 GiB heap, 0.0/9.73 GiB objects (0.0/1.0 accelerator_type:G)
+Current best trial: 18ba5_00001 with recall=1.0 and parameters={'model_name': 'vaecf', 'model_params_columns': ['batch_size', 'hidden_dim', 'act_fn', 'autoencoder_structure', 'likelihood', 'beta'], 'trainer_config_columns': ['tune', 'early_stopping', 'limit_train_batches', 'max_epochs', 'config_name'], 'dataclass': <src.datasets.common.RecsysData object at 0x7f391d214880>, 'batch_size': 64, 'hidden_dim': 64, 'act_fn': 'sigmoid', 'autoencoder_structure': [1000], 'likelihood': 'mult', 'beta': 1.0, 'tune': {'metrics': {'recall': 'vae_recall@100'}, 'resources_per_trial': {'cpu': 12, 'gpu': 1}, 'tune_config': {'metric': 'recall', 'mode': 'max', 'num_samples': 4}}, 'early_stopping': {'monitor': 'vae_recall@100', 'patience': 10, 'verbose': False, 'mode': 'max'}, 'limit_train_batches': 1.0, 'max_epochs': 10, 'config_name': 'vaecf.default.carrefour_sales.sample_cls.tune.config'}
+Result logdir: /home/app/logs/vaecf.default.carrefour_sales.sample_cls.tune.config
+Number of trials: 4/4 (1 PENDING, 1 RUNNING, 2 TERMINATED)
++------------------------------------+------------+----------------+----------+------------------------+--------------+--------+--------------+--------------+--------+------------------+----------+
+| Trial name                         | status     | loc            | act_fn   | autoencoder_struc...   |   batch_size |   beta |   hidden_dim | likelihood   |   iter |   total time (s) |   recall |
+|------------------------------------+------------+----------------+----------+------------------------+--------------+--------+--------------+--------------+--------+------------------+----------|
+| __trainable_function___18ba5_00002 | RUNNING    | 172.20.0.2:545 | relu     | [100]                  |           64 |    0.2 |           16 | mult         |      7 |         0.401775 |        1 |
+| __trainable_function___18ba5_00003 | PENDING    |                | sigmoid  | [10]                   |           64 |    0.2 |          512 | mult         |        |                  |          |
+| __trainable_function___18ba5_00000 | TERMINATED | 172.20.0.2:545 | sigmoid  | [100]                  |           64 |    0.2 |         1024 | gaus         |     10 |         2.01051  |        0 |
+| __trainable_function___18ba5_00001 | TERMINATED | 172.20.0.2:545 | sigmoid  | [1000]                 |           64 |    1   |           64 | mult         |     10 |         0.555028 |        1 |
++------------------------------------+------------+----------------+----------+------------------------+--------------+--------+--------------+--------------+--------+------------------+----------+
+
+
+Result for __trainable_function___18ba5_00002:
+  date: 2022-10-17_02-33-39
+  done: true
+  experiment_id: 0043765cc6db46289eb4b2d33f7a5e27
+  experiment_tag: 2_act_fn=relu,autoencoder_structure=100,batch_size=64,beta=0.2000,hidden_dim=16,likelihood=mult
+  hostname: 4b1a2f59063b
+  iterations_since_restore: 10
+  node_ip: 172.20.0.2
+  pid: 545
+  recall: 1.0
+  time_since_restore: 0.46934986114501953
+  time_this_iter_s: 0.022394418716430664
+  time_total_s: 0.46934986114501953
+  timestamp: 1665974019
+  timesteps_since_restore: 0
+  training_iteration: 10
+  trial_id: 18ba5_00002
+  warmup_time: 0.0042514801025390625
+  
+(__trainable_function__ pid=545) `Trainer.fit` stopped: `max_epochs=10` reached.
+Epoch 9: 100%|██████████| 2/2 [00:00<00:00, 88.81it/s, loss=13.4, v_num=8] 
+(__trainable_function__ pid=545) GPU available: True (cuda), used: True
+(__trainable_function__ pid=545) TPU available: False, using: 0 TPU cores
+(__trainable_function__ pid=545) IPU available: False, using: 0 IPUs
+(__trainable_function__ pid=545) HPU available: False, using: 0 HPUs
+Result for __trainable_function___18ba5_00003:
+  date: 2022-10-17_02-33-39
+  done: false
+  experiment_id: 0043765cc6db46289eb4b2d33f7a5e27
+  hostname: 4b1a2f59063b
+  iterations_since_restore: 1
+  node_ip: 172.20.0.2
+  pid: 545
+  recall: 1.0
+  time_since_restore: 0.2627713680267334
+  time_this_iter_s: 0.2627713680267334
+  time_total_s: 0.2627713680267334
+  timestamp: 1665974019
+  timesteps_since_restore: 0
+  training_iteration: 1
+  trial_id: 18ba5_00003
+  warmup_time: 0.0042514801025390625
+  
+(__trainable_function__ pid=545) `Trainer(limit_train_batches=1.0)` was configured so 100% of the batches per epoch will be used..
+(__trainable_function__ pid=545) LOCAL_RANK: 0 - CUDA_VISIBLE_DEVICES: [0]
+(__trainable_function__ pid=545) 
+(__trainable_function__ pid=545)   | Name | Type | Params
+(__trainable_function__ pid=545) ------------------------------
+(__trainable_function__ pid=545) 0 | vae  | VAE  | 21.4 K
+(__trainable_function__ pid=545) ------------------------------
+(__trainable_function__ pid=545) 21.4 K    Trainable params
+(__trainable_function__ pid=545) 0         Non-trainable params
+(__trainable_function__ pid=545) 21.4 K    Total params
+(__trainable_function__ pid=545) 0.086     Total estimated model params size (MB)
+Epoch 1: 100%|██████████| 2/2 [00:00<00:00, 116.42it/s, loss=14.6, v_num=9] 
+Epoch 6:  50%|█████     | 1/2 [00:00<00:00, 135.52it/s, loss=14.4, v_num=9]
+(__trainable_function__ pid=545)                                       
+(__trainable_function__ pid=545) 
+Result for __trainable_function___18ba5_00003:[00:00<?, ?it/s]
+  date: 2022-10-17_02-33-39
+  done: true
+  experiment_id: 0043765cc6db46289eb4b2d33f7a5e27
+  experiment_tag: 3_act_fn=sigmoid,autoencoder_structure=10,batch_size=64,beta=0.2000,hidden_dim=512,likelihood=mult
+  hostname: 4b1a2f59063b
+  iterations_since_restore: 10
+  node_ip: 172.20.0.2
+  pid: 545
+  recall: 1.0
+  time_since_restore: 0.47307491302490234
+  time_this_iter_s: 0.02255415916442871
+  time_total_s: 0.47307491302490234
+  timestamp: 1665974019
+  timesteps_since_restore: 0
+  training_iteration: 10
+  trial_id: 18ba5_00003
+  warmup_time: 0.0042514801025390625
+  
+(__trainable_function__ pid=545) `Trainer.fit` stopped: `max_epochs=10` reached.
+Epoch 9: 100%|██████████| 2/2 [00:00<00:00, 90.87it/s, loss=14.4, v_num=9] 
+== Status ==                                                           
+Current time: 2022-10-17 02:33:40 (running for 00:00:05.81)
+Memory usage on this node: 4.8/62.7 GiB
+Using FIFO scheduling algorithm.
+Resources requested: 0/12 CPUs, 0/1 GPUs, 0.0/46.4 GiB heap, 0.0/9.73 GiB objects (0.0/1.0 accelerator_type:G)
+Current best trial: 18ba5_00001 with recall=1.0 and parameters={'model_name': 'vaecf', 'model_params_columns': ['batch_size', 'hidden_dim', 'act_fn', 'autoencoder_structure', 'likelihood', 'beta'], 'trainer_config_columns': ['tune', 'early_stopping', 'limit_train_batches', 'max_epochs', 'config_name'], 'dataclass': <src.datasets.common.RecsysData object at 0x7f391d214880>, 'batch_size': 64, 'hidden_dim': 64, 'act_fn': 'sigmoid', 'autoencoder_structure': [1000], 'likelihood': 'mult', 'beta': 1.0, 'tune': {'metrics': {'recall': 'vae_recall@100'}, 'resources_per_trial': {'cpu': 12, 'gpu': 1}, 'tune_config': {'metric': 'recall', 'mode': 'max', 'num_samples': 4}}, 'early_stopping': {'monitor': 'vae_recall@100', 'patience': 10, 'verbose': False, 'mode': 'max'}, 'limit_train_batches': 1.0, 'max_epochs': 10, 'config_name': 'vaecf.default.carrefour_sales.sample_cls.tune.config'}
+Result logdir: /home/app/logs/vaecf.default.carrefour_sales.sample_cls.tune.config
+Number of trials: 4/4 (4 TERMINATED)
++------------------------------------+------------+----------------+----------+------------------------+--------------+--------+--------------+--------------+--------+------------------+----------+
+| Trial name                         | status     | loc            | act_fn   | autoencoder_struc...   |   batch_size |   beta |   hidden_dim | likelihood   |   iter |   total time (s) |   recall |
+|------------------------------------+------------+----------------+----------+------------------------+--------------+--------+--------------+--------------+--------+------------------+----------|
+| __trainable_function___18ba5_00000 | TERMINATED | 172.20.0.2:545 | sigmoid  | [100]                  |           64 |    0.2 |         1024 | gaus         |     10 |         2.01051  |        0 |
+| __trainable_function___18ba5_00001 | TERMINATED | 172.20.0.2:545 | sigmoid  | [1000]                 |           64 |    1   |           64 | mult         |     10 |         0.555028 |        1 |
+| __trainable_function___18ba5_00002 | TERMINATED | 172.20.0.2:545 | relu     | [100]                  |           64 |    0.2 |           16 | mult         |     10 |         0.46935  |        1 |
+| __trainable_function___18ba5_00003 | TERMINATED | 172.20.0.2:545 | sigmoid  | [10]                   |           64 |    0.2 |          512 | mult         |     10 |         0.473075 |        1 |
++------------------------------------+------------+----------------+----------+------------------------+--------------+--------+--------------+--------------+--------+------------------+----------+
+
+
+2022-10-17 02:33:40,244 INFO tune.py:758 -- Total run time: 6.03 seconds (5.78 seconds for the tuning loop).
+Best hyperparameters found were:  {'model_name': 'vaecf', 'model_params_columns': ['batch_size', 'hidden_dim', 'act_fn', 'autoencoder_structure', 'likelihood', 'beta'], 'trainer_config_columns': ['tune', 'early_stopping', 'limit_train_batches', 'max_epochs', 'config_name'], 'dataclass': <src.datasets.common.RecsysData object at 0x7f391d214880>, 'batch_size': 64, 'hidden_dim': 64, 'act_fn': 'sigmoid', 'autoencoder_structure': [1000], 'likelihood': 'mult', 'beta': 1.0, 'tune': {'metrics': {'recall': 'vae_recall@100'}, 'resources_per_trial': {'cpu': 12, 'gpu': 1}, 'tune_config': {'metric': 'recall', 'mode': 'max', 'num_samples': 4}}, 'early_stopping': {'monitor': 'vae_recall@100', 'patience': 10, 'verbose': False, 'mode': 'max'}, 'limit_train_batches': 1.0, 'max_epochs': 10, 'config_name': 'vaecf.default.carrefour_sales.sample_cls.tune.config'}
