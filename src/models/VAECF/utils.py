@@ -1,4 +1,4 @@
-from turtle import shape
+# from turtle import shape
 import numpy as np
 import torch
 
@@ -35,13 +35,15 @@ def split_matrix_by_mask(matrix):
 
 
 def recall_precision_f1_calculate(pred_tensor, true_tensor, k=100):
-    true_idxs = true_tensor != 0
+    nonzero = torch.nonzero(true_tensor)
     pred_top_idx = pred_tensor.topk(k, dim=1).indices
-    index_indicator = pred_top_idx == true_tensor.argmax(dim=1).unsqueeze(dim=1)
-    row_indicator = index_indicator.any(dim=1)
-    top_2_matches = torch.arange(len(row_indicator))[row_indicator]
-    recall = len(top_2_matches) / len(true_idxs)
-    precision = len(top_2_matches) / k
+
+    pred_in_true = torch.gather(true_tensor, axis=1, index=pred_top_idx)
+    hit_num = len(torch.nonzero(pred_in_true))
+
+    # print(len(nonzero), hit_num)
+    recall = hit_num / len(nonzero)
+    precision = hit_num / (k * true_tensor.shape[0])
     if precision + recall == 0:
         f1_score = 0
     else:

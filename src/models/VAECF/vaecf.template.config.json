@@ -1,5 +1,5 @@
 {
-    "data_class": "carrefour_all_cls.pkl",
+    "data_class": "",
     "trainer_config": {
         "limit_train_batches": 1.0,
         "max_epochs": 10,

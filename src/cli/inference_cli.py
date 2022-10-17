@@ -26,14 +26,21 @@ if __name__ == "__main__":
             message="Which data class do you need? (Check in data/cache/dataclass)",
             choices=data_classes,
         ),
+        inquirer.Text(
+            "top_k",
+            message="How many top k do you need?",
+            default="5",
+        ),
     ]
 
     answers = inquirer.prompt(question)
+
+    assert answers["top_k"].isdigit(), RED_COLOR + "Top k must be a number" + END_COLOR
+    top_k = int(answers["top_k"])
+    
     dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
-
     model_path = model_paths[models.index(answers["model"])]
-
-    # mymodel = VAECFModel.load_from_checkpoint()
+    
     ckpts, ckpt_paths = get_checkpoint_path(
         model_path.name.lower(), dcls_path.stem.lower()
     )
@@ -48,7 +55,6 @@ if __name__ == "__main__":
     ]
     answers = inquirer.prompt(question)
     ckpt_path = ckpt_paths[ckpts.index(answers["checkpoint"])]
-    # print(ckpt_path)
 
     print("Loading dataclass")
 
@@ -57,7 +63,9 @@ if __name__ == "__main__":
 
     print("Loading checkpoint")
 
-    predict_result = INFER_FACTORY[model_path.name.lower()](ckpt_path, recdata, 10)
+    predict_result = INFER_FACTORY[model_path.name.lower()](
+        ckpt_path=ckpt_path, recdata=recdata, rec_ks=top_k
+    )
     predict_result = recdata.reverse_ids(recdata, predict_result)
 
     json.dump(

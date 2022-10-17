@@ -20,9 +20,9 @@ def create_configs_from_template(
     config["data_class"] = data_class_name
     new_config_path = CONFIG_PATH / (
         model_path.name.lower()
+        + (".tune" if tune else "")
         + f".{config_name}"
         + f".{data_class_stem}"
-        + (".tune" if tune else "")
         + ".config.json"
     )
 

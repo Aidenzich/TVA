@@ -30,6 +30,7 @@ class LightningTrainer(metaclass=ABCMeta):
         )
 
     def tune(self):
+        self.recdata.dataframe = None
         tuner(
             model_params=self.model_params,
             trainer_config=self.trainer_config,

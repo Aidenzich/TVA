@@ -29,6 +29,11 @@ def handle_dataframe(df, config):
     # filter value counts threshold
     user_val_count = df[USER_COLUMN_NAME].value_counts()
     user_index = user_val_count[user_val_count > config["least_threshold"]].index
+    remove_user_index = user_val_count[
+        user_val_count <= config["least_threshold"]
+    ].index
+    removed_df = df[df[USER_COLUMN_NAME].isin(remove_user_index)]
+
     df = df[df[USER_COLUMN_NAME].isin(user_index)]
     df[RATING_COLUMN_NAME] = df[RATING_COLUMN_NAME].astype(int)
     if dtypes[config[TIMESTAMP_COLUMN_NAME]] == "object":
@@ -42,7 +47,7 @@ def handle_dataframe(df, config):
             df[config[TIMESTAMP_COLUMN_NAME]].astype("int64") // 10**9
         )
 
-    return df
+    return df, removed_df
 
 
 if __name__ == "__main__":
@@ -75,7 +80,7 @@ if __name__ == "__main__":
         "least_threshold": 10,
     }
 
-    df = handle_dataframe(df, config)
+    df, limit_df = handle_dataframe(df, config)
     newDataCLS = RecsysData(df=df, filename=choose_data_path.stem)
     newDataCLS.save()
     print(f"Save dataclass into {newDataCLS._get_save_path()} Complete")

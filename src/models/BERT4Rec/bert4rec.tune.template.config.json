@@ -24,7 +24,7 @@
         },
         "limit_train_batches": 0.5,
         "max_epochs": 5,
-        "sample_size": 128,
+        "sample_size": 1024,
         "sample_method": "random",
         "seed": 12345,
         "num_workers": 12

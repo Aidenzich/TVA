@@ -1,25 +1,26 @@
 {
-    "data_class": "carrefour_all_cls.pkl",
+    "data_class": "",
     "trainer_config": {
         "tune": {
             "metrics": {
-                "recall": "vae_recall@100"
+                "recall": "vae_recall@100",
+                "loss": "train_loss"
             },
             "resources_per_trial": {
                 "cpu": 12,
                 "gpu": 1
             },
             "tune_config": {
-                "metric": "recall",
-                "mode": "max",
+                "metric": "loss",
+                "mode": "min",
                 "num_samples": 4
             }
         },
         "early_stopping": {
-            "monitor": "vae_recall@100",
+            "monitor": "train_loss",
             "patience": 10,
             "verbose": false,
-            "mode": "max"
+            "mode": "min"
         },
         "limit_train_batches": 1.0,
         "max_epochs": 10,
@@ -41,12 +42,6 @@
         ],
         "autoencoder_structure": [
             [
-                10
-            ],
-            [
-                100
-            ],
-            [
                 1000
             ]
         ],
@@ -55,10 +50,6 @@
             "gaus",
             "pois"
         ],
-        "beta": [
-            1.0,
-            0.5,
-            0.2
-        ]
+        "beta": 0.8
     }
 }
