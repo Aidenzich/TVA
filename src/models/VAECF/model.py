@@ -66,13 +66,15 @@ class VAECFModel(pl.LightningModule):
         pred_y = self.vae.decode(z_u)
         seen = x != 0
         pred_y[seen] = 0
+        true_y[seen] = 0
 
         recall, precision, f1 = recall_precision_f1_calculate(
-            true_y, pred_y, k=self.top_k
+            pred_y, true_y, k=self.top_k
         )
-        self.log("test_recall@{k}", recall)
-        self.log("test_precision@{k}", precision)
-        self.log("test_f1@{k}", f1)
+
+        self.log(f"vae_recall@{self.top_k}", recall)
+        self.log(f"vae_precision@{self.top_k}", precision)
+        self.log(f"vae_f1@{self.top_k}", f1)
 
 
 EPS = 1e-10

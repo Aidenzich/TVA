@@ -14,7 +14,7 @@ import inquirer
 
 
 def handle_dataframe(df, config):
-
+    # Rename columns for carre4 dataset
     df.rename(
         columns={
             config[USER_COLUMN_NAME]: USER_COLUMN_NAME,

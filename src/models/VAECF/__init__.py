@@ -29,19 +29,19 @@ def train_vaecf(
         valset=valset,
         trainer_config=trainer_config,
         model_params=model_params,
-        testset=None,
+        testset=testset,
         callbacks=callbacks,
     )
 
 
-def infer_vaecf(model_path, recdata, rec_ks=100):
+def infer_vaecf(ckpt_path, recdata, rec_ks=100):
     from torch.utils.data import DataLoader
     import torch
     from tqdm import tqdm
 
     device = torch.device("cuda:0")
     inferset = MatrixDataset(recdata.matrix)
-    model = VAECFModel.load_from_checkpoint(model_path)
+    model = VAECFModel.load_from_checkpoint(ckpt_path)
     infer_loader = DataLoader(inferset, batch_size=12, shuffle=False, pin_memory=True)
     model.to(device)
     predict_result: dict = {}
@@ -52,8 +52,8 @@ def infer_vaecf(model_path, recdata, rec_ks=100):
             batch = batch.to(device)
             z_u, _ = model.vae.encode(batch)
             y = model.vae.decode(z_u)
-            seen = batch != 0
-            y[seen] = 0
+            # seen = batch != 0
+            # y[seen] = 0
             top_k = y.topk(rec_ks, dim=1)[1]
 
             for i in range(batch.shape[0]):
