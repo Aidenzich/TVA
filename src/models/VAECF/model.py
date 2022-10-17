@@ -54,6 +54,9 @@ class VAECFModel(pl.LightningModule):
         recall, precision, f1 = recall_precision_f1_calculate(
             true_y, pred_y, k=self.top_k
         )
+
+        print(f"vae_recall@{self.top_k}")
+
         self.log(f"vae_recall@{self.top_k}", recall)
         self.log(f"vae_precision@{self.top_k}", precision)
         self.log(f"vae_f1@{self.top_k}", f1)

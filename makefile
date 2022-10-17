@@ -7,7 +7,7 @@ brun:
 	docker compose up --build -d
 
 exec:
-	docker exec -it azrecsys bash
+	docker exec -it azrecsys bash 
 
 clean:
 	docker rm -f azrecsys
@@ -33,7 +33,7 @@ clearlogs:
 
 init:
 	rm -rf logs/*
-	rm data/cache/dataclass/*
-	rm data/cache/nsample/*
-	rm configs/*
-	rm out/*
+	rm -rf data/cache/dataclass/*
+	rm -rf data/cache/nsample/*
+	rm -rf configs/*
+	rm -rf out/*

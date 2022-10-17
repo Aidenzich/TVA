@@ -2,7 +2,8 @@
     "data_class": "carrefour_all_cls.pkl",
     "trainer_config": {
         "limit_train_batches": 1.0,
-        "max_epochs": 10
+        "max_epochs": 10,
+        "num_workers": 12
     },
     "model_params": {
         "batch_size": 64,
