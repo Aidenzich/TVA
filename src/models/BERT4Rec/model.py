@@ -59,7 +59,7 @@ class BERTModel(pl.LightningModule):
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 50])
+        metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
         # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
 
         for metric in metrics.keys():
@@ -70,7 +70,7 @@ class BERTModel(pl.LightningModule):
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 50])
+        metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
         # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
         for metric in metrics.keys():
             self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))

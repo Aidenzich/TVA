@@ -7,10 +7,7 @@ brun:
 	docker compose up --build -d
 
 exec:
-	docker exec -it azrecsys bash 
-
-clean:
-	docker rm -f azrecsys
+	docker exec -it azrecsys env TERM=xterm-256color script -q -c "/bin/bash" /dev/null
 
 stop:
 	docker stop azrecsys
@@ -28,10 +25,14 @@ pp:
 infer:
 	python -m src.cli.inference_cli
 
-clearlogs:
+clean:
+	docker rm -f azrecsys
+
+cleanlogs:
 	rm -rf logs/*
 
-init:
+cleanall:
+	@echo "Clean logs, data, and configs"
 	rm -rf logs/*
 	rm -rf data/cache/dataclass/*
 	rm -rf data/cache/nsample/*

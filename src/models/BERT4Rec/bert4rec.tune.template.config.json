@@ -4,36 +4,34 @@
         "tune": {
             "metrics": {
                 "loss": "train_loss",
-                "recall": "bert_recall@1"
+                "recall": "bert_recall@30",
+                "f1": "bert_f1@30"
             },
             "resources_per_trial": {
                 "cpu": 12,
                 "gpu": 1
             },
             "tune_config": {
-                "metric": "recall",
+                "metric": "f1",
                 "mode": "max",
-                "num_samples": 4
+                "num_samples": 6
             }
         },
         "early_stopping": {
-            "monitor": "bert_recall@1",
+            "monitor": "bert_recall@30",
             "patience": 10,
             "verbose": false,
             "mode": "max"
         },
         "limit_train_batches": 0.5,
-        "max_epochs": 5,
+        "max_epochs": 20,
         "sample_size": 1024,
         "sample_method": "random",
         "seed": 12345,
         "num_workers": 12
     },
     "model_params": {
-        "batch_size": [
-            16,
-            32
-        ],
+        "batch_size": 4,
         "mask_prob": [
             0.15
         ],
@@ -60,8 +58,7 @@
         "heads": [
             2,
             4,
-            8,
-            16
+            8
         ]
     }
 }
