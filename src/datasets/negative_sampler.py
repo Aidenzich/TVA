@@ -1,7 +1,7 @@
 from abc import *
 import pickle
 import numpy as np
-from tqdm import trange
+from tqdm import trange, tqdm
 from collections import Counter
 from src.configs import NEGATIVE_SAMPLE_PATH, RED_COLOR, END_COLOR
 
@@ -12,7 +12,6 @@ class NegativeSampler(metaclass=ABCMeta):
         train,
         val,
         test,
-        user_count,
         item_count,
         sample_size,
         seed,
@@ -23,7 +22,6 @@ class NegativeSampler(metaclass=ABCMeta):
         self.train = train
         self.val = val
         self.test = test
-        self.user_count = user_count
         self.item_count = item_count
         self.sample_size = sample_size
         self.seed = seed
@@ -37,7 +35,7 @@ class NegativeSampler(metaclass=ABCMeta):
 
     def items_by_popularity(self):
         popularity = Counter()
-        for user in range(self.user_count):
+        for user in self.train.keys():
             popularity.update(self.train[user])
             popularity.update(self.val[user])
             popularity.update(self.test[user])
@@ -73,7 +71,7 @@ class NegativeSampler(metaclass=ABCMeta):
         np.random.seed(self.seed)
         negative_samples = {}
         print("Sampling random negative items")
-        for user in trange(self.user_count):
+        for user in tqdm(self.train.keys()):
             if isinstance(self.train[user][1], tuple):
                 seen = set(x[0] for x in self.train[user])
                 seen.update(x[0] for x in self.val[user])
@@ -108,7 +106,7 @@ class NegativeSampler(metaclass=ABCMeta):
 
         negative_samples = {}
         print("Sampling popular negative items")
-        for user in trange(self.user_count):
+        for user in tqdm(self.train.keys()):
             seen = set(self.train[user])
             seen.update(self.val[user])
             seen.update(self.test[user])

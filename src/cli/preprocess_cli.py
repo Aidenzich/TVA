@@ -27,14 +27,14 @@ def handle_dataframe(df, config):
     dtypes = df.dtypes
 
     # filter value counts threshold
-    user_val_count = df[USER_COLUMN_NAME].value_counts()
-    user_index = user_val_count[user_val_count > config["least_threshold"]].index
-    remove_user_index = user_val_count[
-        user_val_count <= config["least_threshold"]
-    ].index
-    removed_df = df[df[USER_COLUMN_NAME].isin(remove_user_index)]
+    # user_val_count = df[USER_COLUMN_NAME].value_counts()
+    # user_index = user_val_count[user_val_count > config["count_threshold"]].index
+    # remove_user_index = user_val_count[
+    #     user_val_count <= config["count_threshold"]
+    # ].index
+    # removed_df = df[df[USER_COLUMN_NAME].isin(remove_user_index)]
 
-    df = df[df[USER_COLUMN_NAME].isin(user_index)]
+    # df = df[df[USER_COLUMN_NAME].isin(user_index)]
     df[RATING_COLUMN_NAME] = df[RATING_COLUMN_NAME].astype(int)
     if dtypes[config[TIMESTAMP_COLUMN_NAME]] == "object":
         df[TIMESTAMP_COLUMN_NAME] = (
@@ -47,7 +47,7 @@ def handle_dataframe(df, config):
             df[config[TIMESTAMP_COLUMN_NAME]].astype("int64") // 10**9
         )
 
-    return df, removed_df
+    return df
 
 
 if __name__ == "__main__":
@@ -77,10 +77,18 @@ if __name__ == "__main__":
         ITEM_COLUMN_NAME: "product",
         RATING_COLUMN_NAME: "quantity",
         TIMESTAMP_COLUMN_NAME: "order_date",
-        "least_threshold": 10,
+        "count_threshold": 10,
     }
-
-    df, limit_df = handle_dataframe(df, config)
+    df.dropna(
+        subset=[
+            config[USER_COLUMN_NAME],
+            config[ITEM_COLUMN_NAME],
+            config[RATING_COLUMN_NAME],
+            config[TIMESTAMP_COLUMN_NAME],
+        ],
+        inplace=True,
+    )
+    df = handle_dataframe(df, config)
     newDataCLS = RecsysData(df=df, filename=choose_data_path.stem)
     newDataCLS.save()
     print(f"Save dataclass into {newDataCLS._get_save_path()} Complete")

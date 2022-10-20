@@ -3,6 +3,7 @@ import numpy as np
 import pandas as pd
 from tqdm import tqdm
 import pickle
+from tabulate import tabulate
 
 tqdm.pandas()
 
@@ -19,6 +20,7 @@ class RecsysData:
     def __init__(self, df: pd.DataFrame, filename=""):
         self.filename = filename
         self.dataframe = df
+
         (
             self.u2cat,
             self.i2cat,
@@ -27,9 +29,10 @@ class RecsysData:
             self.dataframe[USER_COLUMN_NAME],
             self.dataframe[ITEM_COLUMN_NAME],
         ) = self._get_cat2id(df)
-
+        self.max_length = max(df[USER_COLUMN_NAME].value_counts())
         self.num_users = len(self.u2cat)
         self.num_items = len(self.i2cat)
+
         (
             self.train_seqs,
             self.val_seqs,
@@ -37,6 +40,25 @@ class RecsysData:
             self.users_seqs,
         ) = self._split_df_u2seq(split_method="leave_one_out")
         self.prepare_matrix()
+
+        self.seqs_user_num = len(self.train_seqs)
+        print(
+            "\n",
+            tabulate(
+                [
+                    [
+                        self.num_users,
+                        self.num_items,
+                        self.max_length,
+                        self.seqs_user_num,
+                        self.seqs_user_num,
+                    ]
+                ],
+                headers=["num_users", "num_items", "max_length", "seqs_user_num"],
+                tablefmt="orgtbl",
+            ),
+            "\n",
+        )
 
     def _split_matrix_by_user(self):
         print("Splitting")
@@ -60,10 +82,23 @@ class RecsysData:
 
         return train_matrix, test_matrix, val_matrix
 
+    def _filter_rating_threshold(self, df: pd.DataFrame, threshold=5):
+        return df[df[RATING_COLUMN_NAME] >= threshold]
+
+    def _filter_purchases_threshold(self, df: pd.DataFrame, threshold=10):
+        user_val_count = df[USER_COLUMN_NAME].value_counts()
+        user_index = user_val_count[user_val_count > threshold].index
+        remove_user_index = user_val_count[user_val_count <= threshold].index
+        removed_df = df[df[USER_COLUMN_NAME].isin(remove_user_index)]
+        filtered_df = df[df[USER_COLUMN_NAME].isin(user_index)]
+
+        return filtered_df, removed_df
+
     def prepare_matrix(self):
         uir_df = self.dataframe[
             [USER_COLUMN_NAME, ITEM_COLUMN_NAME, RATING_COLUMN_NAME]
         ]
+        uir_df = uir_df[uir_df[RATING_COLUMN_NAME] > 0]
         uir_vals = uir_df.values
         # print(uir_vals)
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
@@ -86,19 +121,23 @@ class RecsysData:
         """
         Split the dataframe into train, val, and test dictionary of user's trading sequences
         """
+        print("Splitting user sequences...")
+        df, self.removed_df = self._filter_purchases_threshold(
+            self.dataframe, threshold=3
+        )
         train_seqs, val_seqs, test_seqs, fully_seqs = {}, {}, {}, {}
-        user_count = self.dataframe[USER_COLUMN_NAME].nunique()
+        users = df[USER_COLUMN_NAME].unique()
 
         if split_method == "leave_one_out":
-            print("Splitting")
-            user_group = self.dataframe.groupby(USER_COLUMN_NAME)
+
+            user_group = df.groupby(USER_COLUMN_NAME)
             user2items = user_group.progress_apply(
                 lambda d: list(
                     d.sort_values(by=TIMESTAMP_COLUMN_NAME)[ITEM_COLUMN_NAME]
                 )
             )
 
-            for user in range(user_count):
+            for user in users:
                 items = user2items[user]
                 train_seqs[user], val_seqs[user], test_seqs[user], fully_seqs[user] = (
                     items[:-2],
@@ -107,51 +146,45 @@ class RecsysData:
                     items,
                 )
 
-        elif split_method == "holdout":
-            print("Splitting")
-            np.random.seed(self.args.dataset_split_seed)
-            eval_set_size = self.args.eval_set_size
+        # elif split_method == "holdout":
+        #     print("Splitting")
+        #     np.random.seed(self.args.dataset_split_seed)
+        #     eval_set_size = self.args.eval_set_size
 
-            # Generate user indices
-            permuted_index = np.random.permutation(user_count)
-            train_user_index = permuted_index[: -2 * eval_set_size]
-            val_user_index = permuted_index[-2 * eval_set_size : -eval_set_size]
-            test_user_index = permuted_index[-eval_set_size:]
+        #     # Generate user indices
+        #     permuted_index = np.random.permutation(user_count)
+        #     train_user_index = permuted_index[: -2 * eval_set_size]
+        #     val_user_index = permuted_index[-2 * eval_set_size : -eval_set_size]
+        #     test_user_index = permuted_index[-eval_set_size:]
 
-            # Split DataFrames
-            train_df = self.dataframe.loc[
-                self.dataframe[USER_COLUMN_NAME].isin(train_user_index)
-            ]
+        #     # Split DataFrames
+        #     train_df = df.loc[df[USER_COLUMN_NAME].isin(train_user_index)]
 
-            val_df = self.dataframe.loc[
-                self.dataframe[USER_COLUMN_NAME].isin(val_user_index)
-            ]
+        #     val_df = df.loc[df[USER_COLUMN_NAME].isin(val_user_index)]
 
-            test_df = self.dataframe.loc[
-                self.dataframe[USER_COLUMN_NAME].isin(test_user_index)
-            ]
+        #     test_df = df.loc[df[USER_COLUMN_NAME].isin(test_user_index)]
 
-            # DataFrame to dict
-            train_seqs = dict(
-                train_df.groupby(USER_COLUMN_NAME).progress_apply(
-                    lambda d: list(d[ITEM_COLUMN_NAME])
-                )
-            )
-            val_seqs = dict(
-                val_df.groupby(USER_COLUMN_NAME).progress_apply(
-                    lambda d: list(d[ITEM_COLUMN_NAME])
-                )
-            )
-            test_seqs = dict(
-                test_df.groupby(USER_COLUMN_NAME).progress_apply(
-                    lambda d: list(d[ITEM_COLUMN_NAME])
-                )
-            )
-            fully_seqs = dict(
-                self.dataframe.groupby(USER_COLUMN_NAME).progress_apply(
-                    lambda d: list(d[ITEM_COLUMN_NAME])
-                )
-            )
+        #     # DataFrame to dict
+        #     train_seqs = dict(
+        #         train_df.groupby(USER_COLUMN_NAME).progress_apply(
+        #             lambda d: list(d[ITEM_COLUMN_NAME])
+        #         )
+        #     )
+        #     val_seqs = dict(
+        #         val_df.groupby(USER_COLUMN_NAME).progress_apply(
+        #             lambda d: list(d[ITEM_COLUMN_NAME])
+        #         )
+        #     )
+        #     test_seqs = dict(
+        #         test_df.groupby(USER_COLUMN_NAME).progress_apply(
+        #             lambda d: list(d[ITEM_COLUMN_NAME])
+        #         )
+        #     )
+        #     fully_seqs = dict(
+        #         self.dataframe.groupby(USER_COLUMN_NAME).progress_apply(
+        #             lambda d: list(d[ITEM_COLUMN_NAME])
+        #         )
+        #     )
 
         return train_seqs, val_seqs, test_seqs, fully_seqs
 
