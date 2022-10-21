@@ -202,3 +202,4 @@ logs/*
 
 **/*.csv
 **/*.csv.tar.gz
+**/*.npy

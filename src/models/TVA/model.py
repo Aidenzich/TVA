@@ -8,7 +8,7 @@ from src.configs import RED_COLOR, END_COLOR
 from .utils import fix_random_seed_as, recalls_and_ndcgs_for_ks, rpf1_for_ks
 
 # BERTModel
-class TVABERTModel(pl.LightningModule):
+class TVAModel(pl.LightningModule):
     def __init__(
         self,
         hidden_size: int,
@@ -17,12 +17,11 @@ class TVABERTModel(pl.LightningModule):
         num_items: int,
         max_len: int,
         dropout: int,
-        vae_matrix: torch.Tensor,
     ):
         super().__init__()
         self.save_hyperparameters()
         self.max_len = max_len
-        self.bert = BERT(
+        self.bert = TVA(
             model_init_seed=0,
             max_len=self.max_len,
             num_items=num_items,
@@ -31,17 +30,17 @@ class TVABERTModel(pl.LightningModule):
             heads=heads,
             dropout=dropout,
         )
-        self.vae_matrix = vae_matrix
         self.out = nn.Linear(hidden_size, num_items + 1)
 
-    def forward(self, x):
-        x = self.bert(x)
+    def forward(self, x, vae_seqs):
+        x = self.bert(x, vae_seqs)
         return self.out(x)
 
     def training_step(self, batch, batch_idx):
-        seqs, labels, _ = batch
+        seqs, vae_seqs, labels, _ = batch
+
         logits = self.forward(
-            seqs
+            seqs, vae_seqs
         )  # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)
 
         logits = logits.view(-1, logits.size(-1))  # (B * T) x V
@@ -56,8 +55,8 @@ class TVABERTModel(pl.LightningModule):
         return optimizer
 
     def validation_step(self, batch, batch_idx):
-        seqs, candidates, labels = batch
-        scores = self.forward(seqs)  # B x T x V
+        seqs, vae_seqs, candidates, labels = batch
+        scores = self.forward(seqs, vae_seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
@@ -67,8 +66,8 @@ class TVABERTModel(pl.LightningModule):
             self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
 
     def test_step(self, batch, batch_idx):
-        seqs, candidates, labels = batch
-        scores = self.forward(seqs)  # B x T x V
+        seqs, vae_seqs, candidates, labels = batch
+        scores = self.forward(seqs, vae_seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
@@ -78,7 +77,7 @@ class TVABERTModel(pl.LightningModule):
 
 
 # BERT
-class BERT(nn.Module):
+class TVA(nn.Module):
     def __init__(
         self,
         model_init_seed: int,
@@ -95,7 +94,7 @@ class BERT(nn.Module):
         vocab_size = num_items + 2
 
         # embedding for BERT, sum of positional, segment, token embeddings
-        self.embedding = BERTEmbedding(
+        self.embedding = TVAEmbedding(
             vocab_size=vocab_size,
             embed_size=hidden_size,
             max_len=max_len,
@@ -110,11 +109,11 @@ class BERT(nn.Module):
             ]
         )
 
-    def forward(self, x):
+    def forward(self, x, vae_seqs):
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(x)
+        x = self.embedding(x, vae_seqs)
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
@@ -127,16 +126,7 @@ class BERT(nn.Module):
 
 
 # Embedding
-class BERTEmbedding(nn.Module):
-    """
-    BERT Embedding which is consisted with under features
-        1. TokenEmbedding : normal embedding matrix
-        2. PositionalEmbedding : adding positional information using sin, cos
-        2. SegmentEmbedding : adding sentence segment info, (sent_A:1, sent_B:2)
-
-        sum of all these features are output of BERTEmbedding
-    """
-
+class TVAEmbedding(nn.Module):
     def __init__(self, vocab_size, embed_size, max_len, dropout=0.1):
         """
         :param vocab_size: total vocab size
@@ -146,15 +136,58 @@ class BERTEmbedding(nn.Module):
         super().__init__()
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
-        # self.segment = SegmentEmbedding(embed_size=self.token.embedding_dim)
         self.dropout = nn.Dropout(p=dropout)
         self.embed_size = embed_size
+        self.tv_out = nn.Linear(embed_size * 3, embed_size)
+        self.tv_emb = nn.Linear(embed_size, embed_size)
 
-    def forward(self, sequence):
-        x = self.token(sequence) + self.position(
-            sequence
-        )  # + self.segment(segment_label)
+    def forward(self, sequence, vae_sequence):
+        x = self.token(sequence)
+
+        # t_tensor = torch.LongTensor(
+        #     [[j for j in range(sequence.size(1))] for _ in range(sequence.size(0))]
+        # ).to(sequence.device)
+        # print(self.tv_emb(vae_sequence).shape)
+        # vae_sequence = vae_sequence.unsqueeze(2).repeat(1, 1, self.embed_size)
+        # print(sequence.shape)
+        # print(self.position(sequence).shape)
+        # print(x.shape)
+        # tv_tensor = torch.cat(
+        #     [vae_sequence.unsqueeze(2), t_tensor.unsqueeze(2)], dim=-1
+        # )
+        # tv_tensor = self.tv_emb(tv_tensor)
+        # x = torch.cat([x, tv_tensor], dim=-1)
+        # x = self.tv_out(x)
+
+        #### Embedding method 1
+        # vae_sequence = vae_sequence.unsqueeze(2).repeat(1, 1, self.embed_size)
+        # x = x + self.position(sequence) + self.tv_emb(vae_sequence)
+
+        #### Embedding method 2
+        # vae_sequence = vae_sequence.unsqueeze(2).repeat(1, 1, self.embed_size)
+        # x = torch.cat([x, self.position(sequence), self.tv_emb(vae_sequence)], dim=-1)
+        # x = self.tv_out(x)
+
+        #### Embedding method 3
+        # vae_sequence = vae_sequence.unsqueeze(2).repeat(1, 1, self.embed_size)
+        # x = torch.cat([x, self.position(sequence), vae_sequence], dim=-1)
+        # x = self.tv_out(x)
+
+        #### Embedding method 4
+        vae_sequence = vae_sequence.unsqueeze(2).repeat(1, 1, self.embed_size)
+        x = torch.cat([x, self.position(sequence), vae_sequence], dim=-1)
+        x = self.tv_out(x)
+
         return self.dropout(x)
+
+
+class TimeVarianceEmbedding(nn.Module):
+    def __init__(self, max_len, embed_size):
+        super().__init__()
+        self.linear = nn.Linear(max_len, embed_size)
+
+    def forward(self, x):
+        return self.linear(x)
 
 
 class PositionalEmbedding(nn.Module):

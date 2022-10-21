@@ -4,7 +4,7 @@ from typing import Dict, List, Tuple
 import random
 
 
-class SequenceDataset(Dataset):
+class VAESequenceDataset(Dataset):
     def __init__(
         self,
         u2seq,
@@ -49,8 +49,6 @@ class SequenceDataset(Dataset):
         seq = self.u2seq[user]
 
         vae_seq = []
-        for i in self.u2seq[user]:
-            vae_seq.append(user_vae_matrix[i])
 
         if self.mode == "eval":
             answer = self.u2answer[user]
@@ -64,8 +62,17 @@ class SequenceDataset(Dataset):
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
 
+            for i in range(len(seq)):
+                if seq[i] == 0:
+                    vae_seq.append(0)
+                elif seq[i] == self.mask_token:
+                    vae_seq.append(0)
+                else:
+                    vae_seq.append(user_vae_matrix[seq[i]])
+
             return (
                 torch.LongTensor(seq),  # user's sequence
+                torch.FloatTensor(vae_seq),
                 torch.LongTensor(candidates),  # candidates from negative sampling
                 torch.LongTensor(
                     labels
@@ -100,8 +107,17 @@ class SequenceDataset(Dataset):
             tokens = [0] * mask_len + tokens
             labels = [0] * mask_len + labels
 
+            for i in range(len(tokens)):
+                if tokens[i] == 0:
+                    vae_seq.append(0)
+                elif tokens[i] == self.mask_token:
+                    vae_seq.append(0)
+                else:
+                    vae_seq.append(user_vae_matrix[tokens[i]])
+
             return (
                 torch.LongTensor(tokens),  # masked user's sequence
+                torch.FloatTensor(vae_seq),
                 torch.LongTensor(labels),  # labels for masked tokens
                 torch.empty((0)),
             )
@@ -113,8 +129,17 @@ class SequenceDataset(Dataset):
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
 
+            for i in range(len(seq)):
+                if seq[i] == 0:
+                    vae_seq.append(0)
+                elif seq[i] == self.mask_token:
+                    vae_seq.append(0)
+                else:
+                    vae_seq.append(user_vae_matrix[seq[i]])
+
             return (
-                torch.LongTensor(seq),  # user's sequence
+                torch.LongTensor(seq),
+                torch.FloatTensor(vae_seq),  # user's sequence
                 torch.LongTensor(candidates),  # candidates from negative sampling
                 torch.LongTensor([user]),
             )

@@ -56,22 +56,23 @@ def infer_vaecf(ckpt_path, recdata, rec_ks=100):
             batch = batch.to(device)
             z_u, _ = model.vae.encode(batch)
             y = model.vae.decode(z_u)
-
+            print(z_u.shape)
+            print(y.shape)
+            exit()
             # seen = batch != 0
             # y[seen] = 0
 
             top_k = y.topk(rec_ks, dim=1)[1]
             if all_y is None:
-                all_y = y.cpu().numpy()
+                all_y = y.cpu().numpy().astype(np.float16)
             else:
-                all_y = np.concatenate([all_y, y.cpu().numpy()])
-
-            print(all_y.shape)
+                all_y = np.concatenate([all_y, y.cpu().numpy().astype(np.float16)])
 
             for i in range(batch.shape[0]):
                 predict_result[user_count] = top_k[i].tolist()
                 user_count = user_count + 1
 
-    torch.save(all_y, CACHE_PATH + "all_y.pt")
+    with open(CACHE_PATH / "all_y.pt", "wb") as f:
+        np.save(f, all_y)
 
     return predict_result

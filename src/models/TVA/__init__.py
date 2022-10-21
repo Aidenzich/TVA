@@ -1,11 +1,15 @@
 from torch import ne
-from src.datasets.seq_dset import SequenceDataset
+from src.datasets.vaeseq_dset import VAESequenceDataset
 from src.datasets.negative_sampler import NegativeSampler
-from src.models.BERT4Rec.model import BERTModel
+from .model import TVAModel
 from src.adapters.lightning_adapter import fit
+from src.configs import CACHE_PATH
+import numpy as np
 
 
-def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
+def train_tva(model_params, trainer_config, recdata, callbacks=[]):
+    variance = np.load(CACHE_PATH / "variance.npy")
+
     # FIXME This can be store in the RecData class
     test_negative_sampler = NegativeSampler(
         train=recdata.train_seqs,
@@ -20,7 +24,7 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
 
     test_negative_samples = test_negative_sampler.get_negative_samples()
 
-    trainset = SequenceDataset(
+    trainset = VAESequenceDataset(
         mode="train",
         max_len=model_params["max_len"],
         mask_prob=model_params["mask_prob"],
@@ -28,27 +32,30 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         seed=trainer_config["seed"],
+        vae_matrix=variance,
     )
 
-    valset = SequenceDataset(
+    valset = VAESequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
         negative_samples=test_negative_samples,
+        vae_matrix=variance,
     )
 
-    testset = SequenceDataset(
+    testset = VAESequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         u2answer=recdata.test_seqs,
         negative_samples=test_negative_samples,
+        vae_matrix=variance,
     )
 
-    model = BERTModel(
+    model = TVAModel(
         hidden_size=model_params["hidden_size"],
         num_items=recdata.num_items,
         n_layers=model_params["n_layers"],
@@ -68,7 +75,7 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
     )
 
 
-def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
+def infer_tva(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     """rec k is the number of items to recommend"""
     ##### INFER ######
     import torch
@@ -79,7 +86,7 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
 
     torch.cuda.empty_cache()
 
-    model = BERTModel.load_from_checkpoint(ckpt_path)
+    model = TVAModel.load_from_checkpoint(ckpt_path)
 
     if negative_samples == None:
         sample_num = int(recdata.num_items * 0.2)
@@ -98,13 +105,16 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
         for u in range(recdata.num_users):
             samples[u] = sample_items
 
-    inferset = SequenceDataset(
+    variance = np.load(CACHE_PATH / "variance.npy")
+
+    inferset = VAESequenceDataset(
         mode="inference",
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
         max_len=model.max_len,
         negative_samples=samples,
+        vae_matrix=variance,
     )
 
     infer_loader = DataLoader(inferset, batch_size=4, shuffle=False, pin_memory=True)
@@ -113,14 +123,15 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     predict_result: dict = {}
     with torch.no_grad():
         for batch in tqdm(infer_loader):
-            seqs, candidates, users = batch
-            seqs, candidates, users = (
+            seqs, vae_squence, candidates, users = batch
+            seqs, vae_squence, candidates, users = (
                 seqs.to(device),
+                vae_squence.to(device),
                 candidates.to(device),
                 users.to(device),
             )
 
-            scores = model(seqs)
+            scores = model(seqs, vae_squence)
             scores = scores[:, -1, :]  # B x V
             scores = scores.gather(1, candidates)  # B x C
             rank = (-scores).argsort(dim=1)
