@@ -1,3 +1,4 @@
+from site import venv
 import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch.nn as nn
@@ -21,7 +22,7 @@ class TVAModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.max_len = max_len
-        self.bert = TVA(
+        self.tva = TVA(
             model_init_seed=0,
             max_len=self.max_len,
             num_items=num_items,
@@ -33,7 +34,7 @@ class TVAModel(pl.LightningModule):
         self.out = nn.Linear(hidden_size, num_items + 1)
 
     def forward(self, x, vae_seqs):
-        x = self.bert(x, vae_seqs)
+        x = self.tva(x, vae_seqs)
         return self.out(x)
 
     def training_step(self, batch, batch_idx):
@@ -135,15 +136,21 @@ class TVAEmbedding(nn.Module):
         """
         super().__init__()
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
-        self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
+        self.position = PositionalEmbedding(max_len=max_len, hidden_units=embed_size)
         self.dropout = nn.Dropout(p=dropout)
         self.embed_size = embed_size
         self.tv_out = nn.Linear(embed_size * 3, embed_size)
-        self.tv_emb = nn.Linear(embed_size, embed_size)
+        self.tv_emb = nn.Linear(embed_size, embed_size)        
+        self.max_len = max_len
 
     def forward(self, sequence, vae_sequence):
         x = self.token(sequence)
-
+        vae_x = F.softmax(vae_sequence, dim=1)
+        
+        
+        
+        # print(vae_x.shape, vae_sequence.shape)
+        # print(vae_x[-2][-2], vae_sequence[-1][-2])
         # t_tensor = torch.LongTensor(
         #     [[j for j in range(sequence.size(1))] for _ in range(sequence.size(0))]
         # ).to(sequence.device)
@@ -174,10 +181,15 @@ class TVAEmbedding(nn.Module):
         # x = self.tv_out(x)
 
         #### Embedding method 4
-        vae_sequence = vae_sequence.unsqueeze(2).repeat(1, 1, self.embed_size)
-        x = torch.cat([x, self.position(sequence), vae_sequence], dim=-1)
+        vae_x = vae_x.unsqueeze(2).repeat(1, 1, self.embed_size) # Batch x Seq_len to Batch x Seq_len x Embed_size
+        
+        # print(x.max(), x.min())
+        # print(vae_x.max(), vae_x.min())
+        # print(self.position(sequence).max())
+        x = torch.cat([x, self.position(vae_sequence), self.tv_emb(vae_x)], dim=-1)
+        # x = x + self.position(sequence) + 3 * self.tv_emb(vae_x)
         x = self.tv_out(x)
-
+        # exit()
         return self.dropout(x)
 
 
@@ -191,11 +203,11 @@ class TimeVarianceEmbedding(nn.Module):
 
 
 class PositionalEmbedding(nn.Module):
-    def __init__(self, max_len, d_model):
+    def __init__(self, max_len, hidden_units):
         super().__init__()
 
         # Compute the positional encodings once in log space.
-        self.pe = nn.Embedding(max_len, d_model)
+        self.pe = nn.Embedding(max_len, hidden_units)
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -229,10 +241,13 @@ class TransformerBlock(nn.Module):
 
         super().__init__()
         self.attention = MultiHeadedAttention(
-            h=attn_heads, d_model=hidden, dropout=dropout
+            h=attn_heads, hidden_units=hidden, dropout=dropout
         )
-        self.feed_forward = PositionwiseFeedForward(
-            d_model=hidden, d_ff=feed_forward_hidden, dropout=dropout
+        # self.feed_forward = PositionwiseFeedForward(
+        #     hidden_units=hidden, d_ff=feed_forward_hidden, dropout=dropout
+        # )
+        self.feed_forward = PointWiseFeedForward(
+            hidden_units=hidden, dropout=dropout
         )
         self.input_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.output_sublayer = SublayerConnection(size=hidden, dropout=dropout)
@@ -252,21 +267,21 @@ class MultiHeadedAttention(nn.Module):
     Take in model size and number of heads.
     """
 
-    def __init__(self, h, d_model, dropout=0.1):
+    def __init__(self, h, hidden_units, dropout=0.1):
         super().__init__()
 
-        assert d_model % h == 0, (
+        assert hidden_units % h == 0, (
             RED_COLOR + "model size must be divisible by head size" + END_COLOR
         )
 
         # We assume d_v always equals d_k
-        self.d_k = d_model // h
+        self.d_k = hidden_units // h
         self.h = h
 
         self.linear_layers = nn.ModuleList(
-            [nn.Linear(d_model, d_model) for _ in range(3)]
+            [nn.Linear(hidden_units, hidden_units) for _ in range(3)]
         )
-        self.output_linear = nn.Linear(d_model, d_model)
+        self.output_linear = nn.Linear(hidden_units, hidden_units)
         self.attention = Attention()
 
         self.dropout = nn.Dropout(p=dropout)
@@ -274,7 +289,7 @@ class MultiHeadedAttention(nn.Module):
     def forward(self, query, key, value, mask=None):
         batch_size = query.size(0)
 
-        # 1) Do all the linear projections in batch from d_model => h x d_k
+        # 1) Do all the linear projections in batch from hidden_units => h x d_k
         query, key, value = [
             l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
             for l, x in zip(self.linear_layers, (query, key, value))
@@ -312,15 +327,38 @@ class Attention(nn.Module):
 class PositionwiseFeedForward(nn.Module):
     "Implements FFN equation."
 
-    def __init__(self, d_model, d_ff, dropout=0.1):
+    def __init__(self, hidden_units, d_ff, dropout=0.1):
         super(PositionwiseFeedForward, self).__init__()
-        self.w_1 = nn.Linear(d_model, d_ff)
-        self.w_2 = nn.Linear(d_ff, d_model)
+        self.w_1 = nn.Linear(hidden_units, d_ff)
+        self.w_2 = nn.Linear(d_ff, hidden_units)
         self.dropout = nn.Dropout(dropout)
         self.activation = GELU()
 
     def forward(self, x):
         return self.w_2(self.dropout(self.activation(self.w_1(x))))
+
+
+class PointWiseFeedForward(torch.nn.Module):
+    def __init__(self, hidden_units, dropout=0.1): # wried, why fusion X 2?
+        super(PointWiseFeedForward, self).__init__()
+        self.conv_1 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
+        self.conv_2 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
+        self.dropout_1 = torch.nn.Dropout(p=dropout)
+        self.dropout_2 = torch.nn.Dropout(p=dropout)
+        self.relu = torch.nn.ReLU()
+        
+    def forward(self, inputs):
+        outputs = self.dropout_2(
+            self.conv_2(
+                self.relu(
+                    self.dropout_1(
+                        self.conv_1(inputs.transpose(-1, -2))
+                    )
+                )
+        ))
+        outputs = outputs.transpose(-1, -2) # as Conv1D requires (N, C, Length)
+        outputs += inputs
+        return outputs
 
 
 # Gelu
@@ -361,6 +399,7 @@ class SublayerConnection(nn.Module):
     """
     A residual connection followed by a layer norm.
     Note for code simplicity the norm is first as opposed to last.
+    'connect Feed Forward then Add & Norm' or 'connect Multi-Head Attention then Add & Norm'
     """
 
     def __init__(self, size, dropout):
@@ -368,6 +407,16 @@ class SublayerConnection(nn.Module):
         self.norm = LayerNorm(size)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, sublayer):
+    def forward(self, x, sublayer): # sublayer is a feed foward
         "Apply residual connection to any sublayer with the same size."
+        return x + self.dropout(sublayer(self.norm(x)))
+
+class SublayerConnection2(nn.Module):
+    def __init__(self, size, dropout):
+        super(SublayerConnection2, self).__init__()
+        self.norm = torch.nn.LayerNorm(size, eps=1e-8)
+        self.dropout = nn.Dropout(dropout)
+        pass
+    
+    def forward(self, x, sublayer):
         return x + self.dropout(sublayer(self.norm(x)))
