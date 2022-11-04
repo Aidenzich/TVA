@@ -57,7 +57,6 @@ if __name__ == "__main__":
         print("No data found in data folder")
         exit()
 
-    # data = [1, 2]
     questions = [
         inquirer.List("data", message="Which data do you want to use?", choices=data)
     ]
@@ -72,12 +71,43 @@ if __name__ == "__main__":
         df = pd.read_csv(choose_data_path)
     elif choose_data_extension == "pkl" or choose_data_extension == "pickle":
         df = pd.read_pickle(choose_data_path)
+
+    df_cols = df.columns.tolist()
+    questions = [
+        inquirer.List(
+            "user",
+            message="Which column is the user column?",
+            choices=df_cols,
+        ),
+        inquirer.List(
+            "item",
+            message="Which column is the item column?",
+            choices=df_cols,
+        ),
+        inquirer.List(
+            "rating",
+            message="Which column is the rating column?",
+            choices=df_cols,
+        ),
+        inquirer.List(
+            "timestamp",
+            message="Which column is the timestamp column?",
+            choices=df_cols,
+        ),
+        inquirer.Text(
+            "count_threshold",
+            message="How many count threshold do you need?",
+            default="3",
+        ),
+    ]
+
+    answers = inquirer.prompt(questions)
     config = {
-        USER_COLUMN_NAME: "customer",
-        ITEM_COLUMN_NAME: "product",
-        RATING_COLUMN_NAME: "quantity",
-        TIMESTAMP_COLUMN_NAME: "order_date",
-        "count_threshold": 10,
+        USER_COLUMN_NAME: answers["user"],
+        ITEM_COLUMN_NAME: answers["item"],
+        RATING_COLUMN_NAME: answers["rating"],
+        TIMESTAMP_COLUMN_NAME: answers["timestamp"],
+        "count_threshold": int(answers["count_threshold"]),
     }
     df.dropna(
         subset=[

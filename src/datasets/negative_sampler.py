@@ -45,8 +45,9 @@ class NegativeSampler(metaclass=ABCMeta):
     def get_negative_samples(self):
         savefile_path = self._get_save_path()
         if savefile_path.is_file():
-            print("Negatives samples exist. Loading.")
+            print("Negatives samples exist. Loading...")
             negative_samples = pickle.load(savefile_path.open("rb"))
+            print("Negatives samples Loaded.")
             return negative_samples
         print("Negative samples don't exist. Generating.")
         negative_samples = self.generate_negative_samples()

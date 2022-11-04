@@ -13,11 +13,14 @@ def get_models():
 
 def get_configs(model_name):
     p = Path(r"./configs").glob("**/*")
+
     configs = [
         x
         for x in p
-        if x.is_file() and (model_name.lower() in str(x) and "config.json" in str(x))
+        if x.is_file()
+        and (model_name.lower() in str(x.name).split(".") and "config.json" in str(x))
     ]
+
     return configs
 
 

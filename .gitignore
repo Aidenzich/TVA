@@ -203,3 +203,5 @@ logs/*
 **/*.csv
 **/*.csv.tar.gz
 **/*.npy
+**/*.zip
+**/*.jsonl

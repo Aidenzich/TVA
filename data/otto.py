@@ -3,14 +3,10 @@ import json
 from tqdm import tqdm
 import pandas as pd
 
-users = []
-items = []
-types = []
-users = []
-ratings = []
-timestamps = []
+filename = "train"
+users, items, types, ratings, timestamps = [], [], [], [], []
 
-with open("./test.jsonl", "r") as f:
+with open(f"./{filename}.jsonl", "r") as f:
     temp = f.readlines()
 
 
@@ -36,4 +32,4 @@ df = pd.DataFrame(
 )
 
 
-df.to_pickle("./train.pkl")
+df.to_pickle(f"./{filename}.pkl")

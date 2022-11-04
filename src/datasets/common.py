@@ -30,6 +30,7 @@ class RecsysData:
             self.dataframe[ITEM_COLUMN_NAME],
         ) = self._get_cat2id(df)
         self.max_length = max(df[USER_COLUMN_NAME].value_counts())
+        self.min_length = min(df[USER_COLUMN_NAME].value_counts())
         self.num_users = len(self.u2cat)
         self.num_items = len(self.i2cat)
 
@@ -42,6 +43,8 @@ class RecsysData:
         self.prepare_matrix()
 
         self.seqs_user_num = len(self.train_seqs)
+
+    def show_info_table(self):
         print(
             "\n",
             tabulate(
@@ -50,11 +53,18 @@ class RecsysData:
                         self.num_users,
                         self.num_items,
                         self.max_length,
+                        self.min_length,
                         self.seqs_user_num,
                         self.seqs_user_num,
                     ]
                 ],
-                headers=["num_users", "num_items", "max_length", "seqs_user_num"],
+                headers=[
+                    "num_users",
+                    "num_items",
+                    "max_length",
+                    "min_length",
+                    "seqs_user_num",
+                ],
                 tablefmt="orgtbl",
             ),
             "\n",
