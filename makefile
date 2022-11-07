@@ -25,6 +25,9 @@ pp:
 infer:
 	python -m src.cli.inference_cli
 
+cds:
+	python -m src.cli.cornac_cli
+
 clean:
 	docker rm -f azrecsys
 

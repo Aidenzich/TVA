@@ -112,6 +112,8 @@ if __name__ == "__main__":
             with open(DATACLASS_PATH / config["data_class"], "rb") as f:
                 recsys_data = pickle.load(f)
 
+            recsys_data.show_info_table()
+
             LightningTrainer(
                 recdata=recsys_data,
                 model_params=config["model_params"],

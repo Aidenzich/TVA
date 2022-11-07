@@ -55,10 +55,7 @@ def infer_vaecf(ckpt_path, recdata, rec_ks=100):
         for batch in tqdm(infer_loader):
             batch = batch.to(device)
             z_u, _ = model.vae.encode(batch)
-            y = model.vae.decode(z_u)
-            print(z_u.shape)
-            print(y.shape)
-            exit()
+            y = model.vae.decode(z_u)            
             # seen = batch != 0
             # y[seen] = 0
 

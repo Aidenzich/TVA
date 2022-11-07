@@ -37,10 +37,10 @@ if __name__ == "__main__":
 
     assert answers["top_k"].isdigit(), RED_COLOR + "Top k must be a number" + END_COLOR
     top_k = int(answers["top_k"])
-    
+
     dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
     model_path = model_paths[models.index(answers["model"])]
-    
+
     ckpts, ckpt_paths = get_checkpoint_path(
         model_path.name.lower(), dcls_path.stem.lower()
     )
@@ -77,3 +77,5 @@ if __name__ == "__main__":
         ),
         indent=2,
     )
+
+    print("Infer Complete")

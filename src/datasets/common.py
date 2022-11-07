@@ -13,6 +13,8 @@ from ..configs import (
     RATING_COLUMN_NAME,
     TIMESTAMP_COLUMN_NAME,
     DATACLASS_PATH,
+    RED_COLOR,
+    END_COLOR,
 )
 
 
@@ -29,6 +31,8 @@ class RecsysData:
             self.dataframe[USER_COLUMN_NAME],
             self.dataframe[ITEM_COLUMN_NAME],
         ) = self._get_cat2id(df)
+
+        # dataset info
         self.max_length = max(df[USER_COLUMN_NAME].value_counts())
         self.min_length = min(df[USER_COLUMN_NAME].value_counts())
         self.num_users = len(self.u2cat)
@@ -39,12 +43,18 @@ class RecsysData:
             self.val_seqs,
             self.test_seqs,
             self.users_seqs,
+            self.train_timeseqs,
+            self.val_timeseqs,
+            self.test_timeseqs,
+            self.users_timeseqs,
         ) = self._split_df_u2seq(split_method="leave_one_out")
+
         self.prepare_matrix()
 
         self.seqs_user_num = len(self.train_seqs)
 
     def show_info_table(self):
+        print(RED_COLOR)
         print(
             "\n",
             tabulate(
@@ -54,8 +64,7 @@ class RecsysData:
                         self.num_items,
                         self.max_length,
                         self.min_length,
-                        self.seqs_user_num,
-                        self.seqs_user_num,
+                        self.seqs_user_num,                        
                     ]
                 ],
                 headers=[
@@ -69,9 +78,11 @@ class RecsysData:
             ),
             "\n",
         )
+        print(END_COLOR)
 
     def _split_matrix_by_user(self):
         print("Splitting")
+
         # split to train val and test
         users = list(self.u2cat.values())
         import random
@@ -108,9 +119,10 @@ class RecsysData:
         uir_df = self.dataframe[
             [USER_COLUMN_NAME, ITEM_COLUMN_NAME, RATING_COLUMN_NAME]
         ]
+
+        uir_df[RATING_COLUMN_NAME] = uir_df[RATING_COLUMN_NAME].astype(float)
         uir_df = uir_df[uir_df[RATING_COLUMN_NAME] > 0]
         uir_vals = uir_df.values
-        # print(uir_vals)
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
 
         from scipy.sparse import csr_matrix
@@ -136,6 +148,7 @@ class RecsysData:
             self.dataframe, threshold=3
         )
         train_seqs, val_seqs, test_seqs, fully_seqs = {}, {}, {}, {}
+        train_timeseqs, val_timeseqs, test_timeseqs, fully_timeseqs = {}, {}, {}, {}
         users = df[USER_COLUMN_NAME].unique()
 
         if split_method == "leave_one_out":
@@ -147,13 +160,33 @@ class RecsysData:
                 )
             )
 
+            user2time = user_group.progress_apply(
+                lambda t: list(
+                    t.sort_values(by=TIMESTAMP_COLUMN_NAME)[TIMESTAMP_COLUMN_NAME]
+                )
+            )
+
             for user in users:
                 items = user2items[user]
+                timestamps = user2time[user]
+
                 train_seqs[user], val_seqs[user], test_seqs[user], fully_seqs[user] = (
                     items[:-2],
                     items[-2:-1],
                     items[-1:],
                     items,
+                )
+
+                (
+                    train_timeseqs[user],
+                    val_timeseqs[user],
+                    test_timeseqs[user],
+                    fully_timeseqs[user],
+                ) = (
+                    timestamps[:-2],
+                    timestamps[-2:-1],
+                    timestamps[-1:],
+                    timestamps,
                 )
 
         # elif split_method == "holdout":
@@ -196,7 +229,16 @@ class RecsysData:
         #         )
         #     )
 
-        return train_seqs, val_seqs, test_seqs, fully_seqs
+        return (
+            train_seqs,
+            val_seqs,
+            test_seqs,
+            fully_seqs,
+            train_timeseqs,
+            val_timeseqs,
+            test_timeseqs,
+            fully_timeseqs,
+        )
 
     def _get_cat2id(
         self, df: pd.DataFrame
