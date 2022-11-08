@@ -88,7 +88,7 @@ class NegativeSampler(metaclass=ABCMeta):
                 wait_patience = 0
                 while item in seen or item in samples:
                     item = np.random.choice(self.item_count) + 1
-                    if wait_patience > 10:
+                    if wait_patience > 100:
                         assert False, (
                             RED_COLOR
                             + "Too many patience. Please check your config, sample_size might be too large"

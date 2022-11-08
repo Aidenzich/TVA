@@ -35,11 +35,13 @@ answers = inquirer.prompt(question)
 
 print(f'Loading {answers["datasets"]}...')
 
-data = datasets_options_factory[answers["datasets"]].load_feedback(fmt="UIRT")
+data = datasets_options_factory[answers["datasets"]].load_feedback(
+    fmt="UIRT", variant="1M"
+)
 print(data[-1])
 
 
-data = datasets_options_factory["movielens"].load_feedback(fmt="UIRT")
+# data = datasets_options_factory["movielens"].load_feedback(fmt="UIRT")
 data = np.array(data)
 
 datarame = {

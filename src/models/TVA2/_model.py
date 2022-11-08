@@ -1,3 +1,4 @@
+from site import venv
 import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch.nn as nn
@@ -8,7 +9,7 @@ from src.configs import RED_COLOR, END_COLOR
 from .utils import fix_random_seed_as, recalls_and_ndcgs_for_ks, rpf1_for_ks
 
 # BERTModel
-class BERTModel(pl.LightningModule):
+class TVAModel(pl.LightningModule):
     def __init__(
         self,
         hidden_size: int,
@@ -21,7 +22,7 @@ class BERTModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
         self.max_len = max_len
-        self.bert = BERT(
+        self.tva = TVA(
             model_init_seed=0,
             max_len=self.max_len,
             num_items=num_items,
@@ -30,17 +31,17 @@ class BERTModel(pl.LightningModule):
             heads=heads,
             dropout=dropout,
         )
-
         self.out = nn.Linear(hidden_size, num_items + 1)
 
-    def forward(self, x):
-        x = self.bert(x)
+    def forward(self, x, vae_seqs, time_seqs, time_interval_seqs):
+        x = self.tva(x, vae_seqs, time_seqs, time_interval_seqs)
         return self.out(x)
 
     def training_step(self, batch, batch_idx):
-        seqs, labels, _ = batch
+        seqs, vae_seqs, time_seqs, time_interval_seqs, labels, _ = batch
+
         logits = self.forward(
-            seqs
+            seqs, vae_seqs, time_seqs, time_interval_seqs
         )  # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)
 
         logits = logits.view(-1, logits.size(-1))  # (B * T) x V
@@ -55,29 +56,31 @@ class BERTModel(pl.LightningModule):
         return optimizer
 
     def validation_step(self, batch, batch_idx):
-        seqs, candidates, labels = batch
-        scores = self.forward(seqs)  # B x T x V
+        seqs, vae_seqs, time_seqs, time_interval_seqs, candidates, labels = batch
+        scores = self.forward(
+            seqs, vae_seqs, time_seqs, time_interval_seqs
+        )  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
-        # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
 
         for metric in metrics.keys():
             self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
 
     def test_step(self, batch, batch_idx):
-        seqs, candidates, labels = batch
-        scores = self.forward(seqs)  # B x T x V
+        seqs, vae_seqs, time_seqs, time_interval_seqs, candidates, labels = batch
+        scores = self.forward(
+            seqs, vae_seqs, time_seqs, time_interval_seqs
+        )  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
-        # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
         for metric in metrics.keys():
             self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
 
 
 # BERT
-class BERT(nn.Module):
+class TVA(nn.Module):
     def __init__(
         self,
         model_init_seed: int,
@@ -94,7 +97,7 @@ class BERT(nn.Module):
         vocab_size = num_items + 2
 
         # embedding for BERT, sum of positional, segment, token embeddings
-        self.embedding = BERTEmbedding(
+        self.embedding = TVAEmbedding(
             vocab_size=vocab_size,
             embed_size=hidden_size,
             max_len=max_len,
@@ -109,11 +112,17 @@ class BERT(nn.Module):
             ]
         )
 
-    def forward(self, x):
+    def forward(
+        self,
+        x,
+        vae_seqs,
+        time_seqs,
+        time_interval_seqs,
+    ):
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(x)
+        x = self.embedding(x, vae_seqs, time_seqs, time_interval_seqs)
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
@@ -126,16 +135,7 @@ class BERT(nn.Module):
 
 
 # Embedding
-class BERTEmbedding(nn.Module):
-    """
-    BERT Embedding which is consisted with under features
-        1. TokenEmbedding : normal embedding matrix
-        2. PositionalEmbedding : adding positional information using sin, cos
-        2. SegmentEmbedding : adding sentence segment info, (sent_A:1, sent_B:2)
-
-        sum of all these features are output of BERTEmbedding
-    """
-
+class TVAEmbedding(nn.Module):
     def __init__(self, vocab_size, embed_size, max_len, dropout=0.1):
         """
         :param vocab_size: total vocab size
@@ -144,23 +144,69 @@ class BERTEmbedding(nn.Module):
         """
         super().__init__()
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
-        self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
-        # self.segment = SegmentEmbedding(embed_size=self.token.embedding_dim)
+        self.position = PositionalEmbedding(max_len=max_len, hidden_units=embed_size)
+        # self.time = TimeEmbedding2(max_len=max_len, hidden_units=embed_size)
+        self.time = TimeEmbedding(max_len=max_len, hidden_units=embed_size)
+        self.time_interval = TimeEmbedding(max_len=max_len, hidden_units=embed_size)
         self.dropout = nn.Dropout(p=dropout)
         self.embed_size = embed_size
+        # self.out = nn.Linear(embed_size * 3, embed_size)
+        self.out = nn.Linear(embed_size * 3, embed_size)
+        self.tv_emb = nn.Linear(embed_size, embed_size)
+        self.max_len = max_len
 
-    def forward(self, sequence):
-        x = self.token(sequence) + self.position(sequence) 
-        # + self.segment(segment_label)
-        return self.dropout(x)
+    def forward(
+        self,
+        sequence,
+        vae_sequence,
+        time_sequence,
+        time_interval_seqs,
+    ):
+        x = self.token(sequence) + self.position(sequence)
+        vae_sequence = F.softmax(vae_sequence, dim=1)
+
+        vae_x = vae_sequence.unsqueeze(2).repeat(
+            1, 1, self.embed_size
+        )  # Batch x Seq_len to Batch x Seq_len x Embed_size
+
+        x = torch.cat(
+            [
+                x + self.time_interval(time_interval_seqs),
+                self.tv_emb(vae_x) + self.time_interval(time_interval_seqs),
+                self.time(time_sequence),
+            ],
+            dim=-1,
+        )
+
+        return self.dropout(self.out(x))
+
+
+class TimeEmbedding(nn.Module):
+    def __init__(self, max_len, hidden_units):
+        super().__init__()
+        self.te = nn.Embedding(max_len, hidden_units)
+
+    def forward(self, x):
+        batch_size = x.size(0)
+        return self.te.weight.unsqueeze(0).repeat(batch_size, 1, 1)
+
+
+class TimeEmbedding2(nn.Module):
+    def __init__(self, max_len, hidden_units):
+        super().__init__()
+        self.te = nn.Linear(hidden_units, max_len)
+
+    def forward(self, x):
+        batch_size = x.size(0)
+        return self.te.weight.unsqueeze(0).repeat(batch_size, 1, 1)
 
 
 class PositionalEmbedding(nn.Module):
-    def __init__(self, max_len, d_model):
+    def __init__(self, max_len, hidden_units):
         super().__init__()
 
         # Compute the positional encodings once in log space.
-        self.pe = nn.Embedding(max_len, d_model)
+        self.pe = nn.Embedding(max_len, hidden_units)
 
     def forward(self, x):
         batch_size = x.size(0)
@@ -194,11 +240,13 @@ class TransformerBlock(nn.Module):
 
         super().__init__()
         self.attention = MultiHeadedAttention(
-            h=attn_heads, d_model=hidden, dropout=dropout
+            h=attn_heads, hidden_units=hidden, dropout=dropout
         )
-        self.feed_forward = PositionwiseFeedForward(
-            d_model=hidden, d_ff=feed_forward_hidden, dropout=dropout
-        )
+        # self.feed_forward = PositionwiseFeedForward(
+        #     hidden_units=hidden, d_ff=feed_forward_hidden, dropout=dropout
+        # )
+        self.feed_forward = PointWiseFeedForward(hidden_units=hidden, dropout=dropout)
+
         self.input_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.output_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.dropout = nn.Dropout(p=dropout)
@@ -217,21 +265,21 @@ class MultiHeadedAttention(nn.Module):
     Take in model size and number of heads.
     """
 
-    def __init__(self, h, d_model, dropout=0.1):
+    def __init__(self, h, hidden_units, dropout=0.1):
         super().__init__()
 
-        assert d_model % h == 0, (
+        assert hidden_units % h == 0, (
             RED_COLOR + "model size must be divisible by head size" + END_COLOR
         )
 
         # We assume d_v always equals d_k
-        self.d_k = d_model // h
+        self.d_k = hidden_units // h
         self.h = h
 
         self.linear_layers = nn.ModuleList(
-            [nn.Linear(d_model, d_model) for _ in range(3)]
+            [nn.Linear(hidden_units, hidden_units) for _ in range(3)]
         )
-        self.output_linear = nn.Linear(d_model, d_model)
+        self.output_linear = nn.Linear(hidden_units, hidden_units)
         self.attention = Attention()
 
         self.dropout = nn.Dropout(p=dropout)
@@ -239,7 +287,7 @@ class MultiHeadedAttention(nn.Module):
     def forward(self, query, key, value, mask=None):
         batch_size = query.size(0)
 
-        # 1) Do all the linear projections in batch from d_model => h x d_k
+        # 1) Do all the linear projections in batch from hidden_units => h x d_k
         query, key, value = [
             l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
             for l, x in zip(self.linear_layers, (query, key, value))
@@ -277,15 +325,35 @@ class Attention(nn.Module):
 class PositionwiseFeedForward(nn.Module):
     "Implements FFN equation."
 
-    def __init__(self, d_model, d_ff, dropout=0.1):
+    def __init__(self, hidden_units, d_ff, dropout=0.1):
         super(PositionwiseFeedForward, self).__init__()
-        self.w_1 = nn.Linear(d_model, d_ff)
-        self.w_2 = nn.Linear(d_ff, d_model)
+        self.w_1 = nn.Linear(hidden_units, d_ff)
+        self.w_2 = nn.Linear(d_ff, hidden_units)
         self.dropout = nn.Dropout(dropout)
         self.activation = GELU()
 
     def forward(self, x):
         return self.w_2(self.dropout(self.activation(self.w_1(x))))
+
+
+class PointWiseFeedForward(torch.nn.Module):
+    def __init__(self, hidden_units, dropout=0.1):  # wried, why fusion X 2?
+        super(PointWiseFeedForward, self).__init__()
+        self.conv_1 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
+        self.conv_2 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
+        self.dropout_1 = torch.nn.Dropout(p=dropout)
+        self.dropout_2 = torch.nn.Dropout(p=dropout)
+        self.relu = torch.nn.ReLU()
+
+    def forward(self, inputs):
+        outputs = self.dropout_2(
+            self.conv_2(
+                self.relu(self.dropout_1(self.conv_1(inputs.transpose(-1, -2))))
+            )
+        )
+        outputs = outputs.transpose(-1, -2)  # as Conv1D requires (N, C, Length)
+        outputs += inputs
+        return outputs
 
 
 # Gelu
@@ -326,6 +394,7 @@ class SublayerConnection(nn.Module):
     """
     A residual connection followed by a layer norm.
     Note for code simplicity the norm is first as opposed to last.
+    'connect Feed Forward then Add & Norm' or 'connect Multi-Head Attention then Add & Norm'
     """
 
     def __init__(self, size, dropout):
@@ -333,6 +402,17 @@ class SublayerConnection(nn.Module):
         self.norm = LayerNorm(size)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, sublayer):
+    def forward(self, x, sublayer):  # sublayer is a feed foward
         "Apply residual connection to any sublayer with the same size."
+        return x + self.dropout(sublayer(self.norm(x)))
+
+
+class SublayerConnection2(nn.Module):
+    def __init__(self, size, dropout):
+        super(SublayerConnection2, self).__init__()
+        self.norm = torch.nn.LayerNorm(size, eps=1e-8)
+        self.dropout = nn.Dropout(dropout)
+        pass
+
+    def forward(self, x, sublayer):
         return x + self.dropout(sublayer(self.norm(x)))

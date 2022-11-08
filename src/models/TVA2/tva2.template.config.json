@@ -1,0 +1,26 @@
+{
+    "data_class": "carrefour_sales_cls.pkl",
+    "trainer_config": {
+        "early_stopping": {
+            "monitor": "bert_recall@1",
+            "patience": 10,
+            "verbose": false,
+            "mode": "max"
+        },
+        "limit_train_batches": 0.5,
+        "max_epochs": 20,
+        "sample_size": 100,
+        "sample_method": "random",
+        "seed": 12345,
+        "num_workers": 12
+    },
+    "model_params": {
+        "mask_prob": 0.15,
+        "hidden_size": 256,
+        "n_layers": 2,
+        "dropout": 0.1,
+        "heads": 8,
+        "max_len": 64,
+        "batch_size": 12
+    }
+}

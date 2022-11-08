@@ -1,4 +1,3 @@
-from site import venv
 import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch.nn as nn
@@ -38,7 +37,7 @@ class TVAModel(pl.LightningModule):
         return self.out(x)
 
     def training_step(self, batch, batch_idx):
-        seqs, vae_seqs, labels, _ = batch
+        seqs, vae_seqs, _, _, _, labels, _ = batch
 
         logits = self.forward(
             seqs, vae_seqs
@@ -56,18 +55,17 @@ class TVAModel(pl.LightningModule):
         return optimizer
 
     def validation_step(self, batch, batch_idx):
-        seqs, vae_seqs, candidates, labels = batch
+        seqs, vae_seqs, _, _, _, candidates, labels = batch
         scores = self.forward(seqs, vae_seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
         # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
-
         for metric in metrics.keys():
             self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
 
     def test_step(self, batch, batch_idx):
-        seqs, vae_seqs, candidates, labels = batch
+        seqs, vae_seqs, _, _, _, candidates, labels = batch
         scores = self.forward(seqs, vae_seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
@@ -140,15 +138,13 @@ class TVAEmbedding(nn.Module):
         self.dropout = nn.Dropout(p=dropout)
         self.embed_size = embed_size
         self.tv_out = nn.Linear(embed_size * 3, embed_size)
-        self.tv_emb = nn.Linear(embed_size, embed_size)        
+        self.tv_emb = nn.Linear(embed_size, embed_size)
         self.max_len = max_len
 
     def forward(self, sequence, vae_sequence):
         x = self.token(sequence)
         vae_x = F.softmax(vae_sequence, dim=1)
-        
-        
-        
+
         # print(vae_x.shape, vae_sequence.shape)
         # print(vae_x[-2][-2], vae_sequence[-1][-2])
         # t_tensor = torch.LongTensor(
@@ -181,8 +177,10 @@ class TVAEmbedding(nn.Module):
         # x = self.tv_out(x)
 
         #### Embedding method 4
-        vae_x = vae_x.unsqueeze(2).repeat(1, 1, self.embed_size) # Batch x Seq_len to Batch x Seq_len x Embed_size
-        
+        vae_x = vae_x.unsqueeze(2).repeat(
+            1, 1, self.embed_size
+        )  # Batch x Seq_len to Batch x Seq_len x Embed_size
+
         # print(x.max(), x.min())
         # print(vae_x.max(), vae_x.min())
         # print(self.position(sequence).max())
@@ -191,15 +189,6 @@ class TVAEmbedding(nn.Module):
         x = self.tv_out(x)
         # exit()
         return self.dropout(x)
-
-
-class TimeVarianceEmbedding(nn.Module):
-    def __init__(self, max_len, embed_size):
-        super().__init__()
-        self.linear = nn.Linear(max_len, embed_size)
-
-    def forward(self, x):
-        return self.linear(x)
 
 
 class PositionalEmbedding(nn.Module):
@@ -246,9 +235,7 @@ class TransformerBlock(nn.Module):
         # self.feed_forward = PositionwiseFeedForward(
         #     hidden_units=hidden, d_ff=feed_forward_hidden, dropout=dropout
         # )
-        self.feed_forward = PointWiseFeedForward(
-            hidden_units=hidden, dropout=dropout
-        )
+        self.feed_forward = PointWiseFeedForward(hidden_units=hidden, dropout=dropout)
         self.input_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.output_sublayer = SublayerConnection(size=hidden, dropout=dropout)
         self.dropout = nn.Dropout(p=dropout)
@@ -339,24 +326,21 @@ class PositionwiseFeedForward(nn.Module):
 
 
 class PointWiseFeedForward(torch.nn.Module):
-    def __init__(self, hidden_units, dropout=0.1): # wried, why fusion X 2?
+    def __init__(self, hidden_units, dropout=0.1):  # wried, why fusion X 2?
         super(PointWiseFeedForward, self).__init__()
         self.conv_1 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
         self.conv_2 = torch.nn.Conv1d(hidden_units, hidden_units, kernel_size=1)
         self.dropout_1 = torch.nn.Dropout(p=dropout)
         self.dropout_2 = torch.nn.Dropout(p=dropout)
         self.relu = torch.nn.ReLU()
-        
+
     def forward(self, inputs):
         outputs = self.dropout_2(
             self.conv_2(
-                self.relu(
-                    self.dropout_1(
-                        self.conv_1(inputs.transpose(-1, -2))
-                    )
-                )
-        ))
-        outputs = outputs.transpose(-1, -2) # as Conv1D requires (N, C, Length)
+                self.relu(self.dropout_1(self.conv_1(inputs.transpose(-1, -2))))
+            )
+        )
+        outputs = outputs.transpose(-1, -2)  # as Conv1D requires (N, C, Length)
         outputs += inputs
         return outputs
 
@@ -407,9 +391,10 @@ class SublayerConnection(nn.Module):
         self.norm = LayerNorm(size)
         self.dropout = nn.Dropout(dropout)
 
-    def forward(self, x, sublayer): # sublayer is a feed foward
+    def forward(self, x, sublayer):  # sublayer is a feed foward
         "Apply residual connection to any sublayer with the same size."
         return x + self.dropout(sublayer(self.norm(x)))
+
 
 class SublayerConnection2(nn.Module):
     def __init__(self, size, dropout):
@@ -417,6 +402,6 @@ class SublayerConnection2(nn.Module):
         self.norm = torch.nn.LayerNorm(size, eps=1e-8)
         self.dropout = nn.Dropout(dropout)
         pass
-    
+
     def forward(self, x, sublayer):
         return x + self.dropout(sublayer(self.norm(x)))

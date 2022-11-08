@@ -8,6 +8,7 @@ class VAESequenceDataset(Dataset):
     def __init__(
         self,
         u2seq,
+        u2timeseq,
         max_len: int,
         mask_token,
         mode="train",  # train, eval, inference
@@ -19,6 +20,7 @@ class VAESequenceDataset(Dataset):
         negative_samples=None,
         u2answer=None,
         vae_matrix=None,
+        latent_factor=None,
     ):
 
         if mode == "eval":
@@ -39,14 +41,21 @@ class VAESequenceDataset(Dataset):
         self.negative_samples = negative_samples
         self.u2answer = u2answer
         self.vae_matrix = vae_matrix
+        self.u2time_seq = u2timeseq
+        self.latent_factor = latent_factor
 
     def __len__(self) -> int:
         return len(self.users)
 
     def __getitem__(self, index) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        user_latent_factor = self.latent_factor[index]
         user_vae_matrix = self.vae_matrix[index]
         user = self.users[index]
         seq = self.u2seq[user]
+        time_seq = self.u2time_seq[user]
+        time_interval_seq = [0] + [
+            time_seq[i] - time_seq[i - 1] for i in range(1, len(time_seq))
+        ]
 
         vae_seq = []
 
@@ -62,6 +71,16 @@ class VAESequenceDataset(Dataset):
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
 
+            # time_seq
+            time_seq = time_seq + [0]
+            time_seq = time_seq[-self.max_len :]
+            time_seq = [0] * padding_len + time_seq
+
+            # time_interval_seq
+            time_interval_seq = time_interval_seq + [0]
+            time_interval_seq = time_interval_seq[-self.max_len :]
+            time_interval_seq = [0] * padding_len + time_interval_seq
+
             for i in range(len(seq)):
                 if seq[i] == 0:
                     vae_seq.append(0)
@@ -72,7 +91,12 @@ class VAESequenceDataset(Dataset):
 
             return (
                 torch.LongTensor(seq),  # user's sequence
-                torch.FloatTensor(vae_seq),
+                torch.FloatTensor(vae_seq),  # latent factor of user's sequence
+                torch.FloatTensor(time_seq),  # timestamps of user's sequence
+                torch.FloatTensor(
+                    time_interval_seq
+                ),  # time intervals of user's sequence
+                torch.FloatTensor(user_latent_factor),  # latent factor
                 torch.LongTensor(candidates),  # candidates from negative sampling
                 torch.LongTensor(
                     labels
@@ -82,31 +106,46 @@ class VAESequenceDataset(Dataset):
         if self.mode == "train":
             tokens = []
             labels = []
-            for s in seq:
+            timestamps = []
+            timestamps_interval = []
+            for idx, s in enumerate(seq):
                 prob = self.rng.random()
                 if prob < self.mask_prob:
                     prob /= self.mask_prob
 
                     if prob < 0.8:
                         tokens.append(self.mask_token)
+                        timestamps.append(0)
+                        timestamps_interval.append(0)
                     elif prob < 0.9:
                         tokens.append(self.rng.randint(1, self.num_items))
+                        timestamps.append(0)
+                        timestamps_interval.append(0)
                     else:
                         tokens.append(s)
+                        timestamps.append(time_seq[idx])
+                        timestamps_interval.append(time_interval_seq[idx])
 
                     labels.append(s)
                 else:
                     tokens.append(s)
                     labels.append(0)
+                    timestamps.append(time_seq[idx])
+                    timestamps_interval.append(time_interval_seq[idx])
 
             tokens = tokens[-self.max_len :]
             labels = labels[-self.max_len :]
+            timestamps = timestamps[-self.max_len :]
+            timestamps_interval = timestamps_interval[-self.max_len :]
 
             mask_len = self.max_len - len(tokens)
 
             tokens = [0] * mask_len + tokens
             labels = [0] * mask_len + labels
+            timestamps = [0] * mask_len + timestamps
+            timestamps_interval = [0] * mask_len + timestamps_interval
 
+            # variational latent factor
             for i in range(len(tokens)):
                 if tokens[i] == 0:
                     vae_seq.append(0)
@@ -117,7 +156,10 @@ class VAESequenceDataset(Dataset):
 
             return (
                 torch.LongTensor(tokens),  # masked user's sequence
-                torch.FloatTensor(vae_seq),
+                torch.FloatTensor(vae_seq),  # latent factor of masked user's sequence
+                torch.FloatTensor(timestamps),  # masked user's timestamps
+                torch.FloatTensor(timestamps_interval),  # masked user's time intervals
+                torch.FloatTensor(user_latent_factor),  # latent factor
                 torch.LongTensor(labels),  # labels for masked tokens
                 torch.empty((0)),
             )

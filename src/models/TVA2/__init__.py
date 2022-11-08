@@ -7,7 +7,7 @@ from src.configs import CACHE_PATH
 import numpy as np
 
 
-def train_tva(model_params, trainer_config, recdata, callbacks=[]):
+def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
     variance = np.load(CACHE_PATH / "variance.npy")
     latent_factor = np.load(CACHE_PATH / "latent_factor.npy")
 
@@ -34,8 +34,8 @@ def train_tva(model_params, trainer_config, recdata, callbacks=[]):
         u2seq=recdata.train_seqs,
         seed=trainer_config["seed"],
         vae_matrix=variance,
-        latent_factor=latent_factor,
         u2timeseq=recdata.train_timeseqs,
+        latent_factor=latent_factor,
     )
 
     valset = VAESequenceDataset(
@@ -46,8 +46,8 @@ def train_tva(model_params, trainer_config, recdata, callbacks=[]):
         u2answer=recdata.val_seqs,
         negative_samples=test_negative_samples,
         vae_matrix=variance,
-        latent_factor=latent_factor,
         u2timeseq=recdata.train_timeseqs,
+        latent_factor=latent_factor,
     )
 
     testset = VAESequenceDataset(
@@ -58,8 +58,8 @@ def train_tva(model_params, trainer_config, recdata, callbacks=[]):
         u2answer=recdata.test_seqs,
         negative_samples=test_negative_samples,
         vae_matrix=variance,
-        latent_factor=latent_factor,
         u2timeseq=recdata.train_timeseqs,
+        latent_factor=latent_factor,
     )
 
     model = TVAModel(
@@ -82,7 +82,7 @@ def train_tva(model_params, trainer_config, recdata, callbacks=[]):
     )
 
 
-def infer_tva(ckpt_path, recdata, rec_ks=10, negative_samples=None):
+def infer_tva2(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     """rec k is the number of items to recommend"""
     ##### INFER ######
     import torch

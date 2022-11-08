@@ -22,7 +22,7 @@ class RecsysData:
     def __init__(self, df: pd.DataFrame, filename=""):
         self.filename = filename
         self.dataframe = df
-
+        
         (
             self.u2cat,
             self.i2cat,
@@ -64,7 +64,7 @@ class RecsysData:
                         self.num_items,
                         self.max_length,
                         self.min_length,
-                        self.seqs_user_num,                        
+                        self.seqs_user_num,
                     ]
                 ],
                 headers=[
@@ -162,7 +162,9 @@ class RecsysData:
 
             user2time = user_group.progress_apply(
                 lambda t: list(
-                    t.sort_values(by=TIMESTAMP_COLUMN_NAME)[TIMESTAMP_COLUMN_NAME]
+                    t.sort_values(by=TIMESTAMP_COLUMN_NAME)[
+                        TIMESTAMP_COLUMN_NAME
+                    ].astype(np.int64)
                 )
             )
 
