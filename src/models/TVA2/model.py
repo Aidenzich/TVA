@@ -81,7 +81,9 @@ class TVAModel(pl.LightningModule):
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
 
         for metric in metrics.keys():
-            self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
+            # self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
+            if "recall" in metric or "ndcg" in metric:
+                self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
 
     def test_step(self, batch, batch_idx):
         (
@@ -100,8 +102,8 @@ class TVAModel(pl.LightningModule):
         scores = scores.gather(1, candidates)  # B x C
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
         for metric in metrics.keys():
-            self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
-        print("Without timeinterval")
+            if "recall" in metric or "ndcg" in metric:
+                self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
 
 
 # BERT
@@ -117,7 +119,7 @@ class TVA(nn.Module):
         dropout: float,
     ):
         super().__init__()
-        fix_random_seed_as(model_init_seed)
+        # fix_random_seed_as(model_init_seed)
         # self.init_weights()
         vocab_size = num_items + 2
 
@@ -173,6 +175,7 @@ class TVAEmbedding(nn.Module):
         super().__init__()
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
         self.position = PositionalEmbedding(max_len=max_len, hidden_units=embed_size)
+
         # self.time = TimeEmbedding2(max_len=max_len, hidden_units=embed_size)
         self.time = TimeEmbedding(max_len=max_len, hidden_units=embed_size)
         self.time_interval = TimeEmbedding(max_len=max_len, hidden_units=embed_size)
@@ -180,9 +183,12 @@ class TVAEmbedding(nn.Module):
         self.embed_size = embed_size
 
         self.out = nn.Linear(embed_size * 3, embed_size)
-        self.tv_emb = nn.Linear(embed_size, embed_size)
+        # self.pre = nn.Linear(embed_size, embed_size)
         self.latent_emb = nn.Linear(512, embed_size)
         self.max_len = max_len
+
+        # self.tv_emb = nn.Linear(max_len + 512, embed_size)
+        # self.new = PositionalEmbedding(max_len=max_len, hidden_units=embed_size)
 
     def forward(
         self,
@@ -192,27 +198,69 @@ class TVAEmbedding(nn.Module):
         time_interval_seqs,
         user_latent_factor,
     ):
-        x = self.token(sequence)
-        vae_sequence = F.softmax(vae_sequence, dim=1)
 
-        vae_x = vae_sequence.unsqueeze(2).repeat(
-            1, 1, self.embed_size
-        )  # Batch x Seq_len to Batch x Seq_len x Embed_size
+        # vae_sequence = F.softmax(vae_sequence, dim=1)
 
+        # vae_x = vae_sequence.unsqueeze(2).repeat(
+        #     1, 1, self.embed_size
+        # )  # Batch x Seq_len to Batch x Seq_len x Embed_size
+
+        items = self.token(sequence)
         user_latent_factor = user_latent_factor.unsqueeze(1).repeat(1, self.max_len, 1)
 
-        x = torch.cat(
-            [
-                x,
-                self.position(sequence),
-                # self.tv_emb(vae_x),
-                # self.latent_emb(user_latent_factor),
-                self.time_interval(time_interval_seqs),
-            ],
-            dim=-1,
-        )
+        positions = self.position(sequence)
+        latent = self.latent_emb(user_latent_factor)
+        time = self.time(time_sequence)
+        time_interval = self.time_interval(time_interval_seqs)
 
-        return self.dropout(self.out(x))
+        # tv = torch.cat([user_latent_factor, time_sequence], dim=-1)
+        # tv_emb = self.new(self.tv_emb(tv))
+        # print(tv.shape)
+        # print(tv_emb.shape)
+        # print(items.shape)
+        # print(self.new(tv_emb).shape)
+
+        # torch.mul == *
+        # torch.bmm(latent, time)
+        # item_time = self.tv_emb(torch.matmul(x, time_interval.transpose(-2, -1)))
+        # item_latent = torch.matmul(items, latent.transpose(-2, -1))
+
+        # 0.3708 [items, latent, time_interval, time]
+        # 0.3703 [items + time + time_interval, latent]
+        # 0.3700 [items, time, latent, time_interval]
+        # 0.3692 [items, time, time_interval, latent]
+        # 0.3680 [items, positions, latent, time_interval]
+        # 0.3666 [items, latent, time_interval, positions]
+        # 0.3644 items + time + latent + time_interval
+        # 0.3621 [items + time, latent, time_interval]
+        # 0.3619 [items + time * positions, latent, time_interval * items]
+        # 0.3617 [time, items, latent, time_interval]
+        # 0.3597 [2*items + time_interval + time, latent, time_interval, time]
+        # 0.3583 [items + positions, latent, time_interval * items]
+        # 0.3579 [items, latent, time_interval, time + positions]
+        # 0.3548 [items + time + time_interval, latent + time]
+        # 0.3515 [items * time_interval * time, latent, time_interval, time]
+        # 0.3458 [items + positions, latent, time_interval, time]
+        # 0.3347 [items, time + positions, latent, time_interval]
+        # 0.3322 [items * time_interval + time, latent, time_interval, time]
+        # 03223  [items * time + items * time_interval, latent]
+
+        # x = torch.cat(
+        #     [items, latent, time_interval, positions],
+        #     dim=-1,
+        # )
+
+        # x = self.out(
+        #     torch.cat(
+        #         [items, time, latent, time_interval],
+        #         dim=-1,
+        #     )
+        # )
+
+        print(items.shape)
+        x = items + time + time_interval  # [12, 128, 256] 12 batch, 128 seq, 256 embed
+        x = self.out(torch.cat([x, latent, positions], dim=-1))
+        return self.dropout(x)
 
 
 class TimeEmbedding(nn.Module):
@@ -255,6 +303,16 @@ class SegmentEmbedding(nn.Embedding):
 class TokenEmbedding(nn.Embedding):
     def __init__(self, vocab_size, embed_size=512):
         super().__init__(vocab_size, embed_size, padding_idx=0)
+
+
+class TransformerTokenEmbedding(nn.Embedding):
+    def __init__(self, vocab_size, embed_size=512):
+        # super().__init__(vocab_size, embed_size, padding_idx=0)
+        self.embedding = nn.Embedding(vocab_size, embed_size, padding_idx=0)
+        self.emb_size = embed_size
+
+    def forward(self, tokens):
+        return self.embedding(tokens.long()) * math.sqrt(self.emb_size)
 
 
 # Transformer

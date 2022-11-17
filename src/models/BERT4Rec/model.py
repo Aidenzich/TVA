@@ -150,7 +150,7 @@ class BERTEmbedding(nn.Module):
         self.embed_size = embed_size
 
     def forward(self, sequence):
-        x = self.token(sequence) + self.position(sequence) 
+        x = self.token(sequence) + self.position(sequence)
         # + self.segment(segment_label)
         return self.dropout(x)
 
