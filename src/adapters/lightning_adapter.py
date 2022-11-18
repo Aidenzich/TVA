@@ -3,7 +3,7 @@ from torch.utils.data import DataLoader
 
 import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
-from pytorch_lightning.utilities.seed import seed_everything
+from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
 from src.configs import LOG_PATH
 
 
@@ -16,8 +16,9 @@ def fit(
     testset=None,
     callbacks=[],
 ):
-    seed_everything(trainer_config["seed"])
+
     early_stop_config = trainer_config.get("early_stopping")
+    # early stopping
     if trainer_config.get("early_stopping"):
         early_stop_callback = EarlyStopping(
             monitor=early_stop_config.get("monitor"),
@@ -26,6 +27,10 @@ def fit(
             mode=early_stop_config.get("mode"),
         )
         callbacks.append(early_stop_callback)
+
+    # Learning rate monitor
+    lr_monitor = LearningRateMonitor(logging_interval="step")
+    callbacks.append(lr_monitor)
 
     train_loader = DataLoader(
         trainset,

@@ -4,10 +4,12 @@ from src.datasets.negative_sampler import NegativeSampler
 from .model import TVAModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
+from pytorch_lightning.utilities.seed import seed_everything
 import numpy as np
 
 
 def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
+    seed_everything(trainer_config["seed"])
     variance = np.load(CACHE_PATH / "variance.npy")
     latent_factor = np.load(CACHE_PATH / "latent_factor.npy")
 
@@ -48,6 +50,7 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         vae_matrix=variance,
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
+        seed=trainer_config["seed"],
     )
 
     testset = VAESequenceDataset(
@@ -60,6 +63,7 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         vae_matrix=variance,
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
+        seed=trainer_config["seed"],
     )
 
     model = TVAModel(

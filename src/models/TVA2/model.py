@@ -6,7 +6,8 @@ import torch
 import math
 
 from src.configs import RED_COLOR, END_COLOR
-from .utils import fix_random_seed_as, recalls_and_ndcgs_for_ks, rpf1_for_ks
+from .utils import rpf1_for_ks
+
 
 # BERTModel
 class TVAModel(pl.LightningModule):
@@ -32,6 +33,19 @@ class TVAModel(pl.LightningModule):
             dropout=dropout,
         )
         self.out = nn.Linear(hidden_size, num_items + 1)
+        self.lr_metric = 0
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+
+        lr_schedulers = {
+            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, patience=10
+            ),
+            "monitor": "train_loss",
+        }
+
+        return [optimizer], [lr_schedulers]
 
     def forward(self, x, vae_seqs, time_seqs, time_interval_seqs, user_latent_factor):
         x = self.tva(x, vae_seqs, time_seqs, time_interval_seqs, user_latent_factor)
@@ -56,12 +70,12 @@ class TVAModel(pl.LightningModule):
         labels = labels.view(-1)  # B * T
         loss = F.cross_entropy(logits, labels, ignore_index=0)
 
+        sch = self.lr_schedulers()
+        if (batch_idx + 1) == 0:
+            sch.step(self.lr_metric)
+
         self.log("train_loss", loss)
         return loss
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
 
     def validation_step(self, batch, batch_idx):
         (
@@ -178,11 +192,13 @@ class TVAEmbedding(nn.Module):
 
         # self.time = TimeEmbedding2(max_len=max_len, hidden_units=embed_size)
         self.time = TimeEmbedding(max_len=max_len, hidden_units=embed_size)
+        # self.time = TokenEmbedding3(vocab_size=max_len, embed_size=embed_size)
+
         self.time_interval = TimeEmbedding(max_len=max_len, hidden_units=embed_size)
         self.dropout = nn.Dropout(p=dropout)
         self.embed_size = embed_size
 
-        self.out = nn.Linear(embed_size * 3, embed_size)
+        self.out = nn.Linear(embed_size * 4, embed_size)
         # self.pre = nn.Linear(embed_size, embed_size)
         self.latent_emb = nn.Linear(512, embed_size)
         self.max_len = max_len
@@ -257,9 +273,9 @@ class TVAEmbedding(nn.Module):
         #     )
         # )
 
-        print(items.shape)
         x = items + time + time_interval  # [12, 128, 256] 12 batch, 128 seq, 256 embed
-        x = self.out(torch.cat([x, latent, positions], dim=-1))
+        x = self.out(torch.cat([items, latent, time_interval, time], dim=-1))
+        # x = self.out(torch.cat([items, latent, time, time_interval], dim=-1))
         return self.dropout(x)
 
 
