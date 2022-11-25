@@ -57,7 +57,6 @@ def infer_vaecf(ckpt_path, recdata, rec_ks=100):
             batch = batch.to(device)
             z_u, _ = model.vae.encode(batch)
             y = model.vae.decode(z_u)
-            print(z_u.shape)
             # seen = batch != 0
             # y[seen] = 0
 
@@ -72,10 +71,10 @@ def infer_vaecf(ckpt_path, recdata, rec_ks=100):
                 predict_result[user_count] = top_k[i].tolist()
                 user_count = user_count + 1
 
-    with open(CACHE_PATH / "variance.npy", "wb") as f:
+    with open(CACHE_PATH / (recdata.filename + "_variance.npy"), "wb") as f:
         np.save(f, all_y)
 
-    with open(CACHE_PATH / "latent_factor.npy", "wb") as f:
+    with open(CACHE_PATH / (recdata.filename + "_latent_factor.npy"), "wb") as f:
         np.save(f, all_z)
 
     return predict_result

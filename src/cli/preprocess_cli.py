@@ -118,8 +118,9 @@ if __name__ == "__main__":
         ],
         inplace=True,
     )
+
     df = handle_dataframe(df, config)
-    newDataCLS = RecsysData(df=df, filename=choose_data_path.stem)
+    newDataCLS = RecsysData(df=df, filename=choose_data_path.stem.lower())
     newDataCLS.save()
     print(f"Save dataclass into {newDataCLS._get_save_path()} Complete")
 

@@ -225,7 +225,9 @@ class TVAEmbedding(nn.Module):
         user_latent_factor = user_latent_factor.unsqueeze(1).repeat(1, self.max_len, 1)
 
         positions = self.position(sequence)
+
         latent = self.latent_emb(user_latent_factor)
+
         time = self.time(time_sequence)
         time_interval = self.time_interval(time_interval_seqs)
 
@@ -273,8 +275,8 @@ class TVAEmbedding(nn.Module):
         #     )
         # )
 
-        x = items + time + time_interval  # [12, 128, 256] 12 batch, 128 seq, 256 embed
-        x = self.out(torch.cat([items, latent, time_interval, time], dim=-1))
+        # x = items + time + time_interval  # [12, 128, 256] 12 batch, 128 seq, 256 embed
+        x = self.out(torch.cat([items, latent, time_interval, positions], dim=-1))
         # x = self.out(torch.cat([items, latent, time, time_interval], dim=-1))
         return self.dropout(x)
 

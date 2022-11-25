@@ -18,7 +18,7 @@ class NegativeSampler(metaclass=ABCMeta):
         dataclass_name,
         method="random",
     ):
-        self.dataclass_name = dataclass_name
+        self.dataclass_name = dataclass_name.lower()
         self.train = train
         self.val = val
         self.test = test
@@ -125,7 +125,6 @@ class NegativeSampler(metaclass=ABCMeta):
         return negative_samples
 
     def _get_save_path(self):
-
         filename = "{}.{}-sample_size{}-seed{}.pkl".format(
             self.dataclass_name, self.method, self.sample_size, self.seed
         )

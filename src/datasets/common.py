@@ -22,7 +22,7 @@ class RecsysData:
     def __init__(self, df: pd.DataFrame, filename=""):
         self.filename = filename
         self.dataframe = df
-        
+
         (
             self.u2cat,
             self.i2cat,
@@ -81,7 +81,11 @@ class RecsysData:
         print(END_COLOR)
 
     def _split_matrix_by_user(self):
-        print("Splitting")
+        """
+        Splitting matrix by random shuffle user for train, testing and validation
+        """
+        
+        print("Splitting matrix by random shuffle user for train, testing and validation")
 
         # split to train val and test
         users = list(self.u2cat.values())

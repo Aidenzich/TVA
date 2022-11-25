@@ -10,8 +10,9 @@ import numpy as np
 
 def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
     seed_everything(trainer_config["seed"])
-    variance = np.load(CACHE_PATH / "variance.npy")
-    latent_factor = np.load(CACHE_PATH / "latent_factor.npy")
+
+    variance = np.load(CACHE_PATH / (recdata.filename + "_variance.npy"))
+    latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
 
     # FIXME This can be store in the RecData class
     test_negative_sampler = NegativeSampler(

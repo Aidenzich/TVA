@@ -34,7 +34,14 @@ class VAECFModel(pl.LightningModule):
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
+
+        lr_schedulers = {
+            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                optimizer, patience=10
+            ),
+            "monitor": "train_loss",
+        }
+        return [optimizer], [lr_schedulers]
 
     def training_step(self, batch, batch_idx):
         _batch, mu, logvar = self.vae(batch)

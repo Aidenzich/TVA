@@ -1,18 +1,31 @@
 #%%
 import numpy as np
 
-variance = np.load("./variance.npy")
+variance = np.load("./latent_factor.npy")
 
 # %%
 variance.shape
 
 
+import matplotlib.pyplot as plt
+
+plt.plot([i for i in range(512)], variance[0])
+print(variance[0].mean())
+print(variance[0].var())
+
 #%%
-import torch
-
-t_tensor = torch.LongTensor([[j for j in range(3)] for _ in range(3)])
-
+plt.plot([i for i in range(512)], variance[1])
+print(variance[0].mean())
+print(variance[0].var())
 # %%
-t_tensor
+plt.plot([i for i in range(512)], variance[3])
+print(variance[0].mean())
+print(variance[0].var())
 # %%
-torch.cat([t_tensor, t_tensor], dim=-1)
+plt.plot([i for i in range(512)], variance[4])
+print(variance[0].mean())
+print(variance[0].var())
+# %%
+plt.plot([i for i in range(512)], variance[5])
+print(variance[0].mean())
+print(variance[0].var())
