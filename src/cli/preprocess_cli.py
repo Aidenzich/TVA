@@ -20,6 +20,7 @@ def handle_dataframe(df, config):
             config[USER_COLUMN_NAME]: USER_COLUMN_NAME,
             config[ITEM_COLUMN_NAME]: ITEM_COLUMN_NAME,
             config[RATING_COLUMN_NAME]: RATING_COLUMN_NAME,
+            config[TIMESTAMP_COLUMN_NAME]: TIMESTAMP_COLUMN_NAME,
         },
         inplace=True,
     )

@@ -1,6 +1,7 @@
 from abc import ABCMeta
 from src.models import TRAIN_FACTORY
 from src.adapters.raytune_adapter import tuner
+from pytorch_lightning.utilities.seed import seed_everything
 
 
 class LightningTrainer(metaclass=ABCMeta):
@@ -9,7 +10,7 @@ class LightningTrainer(metaclass=ABCMeta):
         self.recdata = recdata
         self.model_params = model_params
         self.trainer_config = trainer_config
-
+        seed_everything(trainer_config["seed"])
         if not self.trainer_config.get("tune"):
             self.train()
         else:

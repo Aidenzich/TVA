@@ -4,8 +4,8 @@
         "tune": {
             "metrics": {
                 "loss": "train_loss",
-                "recall": "bert_recall@30",
-                "f1": "bert_f1@30"
+                "recall": "leave1out_recall@30",
+                "f1": "leave1out_f1@30"
             },
             "resources_per_trial": {
                 "cpu": 12,
@@ -18,7 +18,7 @@
             }
         },
         "early_stopping": {
-            "monitor": "bert_recall@30",
+            "monitor": "leave1out_recall@30",
             "patience": 10,
             "verbose": false,
             "mode": "max"

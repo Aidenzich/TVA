@@ -97,7 +97,7 @@ class TVAModel(pl.LightningModule):
         for metric in metrics.keys():
             # self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
             if "recall" in metric or "ndcg" in metric:
-                self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
+                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
 
     def test_step(self, batch, batch_idx):
         (
@@ -117,7 +117,7 @@ class TVAModel(pl.LightningModule):
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
-                self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
+                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
 
 
 # BERT
@@ -244,36 +244,6 @@ class TVAEmbedding(nn.Module):
         # item_latent = torch.matmul(items, latent.transpose(-2, -1))
 
         # 0.3708 [items, latent, time_interval, time]
-        # 0.3703 [items + time + time_interval, latent]
-        # 0.3700 [items, time, latent, time_interval]
-        # 0.3692 [items, time, time_interval, latent]
-        # 0.3680 [items, positions, latent, time_interval]
-        # 0.3666 [items, latent, time_interval, positions]
-        # 0.3644 items + time + latent + time_interval
-        # 0.3621 [items + time, latent, time_interval]
-        # 0.3619 [items + time * positions, latent, time_interval * items]
-        # 0.3617 [time, items, latent, time_interval]
-        # 0.3597 [2*items + time_interval + time, latent, time_interval, time]
-        # 0.3583 [items + positions, latent, time_interval * items]
-        # 0.3579 [items, latent, time_interval, time + positions]
-        # 0.3548 [items + time + time_interval, latent + time]
-        # 0.3515 [items * time_interval * time, latent, time_interval, time]
-        # 0.3458 [items + positions, latent, time_interval, time]
-        # 0.3347 [items, time + positions, latent, time_interval]
-        # 0.3322 [items * time_interval + time, latent, time_interval, time]
-        # 03223  [items * time + items * time_interval, latent]
-
-        # x = torch.cat(
-        #     [items, latent, time_interval, positions],
-        #     dim=-1,
-        # )
-
-        # x = self.out(
-        #     torch.cat(
-        #         [items, time, latent, time_interval],
-        #         dim=-1,
-        #     )
-        # )
 
         # x = items + time + time_interval  # [12, 128, 256] 12 batch, 128 seq, 256 embed
         x = self.out(torch.cat([items, latent, time_interval, positions], dim=-1))

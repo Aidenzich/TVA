@@ -8,10 +8,10 @@
     },
     "model_params": {
         "batch_size": 64,
-        "hidden_dim": 20,
+        "hidden_dim": 512,
         "act_fn": "tanh",
         "autoencoder_structure": [
-            1000
+            512
         ],
         "likelihood": "mult",
         "beta": 0.87

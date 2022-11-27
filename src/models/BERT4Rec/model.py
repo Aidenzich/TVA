@@ -63,7 +63,8 @@ class BERTModel(pl.LightningModule):
         # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
 
         for metric in metrics.keys():
-            self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
+            if "recall" in metric or "ndcg" in metric:
+                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
 
     def test_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
@@ -73,7 +74,8 @@ class BERTModel(pl.LightningModule):
         metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
         # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
         for metric in metrics.keys():
-            self.log("bert_" + metric, torch.FloatTensor([metrics[metric]]))
+            if "recall" in metric or "ndcg" in metric:
+                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
 
 
 # BERT

@@ -55,8 +55,8 @@ class RecsysData:
 
     def show_info_table(self):
         print(RED_COLOR)
+        print()
         print(
-            "\n",
             tabulate(
                 [
                     [
@@ -65,6 +65,7 @@ class RecsysData:
                         self.max_length,
                         self.min_length,
                         self.seqs_user_num,
+                        len(self.dataframe),
                     ]
                 ],
                 headers=[
@@ -73,6 +74,7 @@ class RecsysData:
                     "max_length",
                     "min_length",
                     "seqs_user_num",
+                    "total_session_num",
                 ],
                 tablefmt="orgtbl",
             ),
@@ -84,16 +86,18 @@ class RecsysData:
         """
         Splitting matrix by random shuffle user for train, testing and validation
         """
-        
-        print("Splitting matrix by random shuffle user for train, testing and validation")
+
+        print(
+            "Splitting matrix by random shuffle user for train, testing and validation"
+        )
 
         # split to train val and test
         users = list(self.u2cat.values())
         import random
 
         random.shuffle(users)
-        train_num = int(len(users) * 0.8)
-        test_num = int(len(users) * 0.1)
+        train_num = int(len(users) * 0.98)
+        test_num = int(len(users) * 0.01)
         # val_num = len(users) - train_num - test_num
         # print(len(users[:train_num]))
 
@@ -126,7 +130,21 @@ class RecsysData:
 
         uir_df[RATING_COLUMN_NAME] = uir_df[RATING_COLUMN_NAME].astype(float)
         uir_df = uir_df[uir_df[RATING_COLUMN_NAME] > 0]
+
+        # Remove sequence test and validation
+        for u in tqdm(self.val_seqs):
+
+            drop_idx = uir_df[
+                (uir_df[USER_COLUMN_NAME] == u)
+                & (
+                    (uir_df[ITEM_COLUMN_NAME] == self.val_seqs[u][0])
+                    | (uir_df[ITEM_COLUMN_NAME] == self.test_seqs[u][0])
+                )
+            ].index
+            uir_df.drop(drop_idx, inplace=True)
+
         uir_vals = uir_df.values
+        print(uir_vals.shape)
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
 
         from scipy.sparse import csr_matrix
