@@ -194,16 +194,20 @@ class TVAEmbedding(nn.Module):
         self.time = TimeEmbedding(max_len=max_len, hidden_units=embed_size)
         # self.time = TokenEmbedding3(vocab_size=max_len, embed_size=embed_size)
 
-        self.time_interval = TimeEmbedding(max_len=max_len, hidden_units=embed_size)
         self.dropout = nn.Dropout(p=dropout)
         self.embed_size = embed_size
 
         self.out = nn.Linear(embed_size * 4, embed_size)
-        # self.pre = nn.Linear(embed_size, embed_size)
+
         self.latent_emb = nn.Linear(512, embed_size)
+        self.latent_emb2 = nn.Linear(512, embed_size)
+        self.time_interval = nn.Linear(1, embed_size)
         self.max_len = max_len
 
-        # self.tv_emb = nn.Linear(max_len + 512, embed_size)
+        self.tv_emb = nn.Linear(embed_size, embed_size)
+        self.ff = PositionwiseFeedForward(
+            hidden_units=embed_size, d_ff=embed_size, dropout=dropout
+        )
         # self.new = PositionalEmbedding(max_len=max_len, hidden_units=embed_size)
 
     def forward(
@@ -215,21 +219,41 @@ class TVAEmbedding(nn.Module):
         user_latent_factor,
     ):
 
-        # vae_sequence = F.softmax(vae_sequence, dim=1)
-
+        vae_sequence = F.softmax(vae_sequence, dim=1)
+        vae_sequence = vae_sequence.unsqueeze(2).repeat(
+            1, 1, self.embed_size
+        )  # Batch x Seq_len to Batch x Seq_len x Embed_size
+        vae_sequence = self.tv_emb(vae_sequence)
         # vae_x = vae_sequence.unsqueeze(2).repeat(
         #     1, 1, self.embed_size
         # )  # Batch x Seq_len to Batch x Seq_len x Embed_size
 
         items = self.token(sequence)
-        user_latent_factor = user_latent_factor.unsqueeze(1).repeat(1, self.max_len, 1)
+
+        mu = user_latent_factor[:, :512]
+        sigma = user_latent_factor[:, 512:]
+        # print(user_latent_factor.shape)
+        # print(sigma.shape)
+
+        # std = torch.exp(0.5 * sigma)
+        # eps = torch.randn_like(mu)
+        mu = mu.unsqueeze(1).repeat(1, self.max_len, 1)
+        sigma = sigma.unsqueeze(1).repeat(1, self.max_len, 1)
 
         positions = self.position(sequence)
 
-        latent = self.latent_emb(user_latent_factor)
+        latent = self.latent_emb(mu)
+        latent2 = self.latent_emb2(sigma)
+
+        time_interval_seqs = time_interval_seqs.unsqueeze(2)
+
+        # print(latent.shape)
+        # exit()
 
         time = self.time(time_sequence)
-        time_interval = self.time_interval(time_interval_seqs)
+
+        # print(time_interval_seqs.shape)
+        time_interval = self.ff(self.time_interval(time_interval_seqs))
 
         # tv = torch.cat([user_latent_factor, time_sequence], dim=-1)
         # tv_emb = self.new(self.tv_emb(tv))
@@ -243,10 +267,10 @@ class TVAEmbedding(nn.Module):
         # item_time = self.tv_emb(torch.matmul(x, time_interval.transpose(-2, -1)))
         # item_latent = torch.matmul(items, latent.transpose(-2, -1))
 
-        # 0.3708 [items, latent, time_interval, time]
-
         # x = items + time + time_interval  # [12, 128, 256] 12 batch, 128 seq, 256 embed
-        x = self.out(torch.cat([items, latent, time_interval, positions], dim=-1))
+        x = self.out(
+            torch.cat([items + positions, latent, latent2, time_interval], dim=-1)
+        )
         # x = self.out(torch.cat([items, latent, time, time_interval], dim=-1))
         return self.dropout(x)
 
@@ -255,16 +279,6 @@ class TimeEmbedding(nn.Module):
     def __init__(self, max_len, hidden_units):
         super().__init__()
         self.te = nn.Embedding(max_len, hidden_units)
-
-    def forward(self, x):
-        batch_size = x.size(0)
-        return self.te.weight.unsqueeze(0).repeat(batch_size, 1, 1)
-
-
-class TimeEmbedding2(nn.Module):
-    def __init__(self, max_len, hidden_units):
-        super().__init__()
-        self.te = nn.Linear(hidden_units, max_len)
 
     def forward(self, x):
         batch_size = x.size(0)

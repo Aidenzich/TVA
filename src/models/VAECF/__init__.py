@@ -50,31 +50,42 @@ def infer_vaecf(ckpt_path, recdata, rec_ks=100):
     user_count = 0
 
     all_y = None
-    all_z = None
+    all_z_u = None
 
     with torch.no_grad():
         for batch in tqdm(infer_loader):
             batch = batch.to(device)
-            z_u, _ = model.vae.encode(batch)
+            z_u, z_sigma = model.vae.encode(batch)
             y = model.vae.decode(z_u)
+
+            z_u, z_sigma = z_u.cpu().numpy().astype(
+                np.float16
+            ), z_sigma.cpu().numpy().astype(np.float16)
+
+            top_k = y.topk(rec_ks, dim=1)[1]
             # seen = batch != 0
             # y[seen] = 0
 
-            top_k = y.topk(rec_ks, dim=1)[1]
+            y = y.cpu().numpy().astype(np.float16)
+
             if all_y is None:
-                all_y = y.cpu().numpy().astype(np.float16)
-                all_z = z_u.cpu().numpy().astype(np.float16)
+                all_y, all_z_u, all_z_sigma = y, z_u, z_sigma
             else:
-                all_y = np.concatenate([all_y, y.cpu().numpy().astype(np.float16)])
-                all_z = np.concatenate([all_z, z_u.cpu().numpy().astype(np.float16)])
+                all_y = np.concatenate([all_y, y])
+                all_z_u = np.concatenate([all_z_u, z_u])
+                all_z_sigma = np.concatenate([all_z_sigma, z_sigma])
+
             for i in range(batch.shape[0]):
                 predict_result[user_count] = top_k[i].tolist()
                 user_count = user_count + 1
+
+    all_z_u = np.concatenate([all_z_u, all_z_sigma], axis=1)
+    print(all_z_u.shape)
 
     with open(CACHE_PATH / (recdata.filename + "_variance.npy"), "wb") as f:
         np.save(f, all_y)
 
     with open(CACHE_PATH / (recdata.filename + "_latent_factor.npy"), "wb") as f:
-        np.save(f, all_z)
+        np.save(f, all_z_u)
 
     return predict_result

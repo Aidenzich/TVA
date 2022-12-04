@@ -133,7 +133,7 @@ class RecsysData:
 
         # Remove sequence test and validation
         for u in tqdm(self.val_seqs):
-
+            before = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
             drop_idx = uir_df[
                 (uir_df[USER_COLUMN_NAME] == u)
                 & (
@@ -142,6 +142,9 @@ class RecsysData:
                 )
             ].index
             uir_df.drop(drop_idx, inplace=True)
+            after = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
+
+            # print(before, after)
 
         uir_vals = uir_df.values
         print(uir_vals.shape)

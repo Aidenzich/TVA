@@ -1,10 +1,10 @@
 #%%
 import numpy as np
 
-variance = np.load("./latent_factor.npy")
+variance = np.load("./beauty_latent_factor.npy")
 
 # %%
-variance.shape
+print(variance.shape)
 
 
 import matplotlib.pyplot as plt
