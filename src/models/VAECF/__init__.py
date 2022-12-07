@@ -44,7 +44,7 @@ def infer_vaecf(ckpt_path, recdata, rec_ks=100):
     device = torch.device("cuda:0")
     inferset = MatrixDataset(recdata.matrix)
     model = VAECFModel.load_from_checkpoint(ckpt_path)
-    infer_loader = DataLoader(inferset, batch_size=2048, shuffle=False, pin_memory=True)
+    infer_loader = DataLoader(inferset, batch_size=3096, shuffle=False, pin_memory=True)
     model.to(device)
     predict_result: dict = {}
     user_count = 0
@@ -80,7 +80,7 @@ def infer_vaecf(ckpt_path, recdata, rec_ks=100):
                 user_count = user_count + 1
 
     all_z_u = np.concatenate([all_z_u, all_z_sigma], axis=1)
-    print(all_z_u.shape)
+    # print(all_z_u.shape)
 
     with open(CACHE_PATH / (recdata.filename + "_variance.npy"), "wb") as f:
         np.save(f, all_y)

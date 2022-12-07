@@ -131,23 +131,26 @@ class RecsysData:
         uir_df[RATING_COLUMN_NAME] = uir_df[RATING_COLUMN_NAME].astype(float)
         uir_df = uir_df[uir_df[RATING_COLUMN_NAME] > 0]
 
+        drop_all_idx = []
+
         # Remove sequence test and validation
         for u in tqdm(self.val_seqs):
-            before = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
-            drop_idx = uir_df[
-                (uir_df[USER_COLUMN_NAME] == u)
-                & (
-                    (uir_df[ITEM_COLUMN_NAME] == self.val_seqs[u][0])
-                    | (uir_df[ITEM_COLUMN_NAME] == self.test_seqs[u][0])
+            # before = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
+            udf = uir_df[uir_df[USER_COLUMN_NAME] == u]
+            val = udf.values
+            drop_idx = np.where(
+                (
+                    (val[:, 1] == self.val_seqs[u][0])
+                    | (val[:, 1] == self.test_seqs[u][0])
                 )
-            ].index
-            uir_df.drop(drop_idx, inplace=True)
-            after = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
+            )
 
+            drop_all_idx.extend(list(drop_idx[0]))
+
+            # after = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
             # print(before, after)
 
         uir_vals = uir_df.values
-        print(uir_vals.shape)
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
 
         from scipy.sparse import csr_matrix
