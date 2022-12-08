@@ -16,7 +16,20 @@ def fit(
     testset=None,
     callbacks=[],
 ):
+    """_summary_
+    The function trains the model on the trainset using the provided trainer_config and model_params.
+    It may also evaluate the trained model on the valset and testset if provided,
+    and apply any callbacks during training.
 
+    Args:
+        model (_type_): _description_
+        trainset (_type_): _description_
+        trainer_config (_type_): _description_
+        model_params (_type_): _description_
+        valset (_type_, optional): _description_. Defaults to None.
+        testset (_type_, optional): _description_. Defaults to None.
+        callbacks (list, optional): _description_. Defaults to [].
+    """
     early_stop_config = trainer_config.get("early_stopping")
     # early stopping
     if trainer_config.get("early_stopping"):
@@ -36,7 +49,7 @@ def fit(
         trainset,
         batch_size=model_params["batch_size"],
         shuffle=True,
-        pin_memory=True,
+        pin_memory=False,
         num_workers=trainer_config["num_workers"],
     )
     if valset != None:
@@ -44,7 +57,7 @@ def fit(
             valset,
             batch_size=model_params["batch_size"],
             shuffle=False,
-            pin_memory=True,
+            pin_memory=False,
             num_workers=trainer_config["num_workers"],
         )
     else:
@@ -68,7 +81,7 @@ def fit(
             testset,
             batch_size=model_params["batch_size"],
             shuffle=False,
-            pin_memory=True,
+            pin_memory=False,
             num_workers=trainer_config["num_workers"],
         )
         trainer.test(model, test_loader)

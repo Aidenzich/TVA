@@ -26,7 +26,7 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
         mask_prob=model_params["mask_prob"],
         num_items=recdata.num_items,
         mask_token=recdata.num_items + 1,
-        u2seq=recdata.train_seqs,
+        u2seq=recdata.train_seqs,        
         seed=trainer_config["seed"],
     )
 
@@ -61,15 +61,18 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
         model=model,
         trainset=trainset,
         valset=valset,
+        testset=testset,
         trainer_config=trainer_config,
         model_params=model_params,
-        testset=testset,
         callbacks=callbacks,
     )
 
 
 def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
-    """rec k is the number of items to recommend"""
+    """
+    rec k is the number of items to recommend
+    """
+
     ##### INFER ######
     import torch
     from torch.utils.data import DataLoader
@@ -107,7 +110,7 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
         negative_samples=samples,
     )
 
-    infer_loader = DataLoader(inferset, batch_size=4, shuffle=False, pin_memory=True)
+    infer_loader = DataLoader(inferset, batch_size=4, shuffle=False, pin_memory=False)
 
     model.to(device)
     predict_result: dict = {}

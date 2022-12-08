@@ -37,17 +37,15 @@ def handle_dataframe(df, config):
 
     # df = df[df[USER_COLUMN_NAME].isin(user_index)]
     df[RATING_COLUMN_NAME] = df[RATING_COLUMN_NAME].astype(int)
-    if dtypes[config[TIMESTAMP_COLUMN_NAME]] == "object":
+
+    if (dtypes[TIMESTAMP_COLUMN_NAME] == "object") or (
+        dtypes[TIMESTAMP_COLUMN_NAME] == "datetime64"
+    ):
         df[TIMESTAMP_COLUMN_NAME] = (
-            df[config[TIMESTAMP_COLUMN_NAME]].astype("datetime64").astype("int64")
-            // 10**9
+            df[TIMESTAMP_COLUMN_NAME].astype("datetime64").astype("int64") // 10**9
         )
 
-    if dtypes[config[TIMESTAMP_COLUMN_NAME]] == "datetime64":
-        df[TIMESTAMP_COLUMN_NAME] = (
-            df[config[TIMESTAMP_COLUMN_NAME]].astype("int64") // 10**9
-        )
-
+    print(df)
     return df
 
 

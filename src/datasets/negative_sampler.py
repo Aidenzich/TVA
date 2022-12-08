@@ -7,6 +7,11 @@ from src.configs import NEGATIVE_SAMPLE_PATH, RED_COLOR, END_COLOR
 
 
 class NegativeSampler(metaclass=ABCMeta):
+    """_summary_
+    Negativesampler is used to generate negative samples for training.
+    Negative samples is a dictionary, key is user id, value is a list of negative samples.
+    """
+
     def __init__(
         self,
         train,
