@@ -49,11 +49,15 @@ nsample[list(nsample.keys())[0]]
 
 # recsys_data.i2cat['59625']
 
+#%%
+with open(DATA_PATH / "otto_test_nsample_for_carts.pkl", "wb") as f:
+    pickle.dump(converted, f)
 
-recsys_data.i2cat.keys()
+
+# recsys_data.i2cat.keys()
 # converted
 #%%
-recsys_data.i2cat.keys()
+# recsys_data.i2cat.keys()
 # recsys_data.max_length
 # recsys_data.dataframe.user_id.value_counts()
 # recsys_data.dataframe[recsys_data.dataframe.user_id == 150567].drop_duplicates
