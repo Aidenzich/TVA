@@ -36,6 +36,7 @@ if __name__ == "__main__":
     answers = inquirer.prompt(question)
 
     assert answers["top_k"].isdigit(), RED_COLOR + "Top k must be a number" + END_COLOR
+
     top_k = int(answers["top_k"])
 
     dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
@@ -46,6 +47,7 @@ if __name__ == "__main__":
     )
 
     assert ckpt_paths != [], RED_COLOR + "No checkpoint found" + END_COLOR
+
     question = [
         inquirer.List(
             "checkpoint",
@@ -63,6 +65,7 @@ if __name__ == "__main__":
 
     print("Loading checkpoint")
 
+    # Get the infer function from the selected model
     predict_result = INFER_FACTORY[model_path.name.lower()](
         ckpt_path=ckpt_path, recdata=recdata, rec_ks=top_k
     )

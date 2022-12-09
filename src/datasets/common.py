@@ -1,11 +1,10 @@
-from typing import Dict, Tuple
-import numpy as np
-import pandas as pd
-from tqdm import tqdm
-import pickle
+from pathlib import Path
+from typing import Dict, List, Any, Tuple
 from tabulate import tabulate
-
-tqdm.pandas()
+from tqdm import tqdm
+import pandas as pd
+import numpy as np
+import pickle
 
 from ..configs import (
     USER_COLUMN_NAME,
@@ -17,9 +16,10 @@ from ..configs import (
     END_COLOR,
 )
 
+tqdm.pandas()
 
 class RecsysData:
-    def __init__(self, df: pd.DataFrame, filename=""):
+    def __init__(self, df: pd.DataFrame, filename="") -> None:
         self.filename = filename
         self.dataframe = df
 
@@ -53,7 +53,12 @@ class RecsysData:
 
         self.seqs_user_num = len(self.train_seqs)
 
-    def show_info_table(self):
+    def show_info_table(self) -> None:
+        """
+        Show a table of information about the attributes of an object, including the number of users, 
+        items, maximum and minimum lengths of sequences, number of sequences per user, and total 
+        number of sessions. This information is printed in an organized format using the "orgtbl" table format.
+        """
         print(RED_COLOR)
         print()
         print(
@@ -82,7 +87,7 @@ class RecsysData:
         )
         print(END_COLOR)
 
-    def _split_matrix_by_user(self):
+    def _split_matrix_by_user(self) -> Tuple[Any, Any, Any]:
         """
         Splitting matrix by random shuffle user for train, testing and validation
         """
@@ -111,10 +116,10 @@ class RecsysData:
 
         return train_matrix, test_matrix, val_matrix
 
-    def _filter_rating_threshold(self, df: pd.DataFrame, threshold=5):
+    def _filter_rating_threshold(self, df: pd.DataFrame, threshold=5) -> pd.DataFrame:
         return df[df[RATING_COLUMN_NAME] >= threshold]
 
-    def _filter_purchases_threshold(self, df: pd.DataFrame, threshold=10):
+    def _filter_purchases_threshold(self, df: pd.DataFrame, threshold=10) -> Tuple[pd.DataFrame, pd.DataFrame]:
         user_val_count = df[USER_COLUMN_NAME].value_counts()
         user_index = user_val_count[user_val_count > threshold].index
         remove_user_index = user_val_count[user_val_count <= threshold].index
@@ -123,7 +128,7 @@ class RecsysData:
 
         return filtered_df, removed_df
 
-    def prepare_matrix(self):
+    def prepare_matrix(self) -> None:
         uir_df = self.dataframe[
             [USER_COLUMN_NAME, ITEM_COLUMN_NAME, RATING_COLUMN_NAME]
         ]
@@ -167,9 +172,9 @@ class RecsysData:
 
     def _split_df_u2seq(
         self, split_method: str = "leave_one_out"
-    ) -> Tuple[Dict, Dict, Dict, Dict]:
+    ) -> Tuple[Dict[int, List[int]]]:
         """
-        Split the dataframe into train, val, and test dictionary of user's trading sequences
+        Split the dataframe into train, val, test and total dictionary of user's trading sequences
         """
         print("Splitting user sequences...")
         df, self.removed_df = self._filter_purchases_threshold(
@@ -272,34 +277,69 @@ class RecsysData:
 
     def _get_cat2id(
         self, df: pd.DataFrame
-    ) -> Tuple[Dict, Dict, Dict, Dict, pd.core.series.Series, pd.core.series.Series]:
+    ) -> Tuple[
+            Dict[str, int], 
+            Dict[str, int], 
+            Dict[int, str], 
+            Dict[int,str], 
+            pd.core.series.Series, 
+            pd.core.series.Series
+        ]:
+        """
+        The function of the following code is to convert the contents of the USER_COLUMN_NAME and
+        ITEM_COLUMN_NAME columns in the passed DataFrame to numerical category codes using 
+        `astype("category").cat.codes`, and create the relevant conversion dictionaries. 
+        The converted results are then returned.
+        """
         users_cats = df[USER_COLUMN_NAME].astype("category").cat.codes
         items_cats = df[ITEM_COLUMN_NAME].astype("category").cat.codes
-        u2cat = dict(zip(self.dataframe[USER_COLUMN_NAME], users_cats))
-        i2cat = dict(zip(self.dataframe[ITEM_COLUMN_NAME], items_cats))
+        u2cat = dict(zip(self.dataframe[USER_COLUMN_NAME].astype("str"), users_cats))
+        i2cat = dict(zip(self.dataframe[ITEM_COLUMN_NAME].astype("str"), items_cats))
         cat2u = {v: k for k, v in u2cat.items()}
         cat2i = {v: k for k, v in i2cat.items()}
 
         return u2cat, i2cat, cat2u, cat2i, users_cats, items_cats
 
-    def save(self):
+    def save(self) -> None:
         savefile_path = self._get_save_path()
         with savefile_path.open("wb") as f:
             pickle.dump(self, f)
 
-    def _get_save_path(self):
-        self.filename
-
+    def _get_save_path(self) -> Path:
         savename = self.filename + "_cls.pkl"
         return DATACLASS_PATH / savename
 
     @staticmethod
-    def reverse_ids(data_cls, pred_result):
-
+    def reverse_ids(data_cls, pred_result) -> Dict[int, List[int]]:
+        """
+        # For each user, map their category to the corresponding ID using the data_cls.cat2u mapping
+        # and store the result as the key in the reversed_pred_result dictionary
+        # then map the item's category to the corresponding ID using the data_cls.cat2i mapping
+        """
         reversed_pred_result = {}
+                
         for user in tqdm(pred_result.keys()):
             reversed_pred_result[data_cls.cat2u[user]] = [
                 data_cls.cat2i[item] for item in pred_result[user]
             ]
 
         return reversed_pred_result
+
+    @staticmethod
+    def convert_ids(data_cls, samples) -> Dict[int, List[int]]:
+        """
+        # Iterate over the keys (users) in the input samples dictionary
+        # For each user, map their ID to the corresponding category using the data_cls.u2cat mapping
+        # and store the result as the key in the converted_samples dictionary
+        # then map the item's ID to the corresponding category using the data_cls.i2cat mapping
+        # and store the result in a list
+        """
+        converted_samples = {}
+                
+        for user in tqdm(samples.keys()):            
+            converted_samples[data_cls.u2cat[user]] = [
+                data_cls.i2cat[item] for item in samples[user]
+            ]
+
+        return converted_samples
+    

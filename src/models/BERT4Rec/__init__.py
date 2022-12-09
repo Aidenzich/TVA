@@ -26,7 +26,7 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
         mask_prob=model_params["mask_prob"],
         num_items=recdata.num_items,
         mask_token=recdata.num_items + 1,
-        u2seq=recdata.train_seqs,        
+        u2seq=recdata.train_seqs,
         seed=trainer_config["seed"],
     )
 
@@ -104,8 +104,7 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     inferset = SequenceDataset(
         mode="inference",
         mask_token=recdata.num_items + 1,
-        u2seq=recdata.train_seqs,
-        u2answer=recdata.val_seqs,
+        u2seq=recdata.train_seqs,  # 把 inference 的 train_seqs 改成新資料(注意要把id都轉成新的)
         max_len=model.max_len,
         negative_samples=samples,
     )
