@@ -25,6 +25,9 @@ pp:
 infer:
 	python -m src.cli.inference_cli
 
+otto_infer:
+	python -m src.cli.otto_inference_cli
+
 cds:
 	python -m src.cli.cornac_cli
 

@@ -18,7 +18,7 @@ class SequenceDataset(Dataset):
         # for eval
         negative_samples=None,
         u2answer=None,
-    ):
+    ) -> None:
 
         if mode == "eval":
             if negative_samples is None or u2answer is None:

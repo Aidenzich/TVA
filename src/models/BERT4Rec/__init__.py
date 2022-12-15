@@ -93,20 +93,28 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
             )
             sample_num = 10000
 
-        samples = {}
+        negative_samples = {}
 
         sample_items = (
             recdata.dataframe["item_id"].value_counts().index.tolist()[:sample_num]
         )
         for u in range(recdata.num_users):
-            samples[u] = sample_items
+            negative_samples[u] = sample_items
+
+    # Check if the the trainset user are in the negative samples
+
+    train_keys = list(recdata.train_seqs.keys())
+    for k in tqdm(train_keys):
+        if negative_samples.get(k, None) == None:
+            print(k, "is not in the negative samples")
+            recdata.train_seqs.pop(k, None)
 
     inferset = SequenceDataset(
         mode="inference",
         mask_token=recdata.num_items + 1,
-        u2seq=recdata.train_seqs,  # 把 inference 的 train_seqs 改成新資料(注意要把id都轉成新的)
+        u2seq=recdata.train_seqs,  # TODO 把 inference 的 train_seqs 改成新資料(注意要把id都轉成新的)
         max_len=model.max_len,
-        negative_samples=samples,
+        negative_samples=negative_samples,
     )
 
     infer_loader = DataLoader(inferset, batch_size=4, shuffle=False, pin_memory=False)
@@ -115,6 +123,7 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     predict_result: dict = {}
     with torch.no_grad():
         for batch in tqdm(infer_loader):
+
             seqs, candidates, users = batch
             seqs, candidates, users = (
                 seqs.to(device),

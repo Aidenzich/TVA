@@ -3,17 +3,38 @@ import pickle
 import json
 import inquirer
 
-from .utils import get_dataclass, get_checkpoint_path
+from .utils import get_dataclass, get_checkpoint_path, get_negative_samples
 from src.configs import OUTPUT_PATH, RED_COLOR, END_COLOR
 from src.cli.utils import get_models
 from src.models import INFER_FACTORY
+import signal
 
-if __name__ == "__main__":
+
+#%%
+def keyboard_interrupt_handler(signal, frame) -> None:
+    # Handle the keyboard interrupt here
+    print(signal, frame)
+
+
+def run_with_keyboard_interrupt_handler(func, *args, **kwargs):
+    def wrapper(*args, **kwargs) -> None:
+        try:
+            func(*args, **kwargs)
+        except KeyboardInterrupt:
+            keyboard_interrupt_handler()
+
+    return wrapper
+
+
+@run_with_keyboard_interrupt_handler
+def main() -> None:
     data_classes, data_classes_paths = get_dataclass()
-    assert data_classes != [], RED_COLOR + "No dataclass found" + END_COLOR
-
     models, model_paths = get_models()
+    nsamples, nsamples_paths = get_negative_samples()
+
+    assert data_classes != [], RED_COLOR + "No dataclass found" + END_COLOR
     assert models != [], RED_COLOR + "No dataclass found" + END_COLOR
+    assert data_classes != [], RED_COLOR + "No negative samples found" + END_COLOR
 
     question = [
         inquirer.List(
@@ -65,9 +86,25 @@ if __name__ == "__main__":
 
     print("Loading checkpoint")
 
+    question = [
+        inquirer.List(
+            "nsample",
+            message="Which negative samples do you need?",
+            choices=[None] + nsamples,
+        ),
+    ]
+    answers = inquirer.prompt(question)
+    if answers["nsample"] != None:
+        nsample_path = nsamples_paths[nsamples.index(answers["nsample"])]
+        with open(nsample_path, "rb") as f:
+            nsample = pickle.load(f)
+
     # Get the infer function from the selected model
     predict_result = INFER_FACTORY[model_path.name.lower()](
-        ckpt_path=ckpt_path, recdata=recdata, rec_ks=top_k
+        ckpt_path=ckpt_path,
+        recdata=recdata,
+        rec_ks=top_k,
+        negative_samples=nsample,
     )
     predict_result = recdata.reverse_ids(recdata, predict_result)
 
@@ -82,3 +119,7 @@ if __name__ == "__main__":
     )
 
     print("Infer Complete")
+
+
+if __name__ == "__main__":
+    main()

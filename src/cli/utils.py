@@ -1,5 +1,5 @@
 from pathlib import Path
-from src.configs.paths import DATACLASS_PATH, LOG_PATH, DATA_PATH
+from src.configs.paths import DATACLASS_PATH, LOG_PATH, DATA_PATH, NEGATIVE_SAMPLE_PATH
 
 AVAILABLE_EXTENSIONS = ["csv", "pickle", "pkl"]
 
@@ -43,6 +43,12 @@ def get_dataclass():
     data_classes_path = [x for x in p if x.is_file()]
     data_classes = [x.name for x in data_classes_path]
     return data_classes, data_classes_path
+
+def get_negative_samples():
+    p = Path(NEGATIVE_SAMPLE_PATH).glob("*.pkl")
+    nsamples_path = [x for x in p if x.is_file()]
+    nsamples = [x.name for x in nsamples_path]
+    return nsamples, nsamples_path
 
 
 def get_checkpoint_path(model_lower_name, data_class_stem):
