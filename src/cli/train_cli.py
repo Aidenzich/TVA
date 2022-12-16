@@ -32,7 +32,7 @@ def create_configs_from_template(
     return new_config_path
 
 
-def create_new_config_inquirer():
+def create_new_config_inquirer() -> None:
     data_classes, data_classes_paths = get_dataclass()
     assert data_classes != [], "No dataclass found"
 

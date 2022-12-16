@@ -61,7 +61,8 @@ def main() -> None:
     top_k = int(answers["top_k"])
 
     dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
-    model_path = model_paths[models.index(answers["model"])]
+    model = answers["model"]
+    model_path = model_paths[models.index(model)]
 
     ckpts, ckpt_paths = get_checkpoint_path(
         model_path.name.lower(), dcls_path.stem.lower()
@@ -86,26 +87,33 @@ def main() -> None:
 
     print("Loading checkpoint")
 
-    question = [
-        inquirer.List(
-            "nsample",
-            message="Which negative samples do you need?",
-            choices=[None] + nsamples,
-        ),
-    ]
-    answers = inquirer.prompt(question)
-    if answers["nsample"] != None:
-        nsample_path = nsamples_paths[nsamples.index(answers["nsample"])]
-        with open(nsample_path, "rb") as f:
-            nsample = pickle.load(f)
+    if model.lower() in ["bert4rec", "tva2", "autoformer4rec"]:
+        question = [
+            inquirer.List(
+                "nsample",
+                message="Which negative samples do you need?",
+                choices=[None] + nsamples,
+            ),
+        ]
+        answers = inquirer.prompt(question)
+        if answers["nsample"] != None:
+            nsample_path = nsamples_paths[nsamples.index(answers["nsample"])]
+            with open(nsample_path, "rb") as f:
+                nsample = pickle.load(f)
 
-    # Get the infer function from the selected model
-    predict_result = INFER_FACTORY[model_path.name.lower()](
-        ckpt_path=ckpt_path,
-        recdata=recdata,
-        rec_ks=top_k,
-        negative_samples=nsample,
-    )
+        # Get the infer function from the selected model
+        predict_result = INFER_FACTORY[model_path.name.lower()](
+            ckpt_path=ckpt_path,
+            recdata=recdata,
+            rec_ks=top_k,
+            negative_samples=nsample,
+        )
+    else:
+        predict_result = INFER_FACTORY[model_path.name.lower()](
+            ckpt_path=ckpt_path,
+            recdata=recdata,
+            rec_ks=top_k,
+        )
     predict_result = recdata.reverse_ids(recdata, predict_result)
 
     json.dump(

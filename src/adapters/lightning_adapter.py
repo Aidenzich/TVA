@@ -15,7 +15,7 @@ def fit(
     valset=None,
     testset=None,
     callbacks=[],
-):
+) -> None:
     """_summary_
     The function trains the model on the trainset using the provided trainer_config and model_params.
     It may also evaluate the trained model on the valset and testset if provided,
