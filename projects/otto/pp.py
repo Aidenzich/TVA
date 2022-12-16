@@ -10,10 +10,18 @@ import pandas as pd
 from typing import List, Dict, Literal
 
 
+def f(i):
+    for e in i["events"]:
+        event_dict[e["type"]]["session"].append(s)
+        event_dict[e["type"]]["aid"].append(e["aid"])
+        event_dict[e["type"]]["type"].append(e["type"])
+        event_dict[e["type"]]["rating"].append(1)
+        event_dict[e["type"]]["ts"].append(e["ts"])
+
+
 def json2csv(
     filename: str, types: List[str] = ["clicks", "carts", "orders"]
 ) -> Dict[str, pd.DataFrame]:
-    filename = "test"
     with open(DATA_PATH / f"{filename}.jsonl", "r") as f:
         temp = f.readlines()
 
@@ -86,8 +94,12 @@ def check_coverage(events_df: Dict[str, pd.DataFrame]) -> None:
 
 
 #%%
-events_df = json2csv("test")
+events_df = json2csv("train")
 check_coverage(events_df)
+#%%
+for e in events_df:
+    events_df[e].to_pickle(DATA_PATH / f"otto_train_{e}.pkl")
+
 
 # %%
 # items_big = (
