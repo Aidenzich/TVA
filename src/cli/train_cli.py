@@ -4,7 +4,7 @@ import inquirer
 
 from .utils import get_models, get_configs, get_dataclass
 from src.configs import DATACLASS_PATH, CONFIG_PATH
-from src.models.trainer import LightningTrainer
+from src.models import Trainer
 
 
 def create_configs_from_template(
@@ -114,7 +114,7 @@ if __name__ == "__main__":
 
             recsys_data.show_info_table()
 
-            LightningTrainer(
+            Trainer(
                 recdata=recsys_data,
                 model_params=config["model_params"],
                 trainer_config=config["trainer_config"],

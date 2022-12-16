@@ -73,6 +73,7 @@ def fit(
         max_epochs=trainer_config["max_epochs"],
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         logger=tb_logger,
+        devices=trainer_config.get("devices", [0]),
     )
     trainer.fit(model, train_loader, val_loader)
 
