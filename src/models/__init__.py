@@ -1,12 +1,14 @@
 from .BERT4Rec import train_bert4rec, infer_bert4rec
 from .VAECF import train_vaecf, infer_vaecf
 from .TVA2 import train_tva2, infer_tva2
-from .Autoformer4Rec import train as train_auto, infer as infer_auto
+from .TVA3 import train_tva2 as train_tva3
+from .Autoformer4Rec import train as train_auto
 
 TRAIN_FACTORY = {
     "bert4rec": train_bert4rec,
     "vaecf": train_vaecf,
     "tva2": train_tva2,
+    "tva3": train_tva3,
     "autoformer4rec": train_auto,
 }
 

@@ -76,6 +76,7 @@ def fit(
         devices=trainer_config.get("devices", [0]),
     )
     trainer.fit(model, train_loader, val_loader)
+    # trainer.fit(model, train_loader)
 
     if testset != None:
         test_loader = DataLoader(

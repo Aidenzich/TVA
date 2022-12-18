@@ -49,7 +49,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
     )
 
     model = BERTModel(
-        hidden_size=model_params["hidden_size"],
+        d_model=model_params["d_model"],
         num_items=recdata.num_items,
         n_layers=model_params["n_layers"],
         dropout=model_params["dropout"],

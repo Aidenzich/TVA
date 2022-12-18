@@ -35,7 +35,7 @@
         "mask_prob": [
             0.15
         ],
-        "hidden_size": [
+        "d_model": [
             64,
             128,
             256

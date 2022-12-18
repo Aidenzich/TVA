@@ -8,11 +8,7 @@ import numpy as np
 
 
 def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
-    variance = np.load(CACHE_PATH / (recdata.filename + "_variance.npy"))
     latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
-    # latent_factor_sigma = np.load(
-    #     CACHE_PATH / (recdata.filename + "_latent_factor_sigma.npy")
-    # )
 
     # FIXME This can be store in the RecData class
     test_negative_sampler = NegativeSampler(
@@ -36,7 +32,6 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         seed=trainer_config["seed"],
-        vae_matrix=variance,
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
     )
@@ -48,7 +43,6 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
         negative_samples=test_negative_samples,
-        vae_matrix=variance,
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],
@@ -61,7 +55,6 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         u2seq=recdata.train_seqs,
         u2answer=recdata.test_seqs,
         negative_samples=test_negative_samples,
-        vae_matrix=variance,
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],

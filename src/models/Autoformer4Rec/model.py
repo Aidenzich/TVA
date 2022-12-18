@@ -11,7 +11,7 @@ from .utils import fix_random_seed_as, recalls_and_ndcgs_for_ks, rpf1_for_ks
 class BERTModel(pl.LightningModule):
     def __init__(
         self,
-        hidden_size: int,
+        d_model: int,
         n_layers: int,
         heads: int,
         num_items: int,
@@ -26,12 +26,28 @@ class BERTModel(pl.LightningModule):
             max_len=self.max_len,
             num_items=num_items,
             n_layers=n_layers,
-            hidden_size=hidden_size,
+            d_model=d_model,
             heads=heads,
             dropout=dropout,
         )
 
-        self.out = nn.Linear(hidden_size, num_items + 1)
+        self.out = nn.Linear(d_model, num_items + 1)
+        self.lr_scheduler_name = "ReduceLROnPlateau"
+
+    def configure_optimizers(self):
+        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+
+        if self.lr_scheduler_name == "ReduceLROnPlateau":
+            lr_schedulers = {
+                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
+                    optimizer, patience=10
+                ),
+                "monitor": "train_loss",
+            }
+
+            return [optimizer], [lr_schedulers]
+
+        return optimizer
 
     def forward(self, x):
         x = self.bert(x)
@@ -47,12 +63,13 @@ class BERTModel(pl.LightningModule):
         labels = labels.view(-1)  # B * T
         loss = F.cross_entropy(logits, labels, ignore_index=0)
 
+        if self.lr_scheduler_name == "ReduceLROnPlateau":
+            sch = self.lr_schedulers()
+            if (batch_idx + 1) == 0:
+                sch.step(self.lr_metric)
+
         self.log("train_loss", loss)
         return loss
-
-    def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
-        return optimizer
 
     def validation_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
@@ -87,7 +104,7 @@ class BERT(nn.Module):
         num_items: int,
         n_layers: int,
         heads: int,
-        hidden_size: int,
+        d_model: int,
         dropout: float,
     ):
         super().__init__()
@@ -98,38 +115,38 @@ class BERT(nn.Module):
         # embedding for BERT, sum of positional, segment, token embeddings
         self.embedding = BERTEmbedding(
             vocab_size=vocab_size,
-            embed_size=hidden_size,
+            embed_size=d_model,
             max_len=max_len,
             dropout=dropout,
         )
 
         # multi-layers transformer blocks, deep network
-        # self.transformer_blocks = nn.ModuleList(
-        #     [
-        #         TransformerBlock(hidden_size, heads, hidden_size * 4, dropout)
-        #         for _ in range(n_layers)
-        #     ]
-        # )
-
         self.transformer_blocks = nn.ModuleList(
             [
-                EncoderLayer(
-                    AutoCorrelationLayer(
-                        AutoCorrelation(
-                            False, 1, attention_dropout=dropout, output_attention=True
-                        ),
-                        hidden_size,
-                        heads,
-                    ),
-                    d_model=hidden_size,
-                    d_ff=hidden_size * 4,  # ?
-                    moving_avg=25,
-                    dropout=dropout,
-                    activation="relu",
-                )
+                TransformerBlock(d_model, heads, d_model * 4, dropout)
                 for _ in range(n_layers)
             ]
         )
+
+        # self.transformer_blocks = nn.ModuleList(
+        #     [
+        #         EncoderLayer(
+        #             AutoCorrelationLayer(
+        #                 AutoCorrelation(
+        #                     False, 1, attention_dropout=dropout, output_attention=True
+        #                 ),
+        #                 d_model,
+        #                 heads,
+        #             ),
+        #             d_model=d_model,
+        #             d_ff=d_model * 4,  # ?
+        #             moving_avg=25,
+        #             dropout=dropout,
+        #             activation="relu",
+        #         )
+        #         for _ in range(n_layers)
+        #     ]
+        # )
 
     def forward(self, x):
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
@@ -210,7 +227,7 @@ class TransformerBlock(nn.Module):
         """
         :param hidden: hidden size of transformer
         :param attn_heads: head sizes of multi-head attention
-        :param feed_forward_hidden: feed_forward_hidden, usually 4*hidden_size
+        :param feed_forward_hidden: feed_forward_hidden, usually 4*d_model
         :param dropout: dropout rate
         """
 
@@ -220,7 +237,7 @@ class TransformerBlock(nn.Module):
         # )
 
         self.attention = AutoCorrelationLayer(
-            AutoCorrelation(False, 1, attention_dropout=dropout, output_attention=True),
+            AutoCorrelation(True, 20, attention_dropout=dropout, output_attention=True),
             hidden,
             attn_heads,
         )
@@ -329,7 +346,7 @@ class AutoCorrelation(nn.Module):
     def __init__(
         self,
         mask_flag=True,
-        factor=1,
+        factor=10,
         scale=None,
         attention_dropout=0.1,
         output_attention=False,
@@ -501,8 +518,9 @@ class AutoCorrelationLayer(nn.Module):
         out, attn = self.inner_correlation(queries, keys, values, mask)
         out = out.view(B, L, -1)
 
-        return self.out_projection(out), attn  # for encoderlayer
-        # return self.out_projection(out) # for transformerblock
+        # FIXME
+        # return self.out_projection(out), attn  # for encoderlayer
+        return self.out_projection(out)  # for transformerblock
 
 
 # Feed Forward

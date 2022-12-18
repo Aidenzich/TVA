@@ -21,7 +21,7 @@ def create_configs_from_template(
     new_config_path = CONFIG_PATH / (
         model_path.name.lower()
         + (".tune" if tune else "")
-        + f".{config_name}"
+        + f".{config_name}"  # FIXME move to head
         + f".{data_class_stem}"
         + ".config.json"
     )

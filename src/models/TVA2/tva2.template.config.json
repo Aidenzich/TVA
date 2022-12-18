@@ -16,7 +16,7 @@
     },
     "model_params": {
         "mask_prob": 0.15,
-        "hidden_size": 256,
+        "d_model": 256,
         "n_layers": 2,
         "dropout": 0.1,
         "heads": 8,

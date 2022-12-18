@@ -1,7 +1,22 @@
 import torch
 from torch.utils.data import Dataset
-from typing import Dict, List, Tuple
+from torch import Tensor
+from typing import Dict, List, Tuple, Any, Optional
 import random
+from pydantic import BaseModel, ValidationError
+
+
+class VAESequences(BaseModel):
+    userwise_latent_factor: Optional[torch.FloatTensor]
+    time_interval_seq: Optional[torch.FloatTensor]
+    candidates: Optional[torch.LongTensor]
+    time_seq: Optional[torch.FloatTensor]
+    item_seq: Optional[torch.LongTensor]
+    vae_seq: Optional[torch.LongTensor]
+    labels: Optional[torch.LongTensor]
+
+    class Config:
+        arbitrary_types_allowed = True
 
 
 class VAESequenceDataset(Dataset):
@@ -19,9 +34,8 @@ class VAESequenceDataset(Dataset):
         # for eval
         negative_samples=None,
         u2answer=None,
-        vae_matrix=None,
         latent_factor=None,
-    ):
+    ) -> None:
 
         if mode == "eval":
             if negative_samples is None or u2answer is None:
@@ -40,16 +54,14 @@ class VAESequenceDataset(Dataset):
         self.rng = random.Random(seed)
         self.negative_samples = negative_samples
         self.u2answer = u2answer
-        self.vae_matrix = vae_matrix
         self.u2time_seq = u2timeseq
         self.latent_factor = latent_factor
 
     def __len__(self) -> int:
         return len(self.users)
 
-    def __getitem__(self, index) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def __getitem__(self, index) -> Tuple[Tensor, Tensor, Tensor]:
         user_latent_factor = self.latent_factor[index]
-        user_vae_matrix = self.vae_matrix[index]
         user = self.users[index]
         seq = self.u2seq[user]
         time_seq = self.u2time_seq[user]
@@ -60,48 +72,41 @@ class VAESequenceDataset(Dataset):
         vae_seq = []
 
         if self.mode == "eval":
+
+            # candidates: candidates from negative sampling
             answer = self.u2answer[user]
             negs = self.negative_samples[user]
-
             candidates = answer + negs
+
+            # labels: labels from user's answer and negative samples
             labels = [1] * len(answer) + [0] * len(negs)
 
+            # seq: user's item sequence
             seq = seq + [self.mask_token]
             seq = seq[-self.max_len :]
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
 
-            # time_seq
+            # time_seq: timestamps of user's sequence
             time_seq = time_seq + [0]
             time_seq = time_seq[-self.max_len :]
             time_seq = [0] * padding_len + time_seq
 
-            # time_interval_seq
+            # time_interval_seq: time intervals of user's sequence
             time_interval_seq = time_interval_seq + [0]
             time_interval_seq = time_interval_seq[-self.max_len :]
             time_interval_seq = [0] * padding_len + time_interval_seq
 
-            for i in range(len(seq)):
-                if seq[i] == 0:
-                    vae_seq.append(0)
-                elif seq[i] == self.mask_token:
-                    vae_seq.append(0)
-                else:
-                    vae_seq.append(user_vae_matrix[seq[i]])
+            data = {
+                "item_seq": torch.LongTensor(seq),
+                "time_seq": torch.FloatTensor(time_seq),
+                "time_interval_seq": torch.FloatTensor(time_interval_seq),
+                "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
+                "candidates": torch.LongTensor(candidates),
+                "labels": torch.LongTensor(labels),
+            }
 
-            return (
-                torch.LongTensor(seq),  # user's sequence
-                torch.FloatTensor(vae_seq),  # latent factor of user's sequence
-                torch.FloatTensor(time_seq),  # timestamps of user's sequence
-                torch.FloatTensor(
-                    time_interval_seq
-                ),  # time intervals of user's sequence
-                torch.FloatTensor(user_latent_factor),  # latent factor
-                torch.LongTensor(candidates),  # candidates from negative sampling
-                torch.LongTensor(
-                    labels
-                ),  # labels from user's answer and negative samples
-            )
+            return VAESequences(**data).dict(exclude_none=True)
 
         if self.mode == "train":
             tokens = []
@@ -145,24 +150,16 @@ class VAESequenceDataset(Dataset):
             timestamps = [0] * mask_len + timestamps
             timestamps_interval = [0] * mask_len + timestamps_interval
 
-            # variational latent factor
-            for i in range(len(tokens)):
-                if tokens[i] == 0:
-                    vae_seq.append(0)
-                elif tokens[i] == self.mask_token:
-                    vae_seq.append(0)
-                else:
-                    vae_seq.append(user_vae_matrix[tokens[i]])
+            data = {
+                "item_seq": torch.LongTensor(tokens),
+                "time_seq": torch.FloatTensor(timestamps),
+                "time_interval_seq": torch.FloatTensor(timestamps_interval),
+                "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
+                "candidates": torch.empty((0)),
+                "labels": torch.LongTensor(labels),
+            }
 
-            return (
-                torch.LongTensor(tokens),  # masked user's sequence
-                torch.FloatTensor(vae_seq),  # latent factor of masked user's sequence
-                torch.FloatTensor(timestamps),  # masked user's timestamps
-                torch.FloatTensor(timestamps_interval),  # masked user's time intervals
-                torch.FloatTensor(user_latent_factor),  # latent factor
-                torch.LongTensor(labels),  # labels for masked tokens
-                torch.empty((0)),
-            )
+            return VAESequences(**data).dict(exclude_none=True)
 
         if self.mode == "inference":
             candidates = self.negative_samples[user]
@@ -171,13 +168,16 @@ class VAESequenceDataset(Dataset):
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
 
-            for i in range(len(seq)):
-                if seq[i] == 0:
-                    vae_seq.append(0)
-                elif seq[i] == self.mask_token:
-                    vae_seq.append(0)
-                else:
-                    vae_seq.append(user_vae_matrix[seq[i]])
+            data = {
+                "item_seq": torch.LongTensor(seq),
+                "vae_seq": torch.empty((0)),
+                "time_seq": torch.FloatTensor(timestamps),
+                "time_interval_seq": torch.FloatTensor(timestamps_interval),
+                "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
+                "candidates": torch.LongTensor(candidates),
+            }
+
+            return data
 
             return (
                 torch.LongTensor(seq),
