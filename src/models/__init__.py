@@ -28,7 +28,7 @@ class Trainer(metaclass=ABCMeta):
         self.recdata = recdata
         self.model_params = model_params
         self.trainer_config = trainer_config
-        seed_everything(trainer_config["seed"])
+        seed_everything(trainer_config["seed"], workers=True)
         if not self.trainer_config.get("tune"):
             self.train()
         else:

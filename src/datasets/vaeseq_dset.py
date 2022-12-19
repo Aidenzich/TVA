@@ -155,7 +155,6 @@ class VAESequenceDataset(Dataset):
                 "time_seq": torch.FloatTensor(timestamps),
                 "time_interval_seq": torch.FloatTensor(timestamps_interval),
                 "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-                "candidates": torch.empty((0)),
                 "labels": torch.LongTensor(labels),
             }
 
@@ -170,7 +169,6 @@ class VAESequenceDataset(Dataset):
 
             data = {
                 "item_seq": torch.LongTensor(seq),
-                "vae_seq": torch.empty((0)),
                 "time_seq": torch.FloatTensor(timestamps),
                 "time_interval_seq": torch.FloatTensor(timestamps_interval),
                 "userwise_latent_factor": torch.FloatTensor(user_latent_factor),

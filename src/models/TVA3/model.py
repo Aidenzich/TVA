@@ -26,7 +26,6 @@ class TVAModel(pl.LightningModule):
         self.save_hyperparameters()
         self.max_len = max_len
         self.tva = TVA(
-            model_init_seed=0,
             max_len=self.max_len,
             num_items=num_items,
             n_layers=n_layers,
@@ -53,7 +52,7 @@ class TVAModel(pl.LightningModule):
 
         return optimizer
 
-    def forward(self, batch):
+    def forward(self, batch) -> Tensor:
         x = self.tva(batch=batch)
         return self.out(x)
 
@@ -76,7 +75,7 @@ class TVAModel(pl.LightningModule):
         self.log("train_loss", loss)
         return loss
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx) -> None:
         candidates = batch["candidates"]
         labels = batch["labels"]
 
@@ -89,7 +88,7 @@ class TVAModel(pl.LightningModule):
             if "recall" in metric or "ndcg" in metric:
                 self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx) -> None:
         candidates = batch["candidates"]
         labels = batch["labels"]
 
@@ -105,7 +104,6 @@ class TVAModel(pl.LightningModule):
 class TVA(nn.Module):
     def __init__(
         self,
-        model_init_seed: int,
         max_len: int,
         num_items: int,
         n_layers: int,
@@ -114,8 +112,7 @@ class TVA(nn.Module):
         dropout: float,
     ):
         super().__init__()
-        # fix_random_seed_as(model_init_seed)
-        # self.init_weights()
+
         vocab_size = num_items + 2
 
         # embedding for BERT, sum of positional, segment, token embeddings
@@ -160,25 +157,23 @@ class TVAEmbedding(nn.Module):
         :param dropout: dropout rate
         """
         super().__init__()
-        self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
-        self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
-        self.time = PositionalEmbedding(max_len=max_len, d_model=embed_size)
-
-        self.dropout = nn.Dropout(p=dropout)
         self.embed_size = embed_size
-
-        self.out = nn.Linear(embed_size * 4, embed_size)
-
-        self.latent_emb = nn.Linear(512, embed_size)
-        self.latent_emb2 = nn.Linear(512, embed_size)
-        self.time_interval = nn.Linear(1, embed_size)
         self.max_len = max_len
 
-        self.tv_emb = nn.Linear(embed_size, embed_size)
-        # self.ff = PositionwiseFeedForward(
-        #     d_model=embed_size, d_ff=embed_size, dropout=dropout
-        # )
-        self.ff = PointWiseFeedForward(d_model=embed_size, dropout=dropout)
+        self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
+        self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
+        self.dropout = nn.Dropout(p=dropout)
+
+        self.out = nn.Linear(embed_size * 4, embed_size)
+        self.latent_emb = nn.Linear(512 * 2, embed_size)
+        self.time_interval = nn.Linear(1, embed_size)
+
+        self.ff = PositionwiseFeedForward(d_model=embed_size, d_ff=128, dropout=dropout)
+        self.time_ff = PointWiseFeedForward(d_model=embed_size, dropout=dropout)
+
+        # self.latent_emb2 = nn.Linear(512, embed_size)
+        # self.tv_emb = nn.Linear(embed_size, embed_size)
+        # self.time = PositionalEmbedding(max_len=max_len, d_model=embed_size)
 
     def forward(self, batch):
         seqs = batch["item_seq"]
@@ -187,22 +182,25 @@ class TVAEmbedding(nn.Module):
 
         items = self.token(seqs)
 
-        mu = user_latent_factor[:, :512]
-        sigma = user_latent_factor[:, 512:]
+        u_mu = F.softmax(user_latent_factor[:, :512], dim=1)
+        u_sigma = F.softmax(user_latent_factor[:, 512:], dim=1)
 
-        mu = mu.unsqueeze(1).repeat(1, self.max_len, 1)
-        sigma = sigma.unsqueeze(1).repeat(1, self.max_len, 1)
+        u_mu = u_mu.unsqueeze(1).repeat(1, self.max_len, 1)
+        u_sigma = u_sigma.unsqueeze(1).repeat(1, self.max_len, 1)
 
         positions = self.position(seqs)
 
-        latent = self.latent_emb(mu)
-        latent2 = self.latent_emb2(sigma)
-
+        latent3 = self.latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
+        # latent = self.latent_emb(u_mu)
+        # latent2 = self.latent_emb2(u_sigma)
+        latent3 = self.ff(latent3)
         time_interval_seqs = time_interval_seqs.unsqueeze(2)
-        time_interval = self.ff(self.time_interval(time_interval_seqs))
-
+        time_interval = self.time_ff(self.time_interval(time_interval_seqs))
+        # print(latent3.shape)
         x = self.out(
-            torch.cat([items + positions, time_interval, latent, latent2], dim=-1)
+            torch.cat([items, positions, time_interval, latent3], dim=-1)
+            # torch.cat([items, positions, time_interval, latent, latent2], dim=-1)
+            # torch.cat([items, positions], dim=-1)
         )
 
         return self.dropout(x)

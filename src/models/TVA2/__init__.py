@@ -8,11 +8,7 @@ import numpy as np
 
 
 def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
-    variance = np.load(CACHE_PATH / (recdata.filename + "_variance.npy"))
     latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
-    # latent_factor_sigma = np.load(
-    #     CACHE_PATH / (recdata.filename + "_latent_factor_sigma.npy")
-    # )
 
     # FIXME This can be store in the RecData class
     test_negative_sampler = NegativeSampler(
@@ -36,7 +32,6 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         seed=trainer_config["seed"],
-        vae_matrix=variance,
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
     )
@@ -48,7 +43,6 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
         negative_samples=test_negative_samples,
-        vae_matrix=variance,
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],
@@ -61,19 +55,14 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         u2seq=recdata.train_seqs,
         u2answer=recdata.test_seqs,
         negative_samples=test_negative_samples,
-        vae_matrix=variance,
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],
     )
 
     model = TVAModel(
-        d_model=model_params["d_model"],
         num_items=recdata.num_items,
-        n_layers=model_params["n_layers"],
-        dropout=model_params["dropout"],
-        heads=model_params["heads"],
-        max_len=model_params["max_len"],
+        model_params=model_params,
     )
 
     fit(
@@ -117,8 +106,6 @@ def infer_tva2(ckpt_path, recdata, rec_ks=10, negative_samples=None):
         for u in range(recdata.num_users):
             samples[u] = sample_items
 
-    variance = np.load(CACHE_PATH / "variance.npy")
-
     inferset = VAESequenceDataset(
         mode="inference",
         mask_token=recdata.num_items + 1,
@@ -126,7 +113,6 @@ def infer_tva2(ckpt_path, recdata, rec_ks=10, negative_samples=None):
         u2answer=recdata.val_seqs,
         max_len=model.max_len,
         negative_samples=samples,
-        vae_matrix=variance,
     )
 
     infer_loader = DataLoader(inferset, batch_size=4, shuffle=False, pin_memory=True)

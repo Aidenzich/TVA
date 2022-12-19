@@ -30,6 +30,7 @@ def fit(
         testset (_type_, optional): _description_. Defaults to None.
         callbacks (list, optional): _description_. Defaults to [].
     """
+
     early_stop_config = trainer_config.get("early_stopping")
     # early stopping
     if trainer_config.get("early_stopping"):
@@ -74,6 +75,7 @@ def fit(
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         logger=tb_logger,
         devices=trainer_config.get("devices", [0]),
+        deterministic=True,  # for reproducibility
     )
     trainer.fit(model, train_loader, val_loader)
     # trainer.fit(model, train_loader)
