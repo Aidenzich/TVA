@@ -3,72 +3,6 @@ import torch
 import math
 
 
-class AutoCorrelationLayer(nn.Module):
-    def __init__(self, correlation, d_model, n_heads, d_keys=None, d_values=None):
-        super(AutoCorrelationLayer, self).__init__()
-
-        d_keys = d_keys or (d_model // n_heads)
-        d_values = d_values or (d_model // n_heads)
-
-        self.inner_correlation = correlation
-        self.query_projection = nn.Linear(d_model, d_keys)
-        self.key_projection = nn.Linear(d_model, d_keys)
-        self.value_projection = nn.Linear(d_model, d_values)
-        self.out_projection = nn.Linear(d_values, d_model)
-        self.n_heads = n_heads
-
-    def forward(self, queries, keys, values, mask):
-        B, L, _ = queries.shape
-        _, S, _ = keys.shape
-        H = self.n_heads
-
-        queries = self.query_projection(queries).view(B, L, H, -1)
-        keys = self.key_projection(keys).view(B, S, H, -1)
-        values = self.value_projection(values).view(B, S, H, -1)
-
-        out, attn = self.inner_correlation(queries, keys, values, mask)
-        out = out.view(B, L, -1)
-
-        # FIXME
-        # return self.out_projection(out), attn  # for encoderlayer
-        return self.out_projection(out)  # for transformerblock
-
-
-class series_decomp(nn.Module):
-    """
-    Series decomposition block
-    """
-
-    def __init__(self, kernel_size):
-        super(series_decomp, self).__init__()
-        self.moving_avg = moving_avg(kernel_size, stride=1)
-
-    def forward(self, x):
-        moving_mean = self.moving_avg(x)
-        res = x - moving_mean
-        return res, moving_mean
-
-
-class moving_avg(nn.Module):
-    """
-    Moving average block to highlight the trend of time series
-    """
-
-    def __init__(self, kernel_size, stride):
-        super(moving_avg, self).__init__()
-        self.kernel_size = kernel_size
-        self.avg = nn.AvgPool1d(kernel_size=kernel_size, stride=stride, padding=0)
-
-    def forward(self, x):
-        # padding on the both ends of time series
-        front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
-        end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
-        x = torch.cat([front, x, end], dim=1)
-        x = self.avg(x.permute(0, 2, 1))
-        x = x.permute(0, 2, 1)
-        return x
-
-
 class AutoCorrelation(nn.Module):
     """
     AutoCorrelation Mechanism with the following two phases:
@@ -97,9 +31,11 @@ class AutoCorrelation(nn.Module):
         SpeedUp version of Autocorrelation (a batch-normalization style design)
         This is for the training phase.
         """
+        # values shape [batch, head, channel, Sequence length]
         head = values.shape[1]
         channel = values.shape[2]
         length = values.shape[3]
+
         # find top k
         top_k = int(self.factor * math.log(length))
         mean_value = torch.mean(torch.mean(corr, dim=1), dim=1)
@@ -181,7 +117,10 @@ class AutoCorrelation(nn.Module):
         )
         # find top k
         top_k = int(self.factor * math.log(length))
-        weights, delay = torch.topk(corr, top_k, dim=-1)
+        weights, delay = torch.topk(
+            corr, top_k, dim=-1
+        )  # return weights value and delay index
+
         # update corr
         tmp_corr = torch.softmax(weights, dim=-1)
         # aggregation
@@ -194,8 +133,9 @@ class AutoCorrelation(nn.Module):
         return delays_agg
 
     def forward(self, queries, keys, values, attn_mask):
-        B, L, H, E = queries.shape
-        _, S, _, D = values.shape
+        B, L, H, E = queries.shape  # BATCH, LENGTH, HEADS, EMBEDDING_SIZE
+        _, S, _, D = values.shape  # BATCH, 126, HEADS, 4
+
         if L > S:
             zeros = torch.zeros_like(queries[:, : (L - S), :]).float()
             values = torch.cat([values, zeros], dim=1)
@@ -224,6 +164,85 @@ class AutoCorrelation(nn.Module):
             return (V.contiguous(), corr.permute(0, 3, 1, 2))
         else:
             return (V.contiguous(), None)
+
+
+class AutoCorrelationLayer(nn.Module):
+    def __init__(
+        self,
+        correlation: AutoCorrelation,
+        d_model: int,
+        n_heads: int,
+        d_keys=None,
+        d_values=None,
+    ):
+        super(AutoCorrelationLayer, self).__init__()
+
+        d_keys = d_keys or (d_model // n_heads)
+        d_values = d_values or (d_model // n_heads)
+
+        self.inner_correlation = correlation
+        self.query_projection = nn.Linear(d_model, d_keys)
+        self.key_projection = nn.Linear(d_model, d_keys)
+        self.value_projection = nn.Linear(d_model, d_values)
+        self.out_projection = nn.Linear(d_values, d_model)
+        self.n_heads = n_heads
+
+    def forward(self, queries, keys, values, mask):
+        B, L, _ = queries.shape  # BATCH, LENGTH, EMBEDDING_SIZE
+        _, S, _ = keys.shape
+        H = self.n_heads
+
+        # self.query_projection(queries) = (B, L, H, d_keys)
+        queries = self.query_projection(queries).view(
+            B, L, H, -1
+        )  # (B, L, H, d_keys/H)
+        keys = self.key_projection(keys).view(B, S, H, -1)
+        values = self.value_projection(values).view(B, S, H, -1)
+
+        # print(queries.shape, keys.shape, values.shape)
+
+        out, attn = self.inner_correlation(queries, keys, values, mask)
+        out = out.view(B, L, -1)
+
+        # FIXME
+        # return self.out_projection(out), attn  # for encoderlayer
+        return self.out_projection(out)  # for transformerblock
+
+
+class series_decomp(nn.Module):
+    """
+    Series decomposition block
+    """
+
+    def __init__(self, kernel_size):
+        super(series_decomp, self).__init__()
+        self.moving_avg = moving_avg(kernel_size, stride=1)
+
+    def forward(self, x):
+        moving_mean = self.moving_avg(x)
+        res = x - moving_mean
+        return res, moving_mean
+
+
+class moving_avg(nn.Module):
+    """
+    Moving average block to highlight the trend of time series
+    """
+
+    def __init__(self, kernel_size, stride):
+        super(moving_avg, self).__init__()
+        self.kernel_size = kernel_size
+        self.avg = nn.AvgPool1d(kernel_size=kernel_size, stride=stride, padding=0)
+
+    def forward(self, x):
+        # padding on the both ends of time series
+        front = x[:, 0:1, :].repeat(1, (self.kernel_size - 1) // 2, 1)
+        end = x[:, -1:, :].repeat(1, (self.kernel_size - 1) // 2, 1)
+        x = torch.cat([front, x, end], dim=1)
+        x = self.avg(x.permute(0, 2, 1))
+        x = x.permute(0, 2, 1)
+        return x
+
 
 class EncoderLayer(nn.Module):
     """
@@ -263,4 +282,3 @@ class EncoderLayer(nn.Module):
         res, _ = self.decomp2(x + y)
         # return res, attn
         return res
-

@@ -78,7 +78,6 @@ def fit(
         deterministic=True,  # for reproducibility
     )
     trainer.fit(model, train_loader, val_loader)
-    # trainer.fit(model, train_loader)
 
     if testset != None:
         test_loader = DataLoader(

@@ -7,7 +7,7 @@ from src.configs import CACHE_PATH
 import numpy as np
 
 
-def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
+def train_tva2(model_params, trainer_config, recdata, callbacks=[]) -> None:
     latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
 
     # FIXME This can be store in the RecData class
