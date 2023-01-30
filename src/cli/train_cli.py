@@ -10,9 +10,7 @@ from src.models import Trainer
 def create_configs_from_template(
     model_path, data_class_name, data_class_stem, tune=False, config_name="default"
 ):
-    template_path = model_path / (
-        model_path.name.lower() + (".tune" if tune else "") + ".template.config.json"
-    )
+    template_path = model_path / (("tune." if tune else "") + "template.json")
 
     print(f"Creating configs from template {template_path}")
 
