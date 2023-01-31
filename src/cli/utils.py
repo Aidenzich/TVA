@@ -18,7 +18,7 @@ def get_configs(model_name):
         x
         for x in p
         if x.is_file()
-        and (model_name.lower() in str(x.name).split(".") and "config.json" in str(x))
+        and (model_name.lower() in str(x.name).split(".") and ".json" in str(x))
     ]
 
     return configs
@@ -43,6 +43,7 @@ def get_dataclass():
     data_classes_path = [x for x in p if x.is_file()]
     data_classes = [x.name for x in data_classes_path]
     return data_classes, data_classes_path
+
 
 def get_negative_samples():
     p = Path(NEGATIVE_SAMPLE_PATH).glob("*.pkl")
