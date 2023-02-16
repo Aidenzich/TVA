@@ -5,12 +5,11 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
+from src.configs import RED_COLOR, END_COLOR
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
-from ...modules.auto_correlation import AutoCorrelation, AutoCorrelationLayer
-from ...modules.utils import SublayerConnection
-from src.configs import RED_COLOR, END_COLOR
-from .utils import rpf1_for_ks
+from ...modules.transformer import TransformerBlock
+from ...metrics import rpf1_for_ks
 
 
 class TVAModel(pl.LightningModule):
@@ -27,6 +26,7 @@ class TVAModel(pl.LightningModule):
         dropout = model_params["dropout"]
         n_layers = model_params["n_layers"]
         user_latent_factor_params = model_params.get("user_latent_factor", None)
+        item_latent_factor_params = model_params.get("item_latent_factor", None)
 
         assert user_latent_factor_params is not None, (
             RED_COLOR + "user_latent_factor_params is None" + END_COLOR
@@ -41,6 +41,7 @@ class TVAModel(pl.LightningModule):
             heads=heads,
             dropout=dropout,
             user_latent_factor_dim=user_latent_factor_params.get("hidden_dim"),
+            item_latent_factor_dim=item_latent_factor_params.get("hidden_dim"),
         )
         self.out = nn.Linear(d_model, num_items + 1)
         self.lr_metric = 0
@@ -120,7 +121,8 @@ class TVA(nn.Module):
         d_model: int,
         dropout: float,
         user_latent_factor_dim: int,
-    ):
+        item_latent_factor_dim: int,
+    ) -> None:
         super().__init__()
 
         vocab_size = num_items + 2
@@ -132,6 +134,7 @@ class TVA(nn.Module):
             max_len=max_len,
             dropout=dropout,
             user_latent_factor_dim=user_latent_factor_dim,
+            item_latent_factor_dim=item_latent_factor_dim,
         )
 
         # multi-layers transformer blocks, deep network
@@ -176,31 +179,51 @@ class TVAEmbedding(nn.Module):
         :param dropout: dropout rate
         """
         super().__init__()
+
+        # parameters
         self.embed_size = embed_size
         self.max_len = max_len
+        self.user_latent_factor_dim = user_latent_factor_dim
+        self.item_latent_factor_dim = item_latent_factor_dim
 
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 4, embed_size)
-        self.user_latent_factor_dim = user_latent_factor_dim
+        self.out = nn.Linear(embed_size * 5, embed_size)
+
         self.latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
         self.time_interval = nn.Linear(1, embed_size)
 
+        self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
+
         self.ff = PositionwiseFeedForward(d_model=embed_size, d_ff=128, dropout=dropout)
         self.time_ff = PointWiseFeedForward(d_model=embed_size, dropout=dropout)
+        self.item_latent_emb_ff = PositionwiseFeedForward(
+            d_model=embed_size, d_ff=128, dropout=dropout
+        )
 
-        # self.latent_emb2 = nn.Linear(512, embed_size)
-        # self.tv_emb = nn.Linear(embed_size, embed_size)
-        # self.time = PositionalEmbedding(max_len=max_len, d_model=embed_size)
+        self.interval_sigmoid = nn.Sigmoid()
 
     def forward(self, batch):
         seqs = batch["item_seq"]
         time_interval_seqs = batch["time_interval_seq"]
         user_latent_factor = batch["userwise_latent_factor"]
+        item_latent_factor_seq = batch["itemwise_latent_factor_seq"]
 
         items = self.token(seqs)
+
+        assert user_latent_factor.shape[1] == self.user_latent_factor_dim * 2, (
+            RED_COLOR
+            + "user latent factor dim is not correct, please check model config"
+            + END_COLOR
+        )
+
+        assert item_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2, (
+            RED_COLOR
+            + "item latent factor dim is not match, please check model config"
+            + END_COLOR
+        )
 
         u_mu = F.softmax(user_latent_factor[:, : self.user_latent_factor_dim], dim=1)
         u_sigma = F.softmax(user_latent_factor[:, self.user_latent_factor_dim :], dim=1)
@@ -210,15 +233,21 @@ class TVAEmbedding(nn.Module):
 
         positions = self.position(seqs)
 
-        latent3 = self.latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
-        latent3 = self.ff(latent3)
+        user_latent = self.latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
+        user_latent = self.ff(user_latent)
+
+        time_interval_seqs = F.softmax(time_interval_seqs, dim=1)
         time_interval_seqs = time_interval_seqs.unsqueeze(2)
-        time_interval = self.time_ff(self.time_interval(time_interval_seqs))
-        # print(latent3.shape)
+        time_interval_seqs = self.time_interval(time_interval_seqs)
+
+        item_latent = self.item_latent_emb(item_latent_factor_seq)
+
         x = self.out(
-            torch.cat([items, positions, time_interval, latent3], dim=-1)
-            # torch.cat([items, positions, time_interval, latent, latent2], dim=-1)
-            # torch.cat([items, positions], dim=-1)
+            torch.cat(
+                [items, positions, user_latent, item_latent, time_interval_seqs],
+                dim=-1,
+            )
+            # torch.cat([items, positions, item_latent], dim=-1) # BEST
         )
 
         return self.dropout(x)
@@ -232,50 +261,3 @@ class TimeEmbedding(nn.Module):
     def forward(self, x) -> Tensor:
         batch_size = x.size(0)
         return self.te.weight.unsqueeze(0).repeat(batch_size, 1, 1)
-
-
-# Transformer
-class TransformerBlock(nn.Module):
-    """
-    Bidirectional Encoder = Transformer (self-attention)
-    Transformer = MultiHead_Attention + Feed_Forward with sublayer connection
-    """
-
-    def __init__(self, d_model, attn_heads, feed_forward_hidden, dropout):
-        """
-        :param d_model: hidden size of transformer
-        :param attn_heads: head sizes of multi-head attention
-        :param feed_forward_hidden: feed_forward_hidden, usually 4*d_model
-        :param dropout: dropout rate
-        """
-
-        super().__init__()
-        # self.attention = MultiHeadedAttention(
-        #     h=attn_heads, d_model=hidden, dropout=dropout
-        # )
-
-        # 5 0.16039377450942993
-        # 3 0.1609904021024704
-        # 1 0.1555
-        self.attention = AutoCorrelationLayer(
-            AutoCorrelation(True, 1, attention_dropout=dropout, output_attention=True),
-            d_model,
-            attn_heads,
-        )
-
-        self.feed_forward = PositionwiseFeedForward(
-            d_model=d_model, d_ff=feed_forward_hidden, dropout=dropout
-        )
-        self.input_sublayer = SublayerConnection(size=d_model, dropout=dropout)
-        self.output_sublayer = SublayerConnection(size=d_model, dropout=dropout)
-        self.dropout = nn.Dropout(p=dropout)
-
-    def forward(self, x, mask):
-
-        x = self.input_sublayer(
-            x, lambda _x: self.attention.forward(_x, _x, _x, mask=mask)
-        )
-
-        x = self.output_sublayer(x, self.feed_forward)
-
-        return self.dropout(x)

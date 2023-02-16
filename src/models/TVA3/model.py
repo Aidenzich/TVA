@@ -10,7 +10,7 @@ from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
 from ...modules.auto_correlation import AutoCorrelation, AutoCorrelationLayer
 from ...modules.utils import SublayerConnection
 from src.configs import RED_COLOR, END_COLOR
-from .utils import rpf1_for_ks
+from ...metrics import rpf1_for_ks
 
 
 class TVAModel(pl.LightningModule):

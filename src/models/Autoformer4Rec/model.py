@@ -3,7 +3,7 @@ import torch.nn.functional as F
 import torch.nn as nn
 import torch
 import math
-from .utils import rpf1_for_ks
+from ...metrics import rpf1_for_ks
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
 from ...modules.auto_correlation import AutoCorrelation, AutoCorrelationLayer

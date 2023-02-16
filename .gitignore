@@ -205,3 +205,5 @@ logs/*
 **/*.npy
 **/*.zip
 **/*.jsonl
+
+cache/

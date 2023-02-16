@@ -2,21 +2,55 @@ from src.datasets.matrix_dset import MatrixDataset
 from src.models.VAECF.model import VAECFModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
+from src.datasets.common import RecsysData
 import numpy as np
+import random
+
+
+def _split_matrix_by_item(recdata: RecsysData):
+    """
+    Splitting matrix by random shuffle user for train, testing and validation
+    """
+
+    print("Splitting matrix by random shuffle user for train, testing and validation")
+
+    # split to train val and test
+    users = list(recdata.i2cat.values())
+
+    random.shuffle(users)
+    train_num = int(len(users) * 0.98)
+    test_num = int(len(users) * 0.01)
+    # val_num = len(users) - train_num - test_num
+    # print(len(users[:train_num]))
+
+    train_users = users[:train_num]
+    test_users = users[-test_num:]
+    val_users = users[train_num:-test_num]
+
+    matrix = recdata.matrix.transpose()
+
+    train_matrix = matrix[train_users, :]
+    test_matrix = matrix[test_users, :]
+    val_matrix = matrix[val_users, :]
+
+    return train_matrix, test_matrix, val_matrix
 
 
 def train_vaecf(
     model_params: dict,
     trainer_config: dict,
-    recdata,
+    recdata: RecsysData,
     callbacks: list = [],
 ) -> None:
-    trainset = MatrixDataset(recdata.train_matrix)
-    testset = MatrixDataset(recdata.test_matrix)
-    valset = MatrixDataset(recdata.val_matrix)
+
+    train_matrix, test_matrix, val_matrix = _split_matrix_by_item(recdata)
+
+    trainset = MatrixDataset(train_matrix)
+    testset = MatrixDataset(test_matrix)
+    valset = MatrixDataset(val_matrix)
     model = VAECFModel(
         hidden_dim=model_params["hidden_dim"],
-        item_dim=recdata.num_items,
+        item_dim=recdata.num_users,
         act_fn=model_params["act_fn"],
         autoencoder_structure=model_params["autoencoder_structure"],
         likelihood=model_params["likelihood"],
@@ -43,10 +77,13 @@ def infer_vaecf(ckpt_path, recdata, rec_ks=100):
     latent_factor_path.mkdir(parents=True, exist_ok=False)
 
     device = torch.device("cuda:0")
-    inferset = MatrixDataset(recdata.matrix)
+    matrix = recdata.matrix.transpose()
+
+    inferset = MatrixDataset(matrix)
     model = VAECFModel.load_from_checkpoint(ckpt_path)
     infer_loader = DataLoader(inferset, batch_size=3096, shuffle=False, pin_memory=True)
     model.to(device)
+
     predict_result: dict = {}
     user_count = 0
 

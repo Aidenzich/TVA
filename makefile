@@ -44,3 +44,6 @@ cleanall:
 	rm -rf data/cache/nsample/*
 	rm -rf configs/*
 	rm -rf out/*
+
+panel:
+	tensorboard --logdir=logs

@@ -1,0 +1,56 @@
+{
+    "data_class": "",
+    "trainer_config": {
+        "tune": {
+            "metrics": {
+                "recall": "vae_recall@100",
+                "loss": "train_loss"
+            },
+            "resources_per_trial": {
+                "cpu": 12,
+                "gpu": 1
+            },
+            "tune_config": {
+                "metric": "loss",
+                "mode": "min",
+                "num_samples": 4
+            }
+        },
+        "early_stopping": {
+            "monitor": "train_loss",
+            "patience": 10,
+            "verbose": false,
+            "mode": "min"
+        },
+        "limit_train_batches": 1.0,
+        "max_epochs": 10,
+        "num_workers": 12,
+        "seed": 12345
+    },
+    "model_params": {
+        "batch_size": 64,
+        "hidden_dim": [
+            16,
+            64,
+            128,
+            512,
+            1024
+        ],
+        "act_fn": [
+            "tanh",
+            "sigmoid",
+            "relu"
+        ],
+        "autoencoder_structure": [
+            [
+                1000
+            ]
+        ],
+        "likelihood": [
+            "mult",
+            "gaus",
+            "pois"
+        ],
+        "beta": 0.8
+    }
+}

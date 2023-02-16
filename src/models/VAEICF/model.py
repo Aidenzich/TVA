@@ -31,7 +31,6 @@ class VAECFModel(pl.LightningModule):
             likelihood=self.likelihood,
         )
         self.top_k = 30
-        print("item_dim is ", "=" * 30, item_dim, "=" * 30)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)

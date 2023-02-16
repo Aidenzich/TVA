@@ -1,0 +1,19 @@
+{
+    "data_class": "carrefour_sales_cls.pkl",
+    "trainer_config": {
+        "limit_train_batches": 1.0,
+        "max_epochs": 10,
+        "num_workers": 12,
+        "seed": 12345
+    },
+    "model_params": {
+        "batch_size": 64,
+        "hidden_dim": 512,
+        "act_fn": "tanh",
+        "autoencoder_structure": [
+            512
+        ],
+        "likelihood": "mult",
+        "beta": 0.87
+    }
+}

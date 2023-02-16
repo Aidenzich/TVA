@@ -1,5 +1,5 @@
 from torch import ne
-from src.datasets.vaeseq_dset import VAESequenceDataset
+from src.datasets.tvaseq_dset import TVASequenceDataset
 from src.datasets.negative_sampler import NegativeSampler
 from .model import TVAModel
 from src.adapters.lightning_adapter import fit
@@ -7,10 +7,15 @@ from src.configs import CACHE_PATH
 import numpy as np
 
 
-def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
+def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
     latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
+    latent_factor = np.load(
+        "/home/aiden/External/TVA/logs/vaecf.default.movielens_cls/version_2/latent_factor/movielens_latent_factor.npy"
+    )
+    item_latent_factor = np.load(
+        "/home/aiden/External/TVA/logs/default.vaeicf.movielens_cls/version_0/latent_factor/movielens_latent_factor.npy"
+    )
 
-    # FIXME This can be store in the RecData class
     test_negative_sampler = NegativeSampler(
         train=recdata.train_seqs,
         val=recdata.val_seqs,
@@ -24,7 +29,7 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
 
     test_negative_samples = test_negative_sampler.get_negative_samples()
 
-    trainset = VAESequenceDataset(
+    trainset = TVASequenceDataset(
         mode="train",
         max_len=model_params["max_len"],
         mask_prob=model_params["mask_prob"],
@@ -34,9 +39,10 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         seed=trainer_config["seed"],
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
+        item_latent_factor=item_latent_factor,
     )
 
-    valset = VAESequenceDataset(
+    valset = TVASequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
@@ -46,9 +52,10 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],
+        item_latent_factor=item_latent_factor,
     )
 
-    testset = VAESequenceDataset(
+    testset = TVASequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
@@ -58,6 +65,7 @@ def train_tva2(model_params, trainer_config, recdata, callbacks=[]):
         u2timeseq=recdata.train_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],
+        item_latent_factor=item_latent_factor,
     )
 
     model = TVAModel(
@@ -108,7 +116,7 @@ def infer_tva2(ckpt_path, recdata, rec_ks=10, negative_samples=None):
 
     variance = np.load(CACHE_PATH / "variance.npy")
 
-    inferset = VAESequenceDataset(
+    inferset = TVASequenceDataset(
         mode="inference",
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
