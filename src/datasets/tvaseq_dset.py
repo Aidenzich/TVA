@@ -5,17 +5,25 @@ from typing import Dict, List, Tuple, Any, Optional
 import random
 from pydantic import BaseModel, ValidationError
 import numpy as np
+import datetime
 
 
 class TVASequences(BaseModel):
     userwise_latent_factor: Optional[torch.FloatTensor]
     itemwise_latent_factor_seq: Optional[torch.FloatTensor]
-    time_interval_seq: Optional[torch.FloatTensor]
-    candidates: Optional[torch.LongTensor]
     time_seq: Optional[torch.FloatTensor]
+    time_interval_seq: Optional[torch.LongTensor]
+    candidates: Optional[torch.LongTensor]
     item_seq: Optional[torch.LongTensor]
     vae_seq: Optional[torch.LongTensor]
     labels: Optional[torch.LongTensor]
+    years: Optional[torch.LongTensor]
+    months: Optional[torch.LongTensor]
+    days: Optional[torch.LongTensor]
+    seasons: Optional[torch.LongTensor]
+    hours: Optional[torch.LongTensor]
+    minutes: Optional[torch.LongTensor]
+    seconds: Optional[torch.LongTensor]
 
     class Config:
         arbitrary_types_allowed = True
@@ -38,6 +46,7 @@ class TVASequenceDataset(Dataset):
         u2answer=None,
         latent_factor=None,
         item_latent_factor=None,
+        u2eval_time=None,
     ) -> None:
 
         if mode == "eval":
@@ -58,6 +67,7 @@ class TVASequenceDataset(Dataset):
         self.negative_samples = negative_samples
         self.u2answer = u2answer
         self.u2time_seq = u2timeseq
+        self.u2eval_time = u2eval_time
         self.latent_factor = latent_factor
         self.item_latent_factor = item_latent_factor
 
@@ -82,10 +92,13 @@ class TVASequenceDataset(Dataset):
 
         # Time interval sequence
         time_seq = self.u2time_seq[user]
+
         time_interval_seq = [0] + [
-            time_seq[i] - time_seq[i - 1] for i in range(1, len(time_seq))
+            int((time_seq[i] - time_seq[i - 1]) / 100000)
+            for i in range(1, len(time_seq))
         ]
 
+        # print(time_interval_seq)
         if self.mode == "eval":
             # candidates: candidates from negative sampling
             answer = self.u2answer[user]
@@ -101,8 +114,12 @@ class TVASequenceDataset(Dataset):
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
 
+            # FIXME
+            val_time = self.u2eval_time[user]
+
             # time_seq: timestamps of user's sequence
-            time_seq = time_seq + [0]
+            # time_seq = time_seq + [0]
+            time_seq = time_seq + val_time
             time_seq = time_seq[-self.max_len :]
             time_seq = [0] * padding_len + time_seq
 
@@ -119,15 +136,49 @@ class TVASequenceDataset(Dataset):
                 zero_latent_factor for _ in range(padding_len)
             ] + item_latent_factor_seq
 
+            # FIXME: This is a temporary solution
+            dates = [datetime.datetime.fromtimestamp(t) for t in time_seq]
+            years = [d.year if d is not None else 0 for d in dates]
+            months = [d.month if d is not None else 0 for d in dates]
+            days = [d.day if d is not None else 0 for d in dates]
+            hours = [d.hour if d is not None else 0 for d in dates]
+            minutes = [d.minute if d is not None else 0 for d in dates]
+            seconds = [d.second if d is not None else 0 for d in dates]
+
+            seasons = []
+            for month in months:
+                if month in [3, 4, 5]:
+                    seasons.append(1)
+                elif month in [6, 7, 8]:
+                    seasons.append(2)
+                elif month in [9, 10, 11]:
+                    seasons.append(3)
+                else:  # month in [12, 1, 2]
+                    seasons.append(4)
+
             data = {
                 "item_seq": torch.LongTensor(seq),
                 "time_seq": torch.FloatTensor(time_seq),
-                "time_interval_seq": torch.FloatTensor(time_interval_seq),
+                "time_interval_seq": torch.LongTensor(time_interval_seq),
                 "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
                 "itemwise_latent_factor_seq": torch.FloatTensor(item_latent_factor_seq),
                 "candidates": torch.LongTensor(candidates),
                 "labels": torch.LongTensor(labels),
+                "years": torch.LongTensor(years),
+                "months": torch.LongTensor(months),
+                "days": torch.LongTensor(days),
+                "hours": torch.LongTensor(hours),
+                "minutes": torch.LongTensor(minutes),
+                "seconds": torch.LongTensor(seconds),
+                "seasons": torch.LongTensor(seasons),
             }
+
+            # print(
+            #     data["years"].shape,
+            #     data["months"].shape,
+            #     data["days"].shape,
+            #     data["seasons"].shape,
+            # )
 
             return TVASequences(**data).dict(exclude_none=True)
 
@@ -135,8 +186,11 @@ class TVASequenceDataset(Dataset):
             train_item_seq = []
             labels = []
 
-            train_time_seq = []
             train_time_interval_seq = []
+            train_time_interval_seq = time_interval_seq
+
+            # train_time_seq = []
+            train_time_seq = time_seq
 
             train_item_latent_seq = []
 
@@ -148,40 +202,46 @@ class TVASequenceDataset(Dataset):
 
                     if prob < 0.8:
                         train_item_seq.append(self.mask_token)
-                        train_time_seq.append(0)
-                        train_time_interval_seq.append(0)
                         train_item_latent_seq.append(zero_latent_factor)
+
+                        # train_time_seq.append(0)
+                        # train_time_interval_seq.append(0)
 
                     elif prob < 0.9:
                         train_item_seq.append(self.rng.randint(1, self.num_items))
-                        train_time_seq.append(0)
-                        train_time_interval_seq.append(0)
                         train_item_latent_seq.append(zero_latent_factor)
+
+                        # train_time_seq.append(0)
+                        # train_time_interval_seq.append(0)
 
                     else:
                         train_item_seq.append(s)
-                        train_time_seq.append(time_seq[idx])
-                        train_time_interval_seq.append(time_interval_seq[idx])
                         train_item_latent_seq.append(item_latent_factor_seq[idx])
+
+                        # train_time_seq.append(time_seq[idx])
+                        # train_time_interval_seq.append(time_interval_seq[idx])
 
                     labels.append(s)
                 else:
                     train_item_seq.append(s)
                     labels.append(0)
-                    train_time_seq.append(time_seq[idx])
-                    train_time_interval_seq.append(time_interval_seq[idx])
                     train_item_latent_seq.append(item_latent_factor_seq[idx])
+
+                    # train_time_seq.append(time_seq[idx])
+                    # train_time_interval_seq.append(time_interval_seq[idx])
 
             train_item_seq = train_item_seq[-self.max_len :]
             labels = labels[-self.max_len :]
+            train_item_latent_seq = train_item_latent_seq[-self.max_len :]
+
             train_time_seq = train_time_seq[-self.max_len :]
             train_time_interval_seq = train_time_interval_seq[-self.max_len :]
-            train_item_latent_seq = train_item_latent_seq[-self.max_len :]
 
             mask_len = self.max_len - len(train_item_seq)
 
             train_item_seq = [0] * mask_len + train_item_seq
             labels = [0] * mask_len + labels
+
             train_time_seq = [0] * mask_len + train_time_seq
             train_time_interval_seq = [0] * mask_len + train_time_interval_seq
 
@@ -190,15 +250,49 @@ class TVASequenceDataset(Dataset):
                 zero_latent_factor for _ in range(mask_len)
             ] + train_item_latent_seq
 
+            # FIXME: This is a temporary solution
+            dates = [datetime.datetime.fromtimestamp(t) for t in train_time_seq]
+
+            years = [d.year if d is not None else 0 for d in dates]
+            months = [d.month if d is not None else 0 for d in dates]
+            days = [d.day if d is not None else 0 for d in dates]
+            hours = [d.hour if d is not None else 0 for d in dates]
+            minutes = [d.minute if d is not None else 0 for d in dates]
+            seconds = [d.second if d is not None else 0 for d in dates]
+
+            seasons = []
+            for month in months:
+                if month in [3, 4, 5]:
+                    seasons.append(1)
+                elif month in [6, 7, 8]:
+                    seasons.append(2)
+                elif month in [9, 10, 11]:
+                    seasons.append(3)
+                else:  # month in [12, 1, 2]
+                    seasons.append(4)
+
             data = {
                 "item_seq": torch.LongTensor(train_item_seq),
                 "time_seq": torch.FloatTensor(train_time_seq),
-                "time_interval_seq": torch.FloatTensor(train_time_interval_seq),
+                "time_interval_seq": torch.LongTensor(train_time_interval_seq),
                 "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
                 "itemwise_latent_factor_seq": torch.FloatTensor(train_item_latent_seq),
                 "labels": torch.LongTensor(labels),
+                "years": torch.LongTensor(years),
+                "months": torch.LongTensor(months),
+                "days": torch.LongTensor(days),
+                "hours": torch.LongTensor(hours),
+                "minutes": torch.LongTensor(minutes),
+                "seconds": torch.LongTensor(seconds),
+                "seasons": torch.LongTensor(seasons),
             }
 
+            # print(
+            #     data["years"].shape,
+            #     data["months"].shape,
+            #     data["days"].shape,
+            #     data["seasons"].shape,
+            # )
             return TVASequences(**data).dict(exclude_none=True)
 
         if self.mode == "inference":
@@ -211,7 +305,7 @@ class TVASequenceDataset(Dataset):
             data = {
                 "item_seq": torch.LongTensor(seq),
                 "time_seq": torch.FloatTensor(train_time_seq),
-                "time_interval_seq": torch.FloatTensor(train_time_interval_seq),
+                "time_interval_seq": torch.LongTensor(train_time_interval_seq),
                 "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
                 "itemwise_latent_factor_seq": torch.FloatTensor(item_latent_factor_seq),
                 "candidates": torch.LongTensor(candidates),

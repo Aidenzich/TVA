@@ -1,0 +1,26 @@
+{
+  "data_class": "movielens_cls.pkl",
+  "trainer_config": {
+    "limit_train_batches": 1.0,
+    "max_epochs": 60,
+    "sample_size": 100,
+    "sample_method": "random",
+    "seed": 127,
+    "num_workers": 12
+  },
+  "model_params": {
+    "mask_prob": 0.15,
+    "d_model": 128,
+    "n_layers": 2,
+    "dropout": 0.2,
+    "heads": 8,
+    "max_len": 100,
+    "batch_size": 128,
+    "user_latent_factor": {
+      "hidden_dim": 20
+    },
+    "item_latent_factor": {
+      "hidden_dim": 20
+    }
+  }
+}

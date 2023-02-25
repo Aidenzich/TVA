@@ -1,8 +1,7 @@
 from .BERT4Rec import train_bert4rec, infer_bert4rec
 from .VAECF import train_vaecf, infer_vaecf
-from .TVA2 import train_tva2, infer_tva2
-from .TVA3 import train_tva2 as train_tva3
 from .TVA4 import train_tva4 as train_tva4
+from .TVA5 import train as train_tva5
 from .Autoformer4Rec import train as train_auto
 from .VAEICF import train_vaecf as train_vaeicf, infer_vaecf as infer_vaeicf
 
@@ -10,9 +9,8 @@ TRAIN_FACTORY = {
     "bert4rec": train_bert4rec,
     "vaecf": train_vaecf,
     "vaeicf": train_vaeicf,
-    "tva2": train_tva2,
-    "tva3": train_tva3,
     "tva4": train_tva4,
+    "tva5": train_tva5,
     "autoformer4rec": train_auto,
 }
 
@@ -20,7 +18,6 @@ TRAIN_FACTORY = {
 INFER_FACTORY = {
     "bert4rec": infer_bert4rec,
     "vaecf": infer_vaecf,
-    "tva": infer_tva2,
     "vaeicf": infer_vaeicf,
 }
 

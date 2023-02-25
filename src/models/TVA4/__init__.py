@@ -8,12 +8,23 @@ import numpy as np
 
 
 def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
-    latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
+    # latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
+    # TEMP:  FOR MOVIELENS
     latent_factor = np.load(
         "/home/aiden/External/TVA/logs/vaecf.default.movielens_cls/version_2/latent_factor/movielens_latent_factor.npy"
     )
+
     item_latent_factor = np.load(
         "/home/aiden/External/TVA/logs/default.vaeicf.movielens_cls/version_0/latent_factor/movielens_latent_factor.npy"
+    )
+
+    # TEMP: FOR BEUTIFUL DATA
+    latent_factor = np.load(
+        "/home/aiden/External/TVA/logs/vaecf.default.beauty_cls/version_0/latent_factor/beauty_latent_factor.npy"
+    )
+
+    item_latent_factor = np.load(
+        "/home/aiden/External/TVA/logs/default.vaeicf.beauty_cls/version_0/latent_factor/beauty_latent_factor.npy"
     )
 
     test_negative_sampler = NegativeSampler(
