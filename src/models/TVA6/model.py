@@ -8,7 +8,8 @@ from torch import Tensor
 from src.configs import RED_COLOR, END_COLOR
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
-from ...modules.transformer import TransformerBlock
+
+from ...modules.time_transformer import TimeTransformerBlock
 from ...metrics import rpf1_for_ks
 
 
@@ -22,7 +23,9 @@ class TVAModel(pl.LightningModule):
         self.save_hyperparameters()
         max_len = model_params["max_len"]
         d_model = model_params["d_model"]
-        heads = model_params["heads"]
+
+        # Time heads
+        heads = 4
         dropout = model_params["dropout"]
         n_layers = model_params["n_layers"]
         user_latent_factor_params = model_params.get("user_latent_factor", None)
@@ -140,7 +143,12 @@ class TVA(nn.Module):
         # multi-layers transformer blocks, deep network
         self.transformer_blocks = nn.ModuleList(
             [
-                TransformerBlock(d_model, heads, d_model * 4, dropout)
+                TimeTransformerBlock(
+                    d_model=d_model,
+                    attn_heads=heads,
+                    feed_forward_hidden=d_model * 4,
+                    dropout=dropout,
+                )
                 for _ in range(n_layers)
             ]
         )
@@ -150,11 +158,11 @@ class TVA(nn.Module):
         mask = (seqs > 0).unsqueeze(1).repeat(1, seqs.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(batch=batch)
+        x, times = self.embedding(batch=batch)
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
-            x = transformer.forward(x, mask)
+            x = transformer.forward(x=x, times=times, mask=mask)
 
         return x
 
@@ -190,14 +198,14 @@ class TVAEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 5, embed_size)
+        self.out = nn.Linear(embed_size * 4, embed_size)
 
         self.latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
-        # self.time_interval = nn.Linear(1, embed_size)
 
         self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
 
         self.ff = PositionwiseFeedForward(d_model=embed_size, d_ff=128, dropout=dropout)
+
         self.item_latent_emb_ff = PositionwiseFeedForward(
             d_model=embed_size, d_ff=128, dropout=dropout
         )
@@ -214,6 +222,7 @@ class TVAEmbedding(nn.Module):
 
     def forward(self, batch):
         seqs = batch["item_seq"]
+
         user_latent_factor = batch["userwise_latent_factor"]
         item_latent_factor_seq = batch["itemwise_latent_factor_seq"]
 
@@ -263,7 +272,6 @@ class TVAEmbedding(nn.Module):
         x = self.out(
             torch.cat(
                 [
-                    2 * (months + days),
                     items,
                     positions,
                     user_latent,
@@ -273,4 +281,7 @@ class TVAEmbedding(nn.Module):
             )
         )
 
-        return self.dropout(x)
+        return (
+            self.dropout(x),
+            (days, seasons, years, hours),
+        )

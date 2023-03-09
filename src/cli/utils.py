@@ -6,8 +6,9 @@ AVAILABLE_EXTENSIONS = ["csv", "pickle", "pkl"]
 
 def get_models():
     p = Path(r"./src/models/").iterdir()
-    model_paths = [x for x in p if x.is_dir() and "__" not in str(x)]
+    model_paths = sorted([x for x in p if x.is_dir() and "__" not in str(x)])
     models = [x.name for x in model_paths]
+
     return models, model_paths
 
 

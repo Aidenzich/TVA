@@ -1,10 +1,12 @@
 import torch.nn as nn
-from .attention import MultiHeadedAttention
+
+# from .attention import MultiHeadedAttention
+from .time_attention import MultiHeadedTimeAttention
 from .utils import SublayerConnection
 from .feedforward import PositionwiseFeedForward
 
-# Transformer
-class TransformerBlock(nn.Module):
+# Time-aware Transformer
+class TimeTransformerBlock(nn.Module):
     """
     Bidirectional Encoder = Transformer (self-attention)
     Transformer = MultiHead_Attention + Feed_Forward with sublayer connection
@@ -19,7 +21,7 @@ class TransformerBlock(nn.Module):
         """
 
         super().__init__()
-        self.attention = MultiHeadedAttention(
+        self.attention = MultiHeadedTimeAttention(
             h=attn_heads, d_model=d_model, dropout=dropout
         )
 
@@ -30,10 +32,10 @@ class TransformerBlock(nn.Module):
         self.output_sublayer = SublayerConnection(size=d_model, dropout=dropout)
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, x, mask):
+    def forward(self, x, times, mask):
 
         x = self.input_sublayer(
-            x, lambda _x: self.attention.forward(_x, _x, _x, mask=mask)
+            x, lambda _x: self.attention.forward(_x, _x, _x, times, mask=mask)
         )
 
         x = self.output_sublayer(x, self.feed_forward)

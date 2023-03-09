@@ -5,6 +5,9 @@ import inquirer
 from .utils import get_models, get_configs, get_dataclass
 from src.configs import DATACLASS_PATH, CONFIG_PATH
 from src.models import Trainer
+import warnings
+
+warnings.filterwarnings("ignore", ".*(log_every_n_steps).*")
 
 
 def create_configs_from_template(
@@ -18,8 +21,8 @@ def create_configs_from_template(
     config["data_class"] = data_class_name
     new_config_path = CONFIG_PATH / (
         f"{config_name}"
-        + f".{model_path.name.lower()}"  # model name
         + f".{data_class_stem}"  # data class name
+        + f".{model_path.name.lower()}"  # model name
         + (".tune" if tune else "")  # tune or not
         + ".json"
     )

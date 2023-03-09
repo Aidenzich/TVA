@@ -13,6 +13,7 @@ from ..configs import (
     TIMESTAMP_COLUMN_NAME,
     DATACLASS_PATH,
     RED_COLOR,
+    CYAN_COLOR,
     END_COLOR,
 )
 
@@ -35,6 +36,7 @@ class RecsysData:
         # dataset info
         self.max_length = max(df[USER_COLUMN_NAME].value_counts())
         self.min_length = min(df[USER_COLUMN_NAME].value_counts())
+        self.mean_length = np.mean(df[USER_COLUMN_NAME].value_counts())
         self.num_users = len(self.u2cat)
         self.num_items = len(self.i2cat)
 
@@ -59,31 +61,47 @@ class RecsysData:
         items, maximum and minimum lengths of sequences, number of sequences per user, and total 
         number of sessions. This information is printed in an organized format using the "orgtbl" table format.
         """
-        print(RED_COLOR)
+        print(CYAN_COLOR)
         print()
         print(
             tabulate(
                 [
                     [
+                        "num_users", 
                         self.num_users,
+                    ],
+                    [
+                        "num_items",
                         self.num_items,
-                        self.max_length,
-                        self.min_length,
-                        self.seqs_user_num,
-                        len(self.dataframe),
+                    ],
+                    [
+                        "mean_length",
+                        self.mean_length    
+                    ],
+                    [
+                        "max_length",
+                        self.max_length
+                    ], 
+                    [
+                        "min_length",
+                        self.min_length
+                    ], 
+                    [
+                        "seqs_user_num",
+                        self.seqs_user_num
+                    ], 
+                    [
+                        "total_session_num",
+                        len(self.dataframe)
                     ]
                 ],
                 headers=[
-                    "num_users",
-                    "num_items",
-                    "max_length",
-                    "min_length",
-                    "seqs_user_num",
-                    "total_session_num",
+                    "property", "value"
                 ],
-                tablefmt="orgtbl",
+                tablefmt="heavy_outline",
+                numalign="right"
             ),
-            "\n",
+            
         )
         print(END_COLOR)
 

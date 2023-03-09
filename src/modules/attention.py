@@ -47,7 +47,8 @@ class MultiHeadedAttention(nn.Module):
     def forward(self, query, key, value, mask=None):
         batch_size = query.size(0)
 
-        # 1) Do all the linear projections in batch from d_model => h x d_k
+        # 1) Do all the linear projections in batch
+        # from (batch_size, seq_len, d_model) => (batch_size, h, seq_len, d_k)
         query, key, value = [
             l(x).view(batch_size, -1, self.h, self.d_k).transpose(1, 2)
             for l, x in zip(self.linear_layers, (query, key, value))

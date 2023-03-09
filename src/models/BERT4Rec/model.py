@@ -4,7 +4,7 @@ import torch.nn as nn
 import torch
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
-from ...modules.attetion import MultiHeadedAttention
+from ...modules.attention import MultiHeadedAttention
 from ...modules.utils import SublayerConnection
 from ...metrics import rpf1_for_ks
 
