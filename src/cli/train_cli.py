@@ -20,9 +20,9 @@ def create_configs_from_template(
     config = json.load(open(template_path, "r"))
     config["data_class"] = data_class_name
     new_config_path = CONFIG_PATH / (
-        f"{config_name}"
-        + f".{data_class_stem}"  # data class name
+        f"{data_class_stem}"  # data class name
         + f".{model_path.name.lower()}"  # model name
+        + f".{config_name}"
         + (".tune" if tune else "")  # tune or not
         + ".json"
     )

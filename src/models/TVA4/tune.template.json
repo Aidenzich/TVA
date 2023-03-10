@@ -1,5 +1,5 @@
 {
-    "data_class": "carrefour_all_cls.pkl",
+    "data_class": "carrefour_all.pkl",
     "trainer_config": {
         "tune": {
             "metrics": {

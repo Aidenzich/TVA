@@ -324,7 +324,7 @@ class RecsysData:
             pickle.dump(self, f)
 
     def _get_save_path(self) -> Path:
-        savename = self.filename + "_cls.pkl"
+        savename = self.filename + ".pkl"
         return DATACLASS_PATH / savename
 
     @staticmethod

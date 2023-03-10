@@ -10,22 +10,22 @@ import numpy as np
 def train(model_params, trainer_config, recdata, callbacks=[]):
     # latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
     # FIXME:  FOR MOVIELENS
-    latent_factor = np.load(
-        "/home/aiden/External/TVA/logs/default.vaecf.movielens_cls/version_5/latent_factor/movielens_latent_factor.npy"
-    )
-
-    item_latent_factor = np.load(
-        "/home/aiden/External/TVA/logs/default.vaeicf.movielens_cls/version_0/latent_factor/movielens_latent_factor.npy"
-    )
-
-    # FIXME: FOR BEUTIFUL DATA
     # latent_factor = np.load(
-    #     "/home/aiden/External/TVA/logs/vaecf.default.beauty_cls/version_0/latent_factor/beauty_latent_factor.npy"
+    #     "/home/aiden/External/TVA/logs/default.vaecf.movielens_cls/version_5/latent_factor/movielens_latent_factor.npy"
     # )
 
     # item_latent_factor = np.load(
-    #     "/home/aiden/External/TVA/logs/default.vaeicf.beauty_cls/version_0/latent_factor/beauty_latent_factor.npy"
+    #     "/home/aiden/External/TVA/logs/default.vaeicf.movielens_cls/version_0/latent_factor/movielens_latent_factor.npy"
     # )
+
+    # FIXME: FOR BEUTIFUL DATA
+    latent_factor = np.load(
+        "/home/aiden/External/TVA/logs/default.vaecf.beauty/version_0/latent_factor/beauty_latent_factor.npy"
+    )
+
+    item_latent_factor = np.load(
+        "/home/aiden/External/TVA/logs/default.vaeicf.beauty/version_0/latent_factor/beauty_latent_factor.npy"
+    )
 
     test_negative_sampler = NegativeSampler(
         train=recdata.train_seqs,
