@@ -9,7 +9,7 @@ from src.configs import RED_COLOR, END_COLOR
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
 from ...modules.transformer import TransformerBlock
-from ...metrics import rpf1_for_ks
+from ...metrics import rpf1_for_ks, METRICS_KS
 
 
 class TVAModel(pl.LightningModule):
@@ -92,7 +92,7 @@ class TVAModel(pl.LightningModule):
         scores = self.forward(batch=batch)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = rpf1_for_ks(scores, labels, [1, 5, 10, 20, 30, 50])
+        metrics = rpf1_for_ks(scores, labels, METRICS_KS)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
@@ -105,7 +105,7 @@ class TVAModel(pl.LightningModule):
         scores = self.forward(batch=batch)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = rpf1_for_ks(scores, labels, [1, 5, 10, 20, 30, 50])
+        metrics = rpf1_for_ks(scores, labels, METRICS_KS)
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
                 self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))

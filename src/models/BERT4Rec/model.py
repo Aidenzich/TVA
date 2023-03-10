@@ -6,7 +6,7 @@ from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
 from ...modules.attention import MultiHeadedAttention
 from ...modules.utils import SublayerConnection
-from ...metrics import rpf1_for_ks
+from ...metrics import rpf1_for_ks, METRICS_KS
 
 # BERTModel
 class BERTModel(pl.LightningModule):
@@ -77,8 +77,7 @@ class BERTModel(pl.LightningModule):
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
-        # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
+        metrics = rpf1_for_ks(scores, labels, METRICS_KS)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
@@ -89,8 +88,8 @@ class BERTModel(pl.LightningModule):
         scores = self.forward(seqs)  # B x T x V
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
-        metrics = rpf1_for_ks(scores, labels, [1, 10, 20, 30, 50])
-        # metrics = recalls_and_ndcgs_for_ks(scores, labels, [1, 10, 20, 50])
+        metrics = rpf1_for_ks(scores, labels, METRICS_KS)
+
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
                 self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))

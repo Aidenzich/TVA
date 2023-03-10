@@ -1,5 +1,7 @@
 import torch
 
+METRICS_KS = [1, 5, 10, 20, 30, 50]
+
 
 def rpf1_for_ks(scores: torch.tensor, labels: torch.tensor, ks):
     # BATCH, SAMPLE_SIZE + 1

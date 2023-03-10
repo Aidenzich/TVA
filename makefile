@@ -46,4 +46,4 @@ cleanall:
 	rm -rf out/*
 
 panel:
-	tensorboard --logdir=logs
+	python3 -m tensorboard.main --logdir=logs
