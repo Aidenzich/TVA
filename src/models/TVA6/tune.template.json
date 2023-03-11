@@ -28,7 +28,8 @@
         "sample_size": 100,
         "sample_method": "random",
         "seed": 12345,
-        "num_workers": 12
+        "num_workers": 12,
+        "devices": [0]
     },
     "model_params": {
         "batch_size": 4,

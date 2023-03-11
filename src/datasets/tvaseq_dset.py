@@ -161,7 +161,9 @@ class TVASequenceDataset(Dataset):
                 "time_seq": torch.FloatTensor(time_seq),
                 "time_interval_seq": torch.LongTensor(time_interval_seq),
                 "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-                "itemwise_latent_factor_seq": torch.FloatTensor(item_latent_factor_seq),
+                "itemwise_latent_factor_seq": torch.FloatTensor(
+                    np.array(item_latent_factor_seq)
+                ),
                 "candidates": torch.LongTensor(candidates),
                 "labels": torch.LongTensor(labels),
                 "years": torch.LongTensor(years),
@@ -276,7 +278,9 @@ class TVASequenceDataset(Dataset):
                 "time_seq": torch.FloatTensor(train_time_seq),
                 "time_interval_seq": torch.LongTensor(train_time_interval_seq),
                 "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-                "itemwise_latent_factor_seq": torch.FloatTensor(train_item_latent_seq),
+                "itemwise_latent_factor_seq": torch.FloatTensor(
+                    np.array(train_item_latent_seq)
+                ),
                 "labels": torch.LongTensor(labels),
                 "years": torch.LongTensor(years),
                 "months": torch.LongTensor(months),

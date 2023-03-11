@@ -54,7 +54,8 @@ def get_negative_samples():
 
 
 def get_checkpoint_path(model_lower_name, data_class_stem):
-    find_path = f"*{model_lower_name}*{data_class_stem}*/**/*.ckpt"
+    print(data_class_stem, model_lower_name)
+    find_path = f"*{data_class_stem}*{model_lower_name}*/**/*.ckpt"
     p = Path(LOG_PATH).glob(find_path)
     ckpt_paths = [x for x in p if x.is_file()]
     ckpts = [str(x).replace(str(LOG_PATH), "")[1:] for x in ckpt_paths]

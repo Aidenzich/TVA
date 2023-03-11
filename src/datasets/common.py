@@ -19,6 +19,7 @@ from ..configs import (
 
 tqdm.pandas()
 
+
 class RecsysData:
     def __init__(self, df: pd.DataFrame, filename="") -> None:
         self.filename = filename
@@ -57,8 +58,8 @@ class RecsysData:
 
     def show_info_table(self) -> None:
         """
-        Show a table of information about the attributes of an object, including the number of users, 
-        items, maximum and minimum lengths of sequences, number of sequences per user, and total 
+        Show a table of information about the attributes of an object, including the number of users,
+        items, maximum and minimum lengths of sequences, number of sequences per user, and total
         number of sessions. This information is printed in an organized format using the "orgtbl" table format.
         """
         print(CYAN_COLOR)
@@ -67,41 +68,23 @@ class RecsysData:
             tabulate(
                 [
                     [
-                        "num_users", 
+                        "num_users",
                         self.num_users,
                     ],
                     [
                         "num_items",
                         self.num_items,
                     ],
-                    [
-                        "mean_length",
-                        self.mean_length    
-                    ],
-                    [
-                        "max_length",
-                        self.max_length
-                    ], 
-                    [
-                        "min_length",
-                        self.min_length
-                    ], 
-                    [
-                        "seqs_user_num",
-                        self.seqs_user_num
-                    ], 
-                    [
-                        "total_session_num",
-                        len(self.dataframe)
-                    ]
+                    ["mean_length", self.mean_length],
+                    ["max_length", self.max_length],
+                    ["min_length", self.min_length],
+                    ["seqs_user_num", self.seqs_user_num],
+                    ["total_session_num", len(self.dataframe)],
                 ],
-                headers=[
-                    "property", "value"
-                ],
+                headers=["property", "value"],
                 tablefmt="heavy_outline",
-                numalign="right"
+                numalign="right",
             ),
-            
         )
         print(END_COLOR)
 
@@ -137,7 +120,9 @@ class RecsysData:
     def _filter_rating_threshold(self, df: pd.DataFrame, threshold=5) -> pd.DataFrame:
         return df[df[RATING_COLUMN_NAME] >= threshold]
 
-    def _filter_purchases_threshold(self, df: pd.DataFrame, threshold=10) -> Tuple[pd.DataFrame, pd.DataFrame]:
+    def _filter_purchases_threshold(
+        self, df: pd.DataFrame, threshold=10
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         user_val_count = df[USER_COLUMN_NAME].value_counts()
         user_index = user_val_count[user_val_count > threshold].index
         remove_user_index = user_val_count[user_val_count <= threshold].index
@@ -158,7 +143,7 @@ class RecsysData:
 
         # Remove the last 2 items from each user's sequence for sequence test and validation
         for u in tqdm(self.val_seqs):
-            # before = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
+            before = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
             udf = uir_df[uir_df[USER_COLUMN_NAME] == u]
             val = udf.values
             drop_idx = np.where(
@@ -170,9 +155,11 @@ class RecsysData:
 
             drop_all_idx.extend(list(drop_idx[0]))
 
-            # after = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
-            # print(before, after)
+            # print(drop_all_idx)
+            after = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
+            print(before, after)
 
+        uir_df = uir_df.drop(drop_all_idx)
         uir_vals = uir_df.values
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
 
@@ -296,17 +283,17 @@ class RecsysData:
     def _get_cat2id(
         self, df: pd.DataFrame
     ) -> Tuple[
-            Dict[str, int], 
-            Dict[str, int], 
-            Dict[int, str], 
-            Dict[int,str], 
-            pd.core.series.Series, 
-            pd.core.series.Series
-        ]:
+        Dict[str, int],
+        Dict[str, int],
+        Dict[int, str],
+        Dict[int, str],
+        pd.core.series.Series,
+        pd.core.series.Series,
+    ]:
         """
         The function of the following code is to convert the contents of the USER_COLUMN_NAME and
-        ITEM_COLUMN_NAME columns in the passed DataFrame to numerical category codes using 
-        `astype("category").cat.codes`, and create the relevant conversion dictionaries. 
+        ITEM_COLUMN_NAME columns in the passed DataFrame to numerical category codes using
+        `astype("category").cat.codes`, and create the relevant conversion dictionaries.
         The converted results are then returned.
         """
         users_cats = df[USER_COLUMN_NAME].astype("category").cat.codes
@@ -335,7 +322,7 @@ class RecsysData:
         # then map the item's category to the corresponding ID using the data_cls.cat2i mapping
         """
         reversed_pred_result = {}
-                
+
         for user in tqdm(pred_result.keys()):
             reversed_pred_result[data_cls.cat2u[user]] = [
                 data_cls.cat2i[item] for item in pred_result[user]
@@ -353,11 +340,10 @@ class RecsysData:
         # and store the result in a list
         """
         converted_samples = {}
-                
-        for user in tqdm(samples.keys()):            
+
+        for user in tqdm(samples.keys()):
             converted_samples[data_cls.u2cat[user]] = [
                 data_cls.i2cat[item] for item in samples[user]
             ]
 
         return converted_samples
-    

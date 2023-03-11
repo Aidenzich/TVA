@@ -190,7 +190,7 @@ class TVAEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 4, embed_size)
+        self.out = nn.Linear(embed_size * 3, embed_size)
 
         self.latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
         self.time_interval = nn.Linear(1, embed_size)
@@ -243,15 +243,15 @@ class TVAEmbedding(nn.Module):
         item_latent = self.item_latent_emb(item_latent_factor_seq)
 
         x = self.out(
-            # torch.cat(
-            #     [items, positions, user_latent, item_latent, time_interval_seqs],
-            #     dim=-1,
-            # )
             torch.cat(
-                [items, positions, user_latent, item_latent],
+                [
+                    items,
+                    positions,
+                    # user_latent,
+                    item_latent,
+                ],
                 dim=-1,
             )
-            # torch.cat([items, positions, item_latent], dim=-1) # BEST
         )
 
         return self.dropout(x)

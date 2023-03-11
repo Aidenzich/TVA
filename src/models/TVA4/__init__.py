@@ -10,21 +10,21 @@ import numpy as np
 def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
     # latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
     # TEMP:  FOR MOVIELENS
-    latent_factor = np.load(
-        "/home/aiden/External/TVA/logs/vaecf.default.movielens_cls/version_2/latent_factor/movielens_latent_factor.npy"
-    )
+    # latent_factor = np.load(
+    #     "/home/aiden/External/TVA/logs/vaecf.default.movielens_cls/version_2/latent_factor/movielens_latent_factor.npy"
+    # )
 
-    item_latent_factor = np.load(
-        "/home/aiden/External/TVA/logs/default.vaeicf.movielens_cls/version_0/latent_factor/movielens_latent_factor.npy"
-    )
+    # item_latent_factor = np.load(
+    #     "/home/aiden/External/TVA/logs/default.vaeicf.movielens_cls/version_0/latent_factor/movielens_latent_factor.npy"
+    # )
 
     # TEMP: FOR BEUTIFUL DATA
     latent_factor = np.load(
-        "/home/aiden/External/TVA/logs/vaecf.default.beauty_cls/version_0/latent_factor/beauty_latent_factor.npy"
+        "/home/VS6102093/TVA/logs/beauty.vaecf.default/version_0/latent_factor/beauty_latent_factor.npy"
     )
 
     item_latent_factor = np.load(
-        "/home/aiden/External/TVA/logs/default.vaeicf.beauty_cls/version_0/latent_factor/beauty_latent_factor.npy"
+        "/home/VS6102093/TVA/logs/beauty.vaeicf.default/version_1/latent_factor/beauty_latent_factor.npy"
     )
 
     test_negative_sampler = NegativeSampler(
@@ -61,6 +61,7 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
         u2answer=recdata.val_seqs,
         negative_samples=test_negative_samples,
         u2timeseq=recdata.train_timeseqs,
+        u2eval_time=recdata.val_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],
         item_latent_factor=item_latent_factor,
@@ -74,6 +75,7 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
         u2answer=recdata.test_seqs,
         negative_samples=test_negative_samples,
         u2timeseq=recdata.train_timeseqs,
+        u2eval_time=recdata.val_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],
         item_latent_factor=item_latent_factor,

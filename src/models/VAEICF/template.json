@@ -4,7 +4,8 @@
         "limit_train_batches": 1.0,
         "max_epochs": 10,
         "num_workers": 12,
-        "seed": 12345
+        "seed": 12345,
+        "devices": [0]
     },
     "model_params": {
         "batch_size": 64,
