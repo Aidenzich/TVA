@@ -20,7 +20,7 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
 
     # TEMP: FOR BEUTIFUL DATA
     latent_factor = np.load(
-        "/home/VS6102093/TVA/logs/beauty.vaecf.default/version_0/latent_factor/beauty_latent_factor.npy"
+        "/home/VS6102093/TVA/logs/beauty.vaecf.default/version_1/latent_factor/beauty_latent_factor.npy"
     )
 
     item_latent_factor = np.load(

@@ -190,7 +190,7 @@ class TVAEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 3, embed_size)
+        self.out = nn.Linear(embed_size * 4, embed_size)
 
         self.latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
         self.time_interval = nn.Linear(1, embed_size)
@@ -247,7 +247,7 @@ class TVAEmbedding(nn.Module):
                 [
                     items,
                     positions,
-                    # user_latent,
+                    user_latent,
                     item_latent,
                 ],
                 dim=-1,

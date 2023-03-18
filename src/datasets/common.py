@@ -143,7 +143,7 @@ class RecsysData:
 
         # Remove the last 2 items from each user's sequence for sequence test and validation
         for u in tqdm(self.val_seqs):
-            before = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
+
             udf = uir_df[uir_df[USER_COLUMN_NAME] == u]
             val = udf.values
             drop_idx = np.where(
@@ -154,10 +154,6 @@ class RecsysData:
             )
 
             drop_all_idx.extend(list(drop_idx[0]))
-
-            # print(drop_all_idx)
-            after = len(uir_df[uir_df[USER_COLUMN_NAME] == u])
-            print(before, after)
 
         uir_df = uir_df.drop(drop_all_idx)
         uir_vals = uir_df.values
