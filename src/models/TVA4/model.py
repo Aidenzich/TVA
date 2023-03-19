@@ -20,6 +20,7 @@ class TVAModel(pl.LightningModule):
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
+
         max_len = model_params["max_len"]
         d_model = model_params["d_model"]
         heads = model_params["heads"]
@@ -33,6 +34,7 @@ class TVAModel(pl.LightningModule):
         )
 
         self.max_len = max_len
+        self.lr = model_params["lr"]
         self.tva = TVA(
             max_len=self.max_len,
             num_items=num_items,
@@ -48,12 +50,32 @@ class TVAModel(pl.LightningModule):
         self.lr_scheduler_name = "ReduceLROnPlateau"
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         if self.lr_scheduler_name == "ReduceLROnPlateau":
             lr_schedulers = {
                 "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
                     optimizer, patience=10
+                ),
+                "monitor": "train_loss",
+            }
+
+            return [optimizer], [lr_schedulers]
+
+        if self.lr_scheduler_name == "LambdaLR":
+            lr_schedulers = {
+                "scheduler": torch.optim.lr_scheduler.LambdaLR(
+                    optimizer, lr_lambda=lambda epoch: 0.95**epoch
+                ),
+                "monitor": "train_loss",
+            }
+
+            return [optimizer], [lr_schedulers]
+
+        if self.lr_scheduler_name == "StepLR":
+            lr_schedulers = {
+                "scheduler": torch.optim.lr_scheduler.StepLR(
+                    optimizer, step_size=10, gamma=0.1
                 ),
                 "monitor": "train_loss",
             }
@@ -82,33 +104,44 @@ class TVAModel(pl.LightningModule):
             if (batch_idx + 1) == 0:
                 sch.step(self.lr_metric)
 
-        self.log("train_loss", loss)
+        self.log("train_loss", loss, sync_dist=True)
         return loss
 
     def validation_step(self, batch, batch_idx) -> None:
         candidates = batch["candidates"]
         labels = batch["labels"]
 
-        scores = self.forward(batch=batch)  # B x T x V
+        scores = self.forward(batch=batch)  # Batch x Sequence_len x Item
         scores = scores[:, -1, :]  # B x V
         scores = scores.gather(1, candidates)  # B x C
+
         metrics = rpf1_for_ks(scores, labels, METRICS_KS)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
-                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
+                self.log(
+                    "leave1out_" + metric,
+                    torch.FloatTensor([metrics[metric]]),
+                    sync_dist=True,
+                )
 
     def test_step(self, batch, batch_idx) -> None:
         candidates = batch["candidates"]
         labels = batch["labels"]
 
-        scores = self.forward(batch=batch)  # B x T x V
-        scores = scores[:, -1, :]  # B x V
-        scores = scores.gather(1, candidates)  # B x C
+        scores = self.forward(batch=batch)  # Batch x Sequence_len x Item
+
+        scores = scores[:, -1, :]  # Batch x Item
+        scores = scores.gather(1, candidates)  # Batch x Candidates
+
         metrics = rpf1_for_ks(scores, labels, METRICS_KS)
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
-                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
+                self.log(
+                    "leave1out_" + metric,
+                    torch.FloatTensor([metrics[metric]]),
+                    sync_dist=True,
+                )
 
 
 class TVA(nn.Module):
@@ -255,13 +288,3 @@ class TVAEmbedding(nn.Module):
         )
 
         return self.dropout(x)
-
-
-class TimeEmbedding(nn.Module):
-    def __init__(self, max_len, d_model) -> None:
-        super().__init__()
-        self.te = nn.Embedding(max_len, d_model)
-
-    def forward(self, x) -> Tensor:
-        batch_size = x.size(0)
-        return self.te.weight.unsqueeze(0).repeat(batch_size, 1, 1)

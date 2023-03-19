@@ -20,7 +20,7 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
 
     # TEMP: FOR BEUTIFUL DATA
     latent_factor = np.load(
-        "/home/VS6102093/TVA/logs/beauty.vaecf.default/version_1/latent_factor/beauty_latent_factor.npy"
+        "/home/VS6102093/TVA/logs/beauty.vaecf.default/version_0/latent_factor/beauty_latent_factor.npy"
     )
 
     item_latent_factor = np.load(
@@ -67,15 +67,28 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
         item_latent_factor=item_latent_factor,
     )
 
+    u2seqs_for_test = {}
+    u2timeseqs_for_test = {}
+    for u in recdata.users_seqs:
+        # Remove the last and first item of the fully user's sequence
+        temp_users_seqs = recdata.users_seqs[u][:-1]
+        temp_users_seqs = temp_users_seqs[1:]
+        u2seqs_for_test[u] = temp_users_seqs
+
+        # Remove the last and first item of the fully user's time sequence
+        temp_users_timeseqs = recdata.users_timeseqs[u][:-1]
+        temp_users_timeseqs = temp_users_timeseqs[1:]
+        u2timeseqs_for_test[u] = temp_users_timeseqs
+
     testset = TVASequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
-        u2seq=recdata.train_seqs,
+        u2seq=u2seqs_for_test,
         u2answer=recdata.test_seqs,
         negative_samples=test_negative_samples,
-        u2timeseq=recdata.train_timeseqs,
-        u2eval_time=recdata.val_timeseqs,
+        u2timeseq=u2timeseqs_for_test,
+        u2eval_time=recdata.test_timeseqs,
         latent_factor=latent_factor,
         seed=trainer_config["seed"],
         item_latent_factor=item_latent_factor,

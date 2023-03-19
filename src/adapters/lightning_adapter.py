@@ -34,6 +34,7 @@ def fit(
     early_stop_config = trainer_config.get("early_stopping")
     # early stopping
     if trainer_config.get("early_stopping"):
+        print("Early stopping is enabled")
         early_stop_callback = EarlyStopping(
             monitor=early_stop_config.get("monitor"),
             patience=early_stop_config.get("patience"),

@@ -144,8 +144,14 @@ class RecsysData:
         # Remove the last 2 items from each user's sequence for sequence test and validation
         for u in tqdm(self.val_seqs):
 
+            # Get the values of the user's dataframe
             udf = uir_df[uir_df[USER_COLUMN_NAME] == u]
             val = udf.values
+
+            # The index of the user's dataframe in the original dataframe
+            val_idx = udf.index
+
+            # Find the index of the last 2 items in the user's dataframe
             drop_idx = np.where(
                 (
                     (val[:, 1] == self.val_seqs[u][0])
@@ -153,9 +159,13 @@ class RecsysData:
                 )
             )
 
-            drop_all_idx.extend(list(drop_idx[0]))
+            # Add the index of the last 2 items to the list of indexes to be removed
+            drop_all_idx.extend(list(val_idx[drop_idx[0]]))
 
+        print("Number of items to be removed from training matrix:", len(drop_all_idx))
+        print("Shape of uir_df before drop:", uir_df.shape)
         uir_df = uir_df.drop(drop_all_idx)
+        print("Shape of uir_df after drop:", uir_df.shape)
         uir_vals = uir_df.values
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
 

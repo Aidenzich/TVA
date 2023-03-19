@@ -1,4 +1,5 @@
 from abc import *
+from pathlib import Path
 import pickle
 import numpy as np
 from tqdm import trange, tqdm
@@ -22,7 +23,7 @@ class NegativeSampler(metaclass=ABCMeta):
         seed,
         dataclass_name,
         method="random",
-    ):
+    ) -> None:
         self.dataclass_name = dataclass_name.lower()
         self.train = train
         self.val = val
@@ -130,7 +131,7 @@ class NegativeSampler(metaclass=ABCMeta):
 
         return negative_samples
 
-    def _get_save_path(self):
+    def _get_save_path(self) -> Path:
         filename = "{}.{}-sample_size{}-seed{}.pkl".format(
             self.dataclass_name, self.method, self.sample_size, self.seed
         )

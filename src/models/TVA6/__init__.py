@@ -20,11 +20,11 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
 
     # FIXME: FOR BEUTIFUL DATA
     latent_factor = np.load(
-        "/home/aiden/External/TVA/logs/default.vaecf.beauty/version_0/latent_factor/beauty_latent_factor.npy"
+        "/home/VS6102093/TVA/logs/beauty.vaecf.default/version_0/latent_factor/beauty_latent_factor.npy"
     )
 
     item_latent_factor = np.load(
-        "/home/aiden/External/TVA/logs/default.vaeicf.beauty/version_0/latent_factor/beauty_latent_factor.npy"
+        "/home/VS6102093/TVA/logs/beauty.vaeicf.default/version_0/latent_factor/beauty_latent_factor.npy"
     )
 
     test_negative_sampler = NegativeSampler(

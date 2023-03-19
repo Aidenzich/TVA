@@ -36,6 +36,7 @@ class TVAModel(pl.LightningModule):
         )
 
         self.max_len = max_len
+        self.lr = model_params["lr"]
         self.tva = TVA(
             max_len=self.max_len,
             num_items=num_items,
@@ -51,7 +52,7 @@ class TVAModel(pl.LightningModule):
         self.lr_scheduler_name = "ReduceLROnPlateau"
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         if self.lr_scheduler_name == "ReduceLROnPlateau":
             lr_schedulers = {
@@ -67,14 +68,12 @@ class TVAModel(pl.LightningModule):
 
     def forward(self, batch) -> Tensor:
         x = self.tva(batch=batch)
-        return self.out(x)
+        return self.out(x)  # Batch x Sequence_len x Total_Item_num
 
     def training_step(self, batch, batch_idx) -> Tensor:
         labels = batch["labels"]
 
-        logits = self.forward(
-            batch=batch
-        )  # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)
+        logits = self.forward(batch=batch)  # Batch x Sequence_len x Item_num
 
         logits = logits.view(-1, logits.size(-1))  # (B * T) x V
         labels = labels.view(-1)  # B * T
@@ -92,9 +91,11 @@ class TVAModel(pl.LightningModule):
         candidates = batch["candidates"]
         labels = batch["labels"]
 
-        scores = self.forward(batch=batch)  # B x T x V
-        scores = scores[:, -1, :]  # B x V
-        scores = scores.gather(1, candidates)  # B x C
+        scores = self.forward(batch=batch)  # Batch x Sequence_len x Item_num
+        scores = scores[:, -1, :]  # Batch x Item_num
+        scores = scores.gather(1, candidates)  # Batch x Candidates
+        # gather is used to get the scores of the candidates from the scores matrix
+
         metrics = rpf1_for_ks(scores, labels, METRICS_KS)
 
         for metric in metrics.keys():
@@ -158,7 +159,7 @@ class TVA(nn.Module):
         mask = (seqs > 0).unsqueeze(1).repeat(1, seqs.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
-        x, times = self.embedding(batch=batch)
+        x, times = self.embedding(batch=batch)  # Batch x Sequence_len x Embedding_dim
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
@@ -204,10 +205,12 @@ class TVAEmbedding(nn.Module):
 
         self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
 
-        self.ff = PositionwiseFeedForward(d_model=embed_size, d_ff=128, dropout=dropout)
+        self.ff = PositionwiseFeedForward(
+            d_model=embed_size, d_ff=embed_size, dropout=dropout
+        )
 
         self.item_latent_emb_ff = PositionwiseFeedForward(
-            d_model=embed_size, d_ff=128, dropout=dropout
+            d_model=embed_size, d_ff=embed_size, dropout=dropout
         )
 
         self.interval_sigmoid = nn.Sigmoid()
