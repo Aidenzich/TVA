@@ -11,17 +11,16 @@ class SequenceDataset(Dataset):
         max_len: int,
         mask_token,
         mode="train",  # train, eval, inference
-        # for train
         num_items=0,
+        # Train
         mask_prob=0,
         seed=0,
-        # for eval
-        negative_samples=None,
+        # Evaluate
         u2answer=None,
     ) -> None:
 
         if mode == "eval":
-            if negative_samples is None or u2answer is None:
+            if u2answer is None:
                 raise ValueError("negative_samples and u2answer must be provided")
         if mode == "train":
             if num_items == 0 or mask_prob == 0:
@@ -35,7 +34,7 @@ class SequenceDataset(Dataset):
         self.mask_token = mask_token
         self.num_items = num_items
         self.rng = random.Random(seed)
-        self.negative_samples = negative_samples
+        # self.negative_samples = negative_samples
         self.u2answer = u2answer
 
     def __len__(self) -> int:
@@ -46,8 +45,15 @@ class SequenceDataset(Dataset):
         seq = self.u2seq[user]
 
         if self.mode == "eval":
+            interacted = list(set(seq))
+            interacted += self.u2answer[user]
             answer = self.u2answer[user]
-            negs = self.negative_samples[user]
+
+            negs = [x for x in range(1, self.num_items + 1) if x not in interacted]
+
+            # if negs is not enough, pad with 0
+            if len(negs) < self.num_items:
+                negs += [0] * (self.num_items - len(negs))
 
             candidates = answer + negs
             labels = [1] * len(answer) + [0] * len(negs)
@@ -58,11 +64,12 @@ class SequenceDataset(Dataset):
             seq = [0] * padding_len + seq
 
             return (
-                torch.LongTensor(seq),  # user's sequence
-                torch.LongTensor(candidates),  # candidates from negative sampling
-                torch.LongTensor(
-                    labels
-                ),  # labels from user's answer and negative samples
+                # user's sequence
+                torch.LongTensor(seq),
+                # candidates from negative sampling
+                torch.LongTensor(candidates),
+                # labels from user's answer and negative samples
+                torch.LongTensor(labels),
             )
 
         if self.mode == "train":
@@ -94,20 +101,24 @@ class SequenceDataset(Dataset):
             labels = [0] * mask_len + labels
 
             return (
-                torch.LongTensor(tokens),  # masked user's sequence
-                torch.LongTensor(labels),  # labels for masked tokens
+                # masked user's sequence
+                torch.LongTensor(tokens),
+                # labels for masked tokens
+                torch.LongTensor(labels),
                 torch.empty((0)),
             )
 
         if self.mode == "inference":
-            candidates = self.negative_samples[user]
+            candidates = [x for x in range(1, self.num_items + 1)]
             seq = seq + [self.mask_token]
             seq = seq[-self.max_len :]
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
 
             return (
-                torch.LongTensor(seq),  # user's sequence
-                torch.LongTensor(candidates),  # candidates from negative sampling
+                # user's sequence
+                torch.LongTensor(seq),
+                # candidates from negative sampling
+                torch.LongTensor(candidates),
                 torch.LongTensor([user]),
             )

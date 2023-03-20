@@ -1,3 +1,4 @@
+from typing import Any
 import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch.nn as nn
@@ -18,12 +19,11 @@ class BERTModel(pl.LightningModule):
         num_items: int,
         max_len: int,
         dropout: int,
-    ):
+    ) -> None:
         super().__init__()
         self.save_hyperparameters()
         self.max_len = max_len
         self.bert = BERT(
-            model_init_seed=0,
             max_len=self.max_len,
             num_items=num_items,
             n_layers=n_layers,
@@ -35,7 +35,7 @@ class BERTModel(pl.LightningModule):
         self.out = nn.Linear(d_model, num_items + 1)
         self.lr_scheduler_name = "ReduceLROnPlateau"
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> Any:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
 
         if self.lr_scheduler_name == "ReduceLROnPlateau":
@@ -50,11 +50,11 @@ class BERTModel(pl.LightningModule):
 
         return optimizer
 
-    def forward(self, x):
+    def forward(self, x) -> torch.Tensor:
         x = self.bert(x)
         return self.out(x)
 
-    def training_step(self, batch, batch_idx):
+    def training_step(self, batch, batch_idx) -> torch.Tensor:
         seqs, labels, _ = batch
         logits = self.forward(
             seqs
@@ -74,9 +74,9 @@ class BERTModel(pl.LightningModule):
 
     def validation_step(self, batch, batch_idx):
         seqs, candidates, labels = batch
-        scores = self.forward(seqs)  # B x T x V
-        scores = scores[:, -1, :]  # B x V
-        scores = scores.gather(1, candidates)  # B x C
+        scores = self.forward(seqs)  # Batch x Seq_len x Vocab_size
+        scores = scores[:, -1, :]  # Batch x Vocab_size
+        scores = scores.gather(1, candidates)  # Batch x Candidates
         metrics = rpf1_for_ks(scores, labels, METRICS_KS)
 
         for metric in metrics.keys():
@@ -99,7 +99,6 @@ class BERTModel(pl.LightningModule):
 class BERT(nn.Module):
     def __init__(
         self,
-        model_init_seed: int,
         max_len: int,
         num_items: int,
         n_layers: int,

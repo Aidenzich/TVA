@@ -73,6 +73,13 @@ class SASRecDataset(Dataset):
         if self.mode == "eval":
             answer = self.u2answer[user]
             negs = self.negative_samples[user]
+
+            # assert False
+
+            # negs = [
+            #     random_neq(1, self.num_items + 1, set(seq)) for _ in range(self.max_len)
+            # ]
+
             candidates = answer + negs
 
             labels = [1] * len(answer) + [0] * len(negs)

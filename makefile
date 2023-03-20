@@ -25,6 +25,9 @@ pp:
 infer:
 	python -m src.cli.inference_cli
 
+predict:
+	python -m src.cli.predict_cli
+
 otto_infer:
 	python -m src.cli.otto_inference_cli
 

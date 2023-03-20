@@ -34,18 +34,18 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
+        num_items=recdata.num_items,
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
-        negative_samples=test_negative_samples,
     )
 
     testset = SequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
+        num_items=recdata.num_items,
         u2seq=recdata.train_seqs,
         u2answer=recdata.test_seqs,
-        negative_samples=test_negative_samples,
     )
 
     model = BERTModel(
@@ -112,9 +112,9 @@ def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     inferset = SequenceDataset(
         mode="inference",
         mask_token=recdata.num_items + 1,
+        num_items=recdata.num_items,
         u2seq=recdata.train_seqs,  # TODO 把 inference 的 train_seqs 改成新資料(注意要把id都轉成新的)
         max_len=model.max_len,
-        negative_samples=negative_samples,
     )
 
     infer_loader = DataLoader(inferset, batch_size=4, shuffle=False, pin_memory=False)

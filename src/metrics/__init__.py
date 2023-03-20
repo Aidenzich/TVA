@@ -4,23 +4,17 @@ METRICS_KS = [1, 5, 10, 20, 30, 50]
 
 
 def rpf1_for_ks(scores: torch.tensor, labels: torch.tensor, ks):
-    """
-    scores: Batch x Candidates
-    labels: Batch x Candidates
-    ks: list of int
-    """
+    # Batch x Candidates
 
     metrics = {}
     answer_count = labels.sum(1)
+
     labels_float = labels.float()
-
     rank = (-scores).argsort(dim=1)
-
     cut = rank
     for k in sorted(ks, reverse=True):
-        cut = cut[:, :k]  # Batch x k
+        cut = cut[:, :k]
         hits = labels_float.gather(1, cut)
-
         metrics["recall@%d" % k] = (
             (
                 hits.sum(1)
@@ -35,14 +29,14 @@ def rpf1_for_ks(scores: torch.tensor, labels: torch.tensor, ks):
             (hits.sum(1) / torch.Tensor([k]).to(labels.device)).mean().cpu().item()
         )
 
-        # metrics["f1@%d" % k] = 0
-        # if (metrics["recall@%d" % k] + metrics["precision@%d" % k]) != 0:
-        #     metrics["f1@%d" % k] = (
-        #         2
-        #         * metrics["recall@%d" % k]
-        #         * metrics["precision@%d" % k]
-        #         / (metrics["recall@%d" % k] + metrics["precision@%d" % k])
-        #     )
+        metrics["f1@%d" % k] = 0
+        if (metrics["recall@%d" % k] + metrics["precision@%d" % k]) != 0:
+            metrics["f1@%d" % k] = (
+                2
+                * metrics["recall@%d" % k]
+                * metrics["precision@%d" % k]
+                / (metrics["recall@%d" % k] + metrics["precision@%d" % k])
+            )
 
         position = torch.arange(2, 2 + k)
         weights = 1 / torch.log2(position.float())
@@ -62,7 +56,6 @@ def ndcg(scores, labels, k):
     rank = (-scores).argsort(dim=1)
     cut = rank[:, :k]
     hits = labels.gather(1, cut)
-
     position = torch.arange(2, 2 + k)
     weights = 1 / torch.log2(position.float())
     dcg = (hits.float() * weights).sum(1)

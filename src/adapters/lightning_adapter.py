@@ -76,7 +76,9 @@ def fit(
         accelerator="gpu" if torch.cuda.is_available() else "cpu",
         logger=tb_logger,
         devices=trainer_config.get("devices", [0]),
-        deterministic=True,  # for reproducibility
+        check_val_every_n_epoch=trainer_config.get("check_val_every_n_epoch"),
+        # For reproducibility
+        deterministic=True,
     )
     trainer.fit(model, train_loader, val_loader)
 

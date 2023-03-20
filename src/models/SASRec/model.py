@@ -131,7 +131,7 @@ class SASRecModel(pl.LightningModule):
         log_seqs = batch["train_seq"]
         labels = batch["labels"]
 
-        logits = -self.sasrec.predict(log_seqs, candidates)
+        logits = self.sasrec.predict(log_seqs, candidates)
         metrics = rpf1_for_ks(logits, labels, METRICS_KS)
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
@@ -209,8 +209,8 @@ class SASRec(nn.Module):
             mha_outputs, _ = self.attention_layers[i](
                 Q, seqs, seqs, attn_mask=attention_mask
             )
+
             # key_padding_mask=timeline_mask
-            # need_weights=False) this arg do not work?
             seqs = Q + mha_outputs
             seqs = torch.transpose(seqs, 0, 1)
 
@@ -223,9 +223,6 @@ class SASRec(nn.Module):
         return log_feats
 
     def forward(self, log_seqs, pos_seqs, neg_seqs):  # for training
-        # print("=" * 100)
-        # print(log_seqs, pos_seqs, neg_seqs)
-        # print("=" * 100)
         log_feats = self.log2feats(log_seqs)  # user_ids hasn't been used yet
 
         pos_embs = self.item_emb(pos_seqs)
@@ -245,4 +242,4 @@ class SASRec(nn.Module):
 
         logits = item_embs.matmul(final_feat.unsqueeze(-1)).squeeze(-1)
 
-        return logits  # preds # (U, I)
+        return logits  # Batch x Candidates
