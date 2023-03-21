@@ -1,25 +1,9 @@
-from torch import ne
 from src.datasets.seq_dset import SequenceDataset
-from src.datasets.negative_sampler import NegativeSampler
 from src.models.BERT4Rec.model import BERTModel
 from src.adapters.lightning_adapter import fit
 
 
-def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
-    # FIXME This can be store in the RecData class
-    test_negative_sampler = NegativeSampler(
-        train=recdata.train_seqs,
-        val=recdata.val_seqs,
-        test=recdata.test_seqs,
-        item_count=recdata.num_items,
-        sample_size=trainer_config["sample_size"],
-        method=trainer_config["sample_method"],
-        seed=trainer_config["seed"],
-        dataclass_name=recdata.filename,
-    )
-
-    test_negative_samples = test_negative_sampler.get_negative_samples()
-
+def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
     trainset = SequenceDataset(
         mode="train",
         max_len=model_params["max_len"],
@@ -39,12 +23,17 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
         u2answer=recdata.val_seqs,
     )
 
+    u2seqs_for_test = {}
+    for u in recdata.users_seqs:
+        # Remove the last item of the fully user's sequence
+        u2seqs_for_test[u] = recdata.users_seqs[u][:-1]
+
     testset = SequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
         num_items=recdata.num_items,
-        u2seq=recdata.train_seqs,
+        u2seq=u2seqs_for_test,
         u2answer=recdata.test_seqs,
     )
 
@@ -68,7 +57,7 @@ def train_bert4rec(model_params, trainer_config, recdata, callbacks=[]):
     )
 
 
-def infer_bert4rec(ckpt_path, recdata, rec_ks=10, negative_samples=None):
+def infer(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     """
     rec k is the number of items to recommend
     """

@@ -100,8 +100,6 @@ def recalls_and_ndcgs_for_ks(scores, labels, ks):
 
 
 def recall_precision_f1_calculate(scores, labels, k):
-    scores = scores
-    labels = labels
     rank = (-scores).argsort(dim=1)
     cut = rank[:, :k]
     hit = labels.gather(1, cut)

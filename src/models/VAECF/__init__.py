@@ -5,7 +5,7 @@ from src.configs import CACHE_PATH
 import numpy as np
 
 
-def train_vaecf(
+def train(
     model_params: dict,
     trainer_config: dict,
     recdata,
@@ -34,7 +34,7 @@ def train_vaecf(
     )
 
 
-def infer_vaecf(ckpt_path, recdata, rec_ks=100):
+def infer(ckpt_path, recdata, rec_ks=100):
     from torch.utils.data import DataLoader
     import torch
     from tqdm import tqdm

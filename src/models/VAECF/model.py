@@ -31,7 +31,6 @@ class VAECFModel(pl.LightningModule):
             likelihood=self.likelihood,
         )
         self.top_k = 30
-        print("item_dim is ", "=" * 30, item_dim, "=" * 30)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -46,6 +45,8 @@ class VAECFModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         _batch, mu, logvar = self.vae(batch)
+        print(batch.shape)
+        assert False
         loss = self.vae.loss(batch, _batch, mu, logvar, self.beta)
 
         self.log("train_loss", loss / len(batch), sync_dist=True)

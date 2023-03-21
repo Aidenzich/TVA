@@ -1,8 +1,8 @@
-import torch
-from torch.utils.data import Dataset
-from typing import Dict, List, Tuple
 import random
 import numpy as np
+import torch
+from torch.utils.data import Dataset
+from typing import Tuple
 
 
 class SASRecDataset(Dataset):
@@ -10,22 +10,14 @@ class SASRecDataset(Dataset):
         self,
         u2seq,
         max_len: int,
+        num_items: int,
         mask_token,
         mode="train",  # train, eval, inference
-        num_items=0,
         # Train parameters
         seed=0,
-        negative_samples=None,
         # Eval parameters
         u2answer=None,
     ) -> None:
-
-        if mode == "eval":
-            if negative_samples is None:
-                raise ValueError("negative_samples and u2answer must be provided")
-        if mode == "train":
-            if num_items == 0:
-                raise ValueError("num_items must be provided")
 
         self.mode = mode
         self.u2seq = u2seq
@@ -34,7 +26,6 @@ class SASRecDataset(Dataset):
         self.mask_token = mask_token
         self.num_items = num_items
         self.rng = random.Random(seed)
-        self.negative_samples = negative_samples
         self.u2answer = u2answer
 
     def __len__(self) -> int:
@@ -72,13 +63,10 @@ class SASRecDataset(Dataset):
 
         if self.mode == "eval":
             answer = self.u2answer[user]
-            negs = self.negative_samples[user]
+            interacted = list(set(seq))
+            interacted += answer
 
-            # assert False
-
-            # negs = [
-            #     random_neq(1, self.num_items + 1, set(seq)) for _ in range(self.max_len)
-            # ]
+            negs = [x for x in range(1, self.num_items + 1) if x not in interacted]
 
             candidates = answer + negs
 

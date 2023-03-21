@@ -9,8 +9,6 @@ import datetime
 
 
 class TVASequences(BaseModel):
-    userwise_latent_factor: Optional[torch.FloatTensor]
-    itemwise_latent_factor_seq: Optional[torch.FloatTensor]
     time_seq: Optional[torch.FloatTensor]
     time_interval_seq: Optional[torch.LongTensor]
     candidates: Optional[torch.LongTensor]
@@ -24,6 +22,7 @@ class TVASequences(BaseModel):
     hours: Optional[torch.LongTensor]
     minutes: Optional[torch.LongTensor]
     seconds: Optional[torch.LongTensor]
+    user_matrix: Optional[torch.FloatTensor]
 
     class Config:
         arbitrary_types_allowed = True
@@ -41,12 +40,10 @@ class TVASequenceDataset(Dataset):
         num_items: Optional[int] = 0,
         mask_prob: Optional[float] = 0.0,
         seed: Optional[int] = 0,
+        user_matrix: Optional[np.ndarray] = None,
         # Eval parameters
         u2answer: Optional[Dict[int, List[int]]] = None,
         u2eval_time: Optional[Dict[int, List[int]]] = None,
-        # Latent
-        latent_factor=None,
-        item_latent_factor=None,
     ) -> None:
 
         if mode == "eval":
@@ -67,22 +64,15 @@ class TVASequenceDataset(Dataset):
         self.u2answer = u2answer
         self.u2time_seq = u2timeseq
         self.u2eval_time = u2eval_time
-        self.latent_factor = latent_factor
-        self.item_latent_factor = item_latent_factor
+        self.user_matrix = user_matrix
 
     def __len__(self) -> int:
         return len(self.users)
 
     def __getitem__(self, index) -> Tuple[Tensor, Tensor, Tensor]:
-        user_latent_factor = self.latent_factor[index]
 
         user = self.users[index]
         seq = self.u2seq[user]
-
-        # Item's latent factor sequence
-        zero_latent_factor = np.zeros_like(
-            self.item_latent_factor[0]
-        )  # (item_latent_factor_dim)
 
         # Time interval sequence
         time_seq = self.u2time_seq[user]
@@ -135,14 +125,6 @@ class TVASequenceDataset(Dataset):
             train_time_seq = [0] * mask_len + train_time_seq
             train_time_interval_seq = [0] * mask_len + train_time_interval_seq
 
-            # Bulid Item's latent factor sequence
-            train_item_latent_seq = []
-            for item_id in train_item_seq:
-                if item_id == 0 or item_id == self.mask_token:
-                    train_item_latent_seq.append(zero_latent_factor)
-                else:
-                    train_item_latent_seq.append(self.item_latent_factor[item_id])            
-
             # FIXME: This is a temporary solution
             dates = [datetime.datetime.fromtimestamp(t) for t in train_time_seq]
 
@@ -164,15 +146,14 @@ class TVASequenceDataset(Dataset):
                 else:  # month in [12, 1, 2]
                     seasons.append(4)
 
+            user_matrix = torch.FloatTensor(self.user_matrix[user].toarray()[0])
+
             data = {
                 "item_seq": torch.LongTensor(train_item_seq),
                 "time_seq": torch.FloatTensor(train_time_seq),
                 "time_interval_seq": torch.LongTensor(train_time_interval_seq),
-                "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-                "itemwise_latent_factor_seq": torch.FloatTensor(
-                    np.array(train_item_latent_seq)
-                ),
                 "labels": torch.LongTensor(labels),
+                "user_matrix": user_matrix,
                 # Time features
                 "years": torch.LongTensor(years),
                 "months": torch.LongTensor(months),
@@ -219,14 +200,6 @@ class TVASequenceDataset(Dataset):
             time_interval_seq = time_interval_seq[-self.max_len :]
             time_interval_seq = [0] * padding_len + time_interval_seq
 
-            # item_latent_factor_seq: item latent factors of user's sequence
-            item_latent_factor_seq = []
-            for item_id in seq:
-                if item_id == 0 or item_id == self.mask_token:
-                    item_latent_factor_seq.append(zero_latent_factor)
-                else:
-                    item_latent_factor_seq.append(self.item_latent_factor[item_id])
-
             # FIXME: This is a temporary solution
             dates = [datetime.datetime.fromtimestamp(t) for t in time_seq]
             years = [d.year if d is not None else 0 for d in dates]
@@ -247,16 +220,15 @@ class TVASequenceDataset(Dataset):
                 else:  # month in [12, 1, 2]
                     seasons.append(4)
 
+            user_matrix = torch.FloatTensor(self.user_matrix[user].toarray()[0])
+
             data = {
                 "item_seq": torch.LongTensor(seq),
                 "time_seq": torch.FloatTensor(time_seq),
                 "time_interval_seq": torch.LongTensor(time_interval_seq),
-                "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-                "itemwise_latent_factor_seq": torch.FloatTensor(
-                    np.array(item_latent_factor_seq)
-                ),
                 "candidates": torch.LongTensor(candidates),
                 "labels": torch.LongTensor(labels),
+                "user_matrix": user_matrix,
                 # Time features
                 "years": torch.LongTensor(years),
                 "months": torch.LongTensor(months),
@@ -277,13 +249,14 @@ class TVASequenceDataset(Dataset):
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
 
+            user_matrix = torch.FloatTensor(self.user_matrix[user].toarray()[0])
+
             data = {
                 "item_seq": torch.LongTensor(seq),
                 "time_seq": torch.FloatTensor(train_time_seq),
                 "time_interval_seq": torch.LongTensor(train_time_interval_seq),
-                "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-                "itemwise_latent_factor_seq": torch.FloatTensor(item_latent_factor_seq),
                 "candidates": torch.LongTensor(candidates),
+                "user_matrix": user_matrix,
             }
 
             return TVASequences(**data).dict(exclude_none=True)

@@ -1,44 +1,17 @@
 from torch import ne
 from src.datasets.tvaseq_dset import TVASequenceDataset
-from src.datasets.negative_sampler import NegativeSampler
+
+# from src.datasets.negative_sampler import NegativeSampler
 from .model import TVAModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
 import numpy as np
 
 
-def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
-    # latent_factor = np.load(CACHE_PATH / (recdata.filename + "_latent_factor.npy"))
-    # TEMP:  FOR MOVIELENS
-    # latent_factor = np.load(
-    #     "/home/aiden/External/TVA/logs/vaecf.default.movielens_cls/version_2/latent_factor/movielens_latent_factor.npy"
-    # )
+def train(model_params, trainer_config, recdata, callbacks=[]):
+    user_latent_factor = np.load(model_params["user_latent_factor"]["path"])
 
-    # item_latent_factor = np.load(
-    #     "/home/aiden/External/TVA/logs/default.vaeicf.movielens_cls/version_0/latent_factor/movielens_latent_factor.npy"
-    # )
-
-    # TEMP: FOR BEUTIFUL DATA
-    latent_factor = np.load(
-        "/home/VS6102093/TVA/logs/beauty.vaecf.default/version_0/latent_factor/beauty_latent_factor.npy"
-    )
-
-    item_latent_factor = np.load(
-        "/home/VS6102093/TVA/logs/beauty.vaeicf.default/version_1/latent_factor/beauty_latent_factor.npy"
-    )
-
-    test_negative_sampler = NegativeSampler(
-        train=recdata.train_seqs,
-        val=recdata.val_seqs,
-        test=recdata.test_seqs,
-        item_count=recdata.num_items,
-        sample_size=trainer_config["sample_size"],
-        method=trainer_config["sample_method"],
-        seed=trainer_config["seed"],
-        dataclass_name=recdata.filename,
-    )
-
-    test_negative_samples = test_negative_sampler.get_negative_samples()
+    item_latent_factor = np.load(model_params["user_latent_factor"]["path"])
 
     trainset = TVASequenceDataset(
         mode="train",
@@ -49,7 +22,7 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
         u2seq=recdata.train_seqs,
         seed=trainer_config["seed"],
         u2timeseq=recdata.train_timeseqs,
-        latent_factor=latent_factor,
+        latent_factor=user_latent_factor,
         item_latent_factor=item_latent_factor,
     )
 
@@ -59,10 +32,10 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
-        negative_samples=test_negative_samples,
         u2timeseq=recdata.train_timeseqs,
+        num_items=recdata.num_items,
         u2eval_time=recdata.val_timeseqs,
-        latent_factor=latent_factor,
+        latent_factor=user_latent_factor,
         seed=trainer_config["seed"],
         item_latent_factor=item_latent_factor,
     )
@@ -70,15 +43,10 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
     u2seqs_for_test = {}
     u2timeseqs_for_test = {}
     for u in recdata.users_seqs:
-        # Remove the last and first item of the fully user's sequence
-        temp_users_seqs = recdata.users_seqs[u][:-1]
-        temp_users_seqs = temp_users_seqs[1:]
-        u2seqs_for_test[u] = temp_users_seqs
-
+        # Remove the last item of the fully user's sequence
+        u2seqs_for_test[u] = recdata.users_seqs[u][:-1]
         # Remove the last and first item of the fully user's time sequence
-        temp_users_timeseqs = recdata.users_timeseqs[u][:-1]
-        temp_users_timeseqs = temp_users_timeseqs[1:]
-        u2timeseqs_for_test[u] = temp_users_timeseqs
+        u2timeseqs_for_test[u] = recdata.users_timeseqs[u][:-1]
 
     testset = TVASequenceDataset(
         mode="eval",
@@ -86,10 +54,10 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
         mask_token=recdata.num_items + 1,
         u2seq=u2seqs_for_test,
         u2answer=recdata.test_seqs,
-        negative_samples=test_negative_samples,
         u2timeseq=u2timeseqs_for_test,
+        num_items=recdata.num_items,
         u2eval_time=recdata.test_timeseqs,
-        latent_factor=latent_factor,
+        latent_factor=user_latent_factor,
         seed=trainer_config["seed"],
         item_latent_factor=item_latent_factor,
     )
@@ -110,7 +78,7 @@ def train_tva4(model_params, trainer_config, recdata, callbacks=[]):
     )
 
 
-def infer_tva2(ckpt_path, recdata, rec_ks=10, negative_samples=None):
+def infer(ckpt_path, recdata, rec_ks=10):
     """rec k is the number of items to recommend"""
     ##### INFER ######
     import torch
@@ -123,22 +91,21 @@ def infer_tva2(ckpt_path, recdata, rec_ks=10, negative_samples=None):
 
     model = TVAModel.load_from_checkpoint(ckpt_path)
 
-    if negative_samples == None:
-        sample_num = int(recdata.num_items * 0.2)
+    sample_num = int(recdata.num_items * 0.2)
 
-        if sample_num > 10000:
-            print(
-                "Sample num is too large, set to 10000. (Due to 2070's memory limitation)"
-            )
-            sample_num = 10000
-
-        samples = {}
-
-        sample_items = (
-            recdata.dataframe["item_id"].value_counts().index.tolist()[:sample_num]
+    if sample_num > 10000:
+        print(
+            "Sample num is too large, set to 10000. (Due to 2070's memory limitation)"
         )
-        for u in range(recdata.num_users):
-            samples[u] = sample_items
+        sample_num = 10000
+
+    samples = {}
+
+    sample_items = (
+        recdata.dataframe["item_id"].value_counts().index.tolist()[:sample_num]
+    )
+    for u in range(recdata.num_users):
+        samples[u] = sample_items
 
     variance = np.load(CACHE_PATH / "variance.npy")
 
@@ -148,7 +115,6 @@ def infer_tva2(ckpt_path, recdata, rec_ks=10, negative_samples=None):
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
         max_len=model.max_len,
-        negative_samples=samples,
         vae_matrix=variance,
     )
 

@@ -21,7 +21,7 @@ class SequenceDataset(Dataset):
 
         if mode == "eval":
             if u2answer is None:
-                raise ValueError("negative_samples and u2answer must be provided")
+                raise ValueError("u2answer must be provided")
         if mode == "train":
             if num_items == 0 or mask_prob == 0:
                 raise ValueError("num_items, mask_prob must be provided")
@@ -34,7 +34,6 @@ class SequenceDataset(Dataset):
         self.mask_token = mask_token
         self.num_items = num_items
         self.rng = random.Random(seed)
-        # self.negative_samples = negative_samples
         self.u2answer = u2answer
 
     def __len__(self) -> int:
@@ -45,15 +44,15 @@ class SequenceDataset(Dataset):
         seq = self.u2seq[user]
 
         if self.mode == "eval":
-            interacted = list(set(seq))
-            interacted += self.u2answer[user]
             answer = self.u2answer[user]
+            interacted = list(set(seq))
+            interacted += answer
 
             negs = [x for x in range(1, self.num_items + 1) if x not in interacted]
 
-            # if negs is not enough, pad with 0
+            # if negs is not enough, pad with the last negative item
             if len(negs) < self.num_items:
-                negs += [0] * (self.num_items - len(negs))
+                negs += [negs[-1]] * (self.num_items - len(negs))
 
             candidates = answer + negs
             labels = [1] * len(answer) + [0] * len(negs)

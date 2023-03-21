@@ -9,7 +9,8 @@ from src.configs import RED_COLOR, END_COLOR
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
 from ...modules.transformer import TransformerBlock
-from ...metrics import recall_precision_f1_calculate, METRICS_KS
+from ...metrics import rpf1_for_ks, METRICS_KS
+from ..VAECF.model import VAE
 
 
 class TVAModel(pl.LightningModule):
@@ -21,20 +22,18 @@ class TVAModel(pl.LightningModule):
         super().__init__()
         self.save_hyperparameters()
 
+        # BERT
         max_len = model_params["max_len"]
         d_model = model_params["d_model"]
         heads = model_params["heads"]
         dropout = model_params["dropout"]
         n_layers = model_params["n_layers"]
-        user_latent_factor_params = model_params.get("user_latent_factor", None)
-        item_latent_factor_params = model_params.get("item_latent_factor", None)
-
-        assert user_latent_factor_params is not None, (
-            RED_COLOR + "user_latent_factor_params is None" + END_COLOR
-        )
 
         self.max_len = max_len
         self.lr = model_params["lr"]
+
+        self.vae_beta = model_params["vae_beta"]
+
         self.tva = TVA(
             max_len=self.max_len,
             num_items=num_items,
@@ -42,10 +41,13 @@ class TVAModel(pl.LightningModule):
             d_model=d_model,
             heads=heads,
             dropout=dropout,
-            user_latent_factor_dim=user_latent_factor_params.get("hidden_dim"),
-            item_latent_factor_dim=item_latent_factor_params.get("hidden_dim"),
+            vae_beta=model_params["vae_beta"],
+            vae_hidden_dim=model_params["vae_hidden_dim"],
+            vae_act_fn=model_params["vae_act_fn"],
+            vae_likelihood=model_params["vae_likelihood"],
+            vae_autoencoder_structure=model_params["vae_autoencoder_structure"],
         )
-        self.out = nn.Linear(d_model, num_items + 1)
+
         self.lr_metric = 0
         self.lr_scheduler_name = "ReduceLROnPlateau"
 
@@ -84,19 +86,33 @@ class TVAModel(pl.LightningModule):
 
         return optimizer
 
-    def forward(self, batch) -> Tensor:
-        x = self.tva(batch=batch)
-        return self.out(x)
-
     def training_step(self, batch, batch_idx) -> Tensor:
         labels = batch["labels"]
 
-        logits = self.forward(
-            batch=batch
-        )  # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)
+        user_matrix = batch["user_matrix"]
+        _user_matrix, mu, logvar = self.tva.vae(user_matrix)
 
+        vae_loss = self.tva.vae.loss(
+            user_matrix, _user_matrix, mu, logvar, self.tva.vae_beta
+        )
+
+        zu_u, zu_sigma = self.tva.vae.encode(user_matrix)  # Batch x Hidden_dim
+
+        user_features = torch.cat([zu_u, zu_sigma], dim=1)
+
+        seqs = batch["item_seq"]
+        logits = self.tva(
+            seqs=seqs,
+            user_features=user_features,
+        )
+
+        logits = self.tva(
+            seqs=seqs,
+            user_features=user_features,
+        )  # Batch x Sequence_len x Item_nums
         logits = logits.view(-1, logits.size(-1))  # (B * T) x V
         labels = labels.view(-1)  # B * T
+
         loss = F.cross_entropy(logits, labels, ignore_index=0)
 
         if self.lr_scheduler_name == "ReduceLROnPlateau":
@@ -104,26 +120,25 @@ class TVAModel(pl.LightningModule):
             if (batch_idx + 1) == 0:
                 sch.step(self.lr_metric)
 
-        self.log("train_loss", loss, sync_dist=True)
-        return loss
+        self.log("train_loss", loss + 0.1 * vae_loss, sync_dist=True)
+        return loss + 0.1 * vae_loss
 
     def validation_step(self, batch, batch_idx) -> None:
         candidates = batch["candidates"]
         labels = batch["labels"]
+        seqs = batch["item_seq"]
 
-        scores = self.forward(batch=batch)  # Batch x Sequence_len x Item
+        user_matrix = batch["user_matrix"]
+        zu_u, zu_sigma = self.tva.vae.encode(user_matrix)  # Batch x Hidden_dim
+        user_features = torch.cat([zu_u, zu_sigma], dim=1)
 
-        print(scores)
-
+        scores = self.tva(
+            seqs=seqs, user_features=user_features
+        )  # Batch x Sequence_len x Item
         scores = scores[:, -1, :]  # B x V
-        scores[:, 0] = -999.999
-        scores[
-            :, -1
-        ] = -999.999  # pad token and mask token should not appear in the logits output
-
         scores = scores.gather(1, candidates)  # B x C
 
-        metrics = recall_precision_f1_calculate(scores, labels, METRICS_KS)
+        metrics = rpf1_for_ks(scores, labels, METRICS_KS)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
@@ -136,18 +151,19 @@ class TVAModel(pl.LightningModule):
     def test_step(self, batch, batch_idx) -> None:
         candidates = batch["candidates"]
         labels = batch["labels"]
+        seqs = batch["item_seq"]
+        user_matrix = batch["user_matrix"]
+        zu_u, zu_sigma = self.tva.vae.encode(user_matrix)  # Batch x Hidden_dim
+        user_features = torch.cat([zu_u, zu_sigma], dim=1)
 
-        scores = self.forward(batch=batch)  # Batch x Sequence_len x Item
+        scores = self.tva(
+            seqs=seqs, user_features=user_features
+        )  # Batch x Sequence_len x Item
 
         scores = scores[:, -1, :]  # Batch x Item
-        scores[:, 0] = -999.999
-        scores[
-            :, -1
-        ] = -999.999  # pad token and mask token should not appear in the logits output
-
         scores = scores.gather(1, candidates)  # Batch x Candidates
 
-        metrics = recall_precision_f1_calculate(scores, labels, METRICS_KS)
+        metrics = rpf1_for_ks(scores, labels, METRICS_KS)
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
                 self.log(
@@ -166,12 +182,17 @@ class TVA(nn.Module):
         heads: int,
         d_model: int,
         dropout: float,
-        user_latent_factor_dim: int,
-        item_latent_factor_dim: int,
+        vae_beta: float,
+        vae_hidden_dim: int,
+        vae_act_fn: str,
+        vae_likelihood: str,
+        vae_autoencoder_structure,
     ) -> None:
         super().__init__()
 
         vocab_size = num_items + 2
+
+        self.out = nn.Linear(d_model, num_items + 1)
 
         # embedding for BERT, sum of positional, segment, token embeddings
         self.embedding = TVAEmbedding(
@@ -179,8 +200,21 @@ class TVA(nn.Module):
             embed_size=d_model,
             max_len=max_len,
             dropout=dropout,
-            user_latent_factor_dim=user_latent_factor_dim,
-            item_latent_factor_dim=item_latent_factor_dim,
+            user_latent_factor_dim=20,
+        )
+
+        # VAE
+        self.vae_hidden_dim = vae_hidden_dim
+        self.vae_act_fn = vae_act_fn
+        self.vae_likelihood = vae_likelihood
+        self.vae_autoencoder_structure = vae_autoencoder_structure
+        self.vae_beta = vae_beta
+
+        self.vae = VAE(
+            z_dim=self.vae_hidden_dim,
+            ae_structure=[num_items] + self.vae_autoencoder_structure,
+            activation_function=self.vae_act_fn,
+            likelihood=self.vae_likelihood,
         )
 
         # multi-layers transformer blocks, deep network
@@ -191,18 +225,26 @@ class TVA(nn.Module):
             ]
         )
 
-    def forward(self, batch):
-        seqs = batch["item_seq"]
+    def forward(self, seqs, user_features):
+        """
+        batch must have:
+            - item_seq: (batch_size, max_len)
+            - userwise_features: (batch_size, user_latent_factor_dim)
+            - itemwise_features: (batch_size, max_len, item_latent_factor_dim)
+        """
         mask = (seqs > 0).unsqueeze(1).repeat(1, seqs.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(batch=batch)
+        x = self.embedding(
+            seqs=seqs,
+            user_features=user_features,
+        )
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
             x = transformer.forward(x, mask)
 
-        return x
+        return self.out(x)
 
     def init_weights(self):
         pass
@@ -216,7 +258,6 @@ class TVAEmbedding(nn.Module):
         embed_size,
         max_len,
         user_latent_factor_dim,
-        item_latent_factor_dim=None,
         dropout=0.1,
     ) -> None:
         """
@@ -230,48 +271,24 @@ class TVAEmbedding(nn.Module):
         self.embed_size = embed_size
         self.max_len = max_len
         self.user_latent_factor_dim = user_latent_factor_dim
-        self.item_latent_factor_dim = item_latent_factor_dim
 
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 4, embed_size)
+        self.out = nn.Linear(embed_size * 3, embed_size)
 
         self.latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
-        self.time_interval = nn.Linear(1, embed_size)
-
-        self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
-
         self.ff = PositionwiseFeedForward(d_model=embed_size, d_ff=128, dropout=dropout)
-        self.time_ff = PointWiseFeedForward(d_model=embed_size, dropout=dropout)
-        self.item_latent_emb_ff = PositionwiseFeedForward(
-            d_model=embed_size, d_ff=128, dropout=dropout
-        )
 
-        self.interval_sigmoid = nn.Sigmoid()
-
-    def forward(self, batch):
-        seqs = batch["item_seq"]
-        user_latent_factor = batch["userwise_latent_factor"]
-        item_latent_factor_seq = batch["itemwise_latent_factor_seq"]
-
+    def forward(self, seqs, user_features):
+        # Should I term seq into user-wise features and item-wise features here?
         items = self.token(seqs)
 
-        assert user_latent_factor.shape[1] == self.user_latent_factor_dim * 2, (
-            RED_COLOR
-            + "user latent factor dim is not correct, please check model config"
-            + END_COLOR
-        )
+        # print(user_features.shape)  # Batch x 40
 
-        assert item_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2, (
-            RED_COLOR
-            + "item latent factor dim is not match, please check model config"
-            + END_COLOR
-        )
-
-        u_mu = F.softmax(user_latent_factor[:, : self.user_latent_factor_dim], dim=1)
-        u_sigma = F.softmax(user_latent_factor[:, self.user_latent_factor_dim :], dim=1)
+        u_mu = F.softmax(user_features[:, : self.user_latent_factor_dim], dim=1)
+        u_sigma = F.softmax(user_features[:, self.user_latent_factor_dim :], dim=1)
 
         u_mu = u_mu.unsqueeze(1).repeat(1, self.max_len, 1)
         u_sigma = u_sigma.unsqueeze(1).repeat(1, self.max_len, 1)
@@ -281,16 +298,9 @@ class TVAEmbedding(nn.Module):
         user_latent = self.latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
         user_latent = self.ff(user_latent)
 
-        item_latent = self.item_latent_emb(item_latent_factor_seq)
-
         x = self.out(
             torch.cat(
-                [
-                    items,
-                    positions,
-                    user_latent,
-                    item_latent,
-                ],
+                [items, positions, user_latent],
                 dim=-1,
             )
         )
