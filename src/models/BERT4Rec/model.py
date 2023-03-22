@@ -7,42 +7,52 @@ from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
 from ...modules.attention import MultiHeadedAttention
 from ...modules.utils import SublayerConnection
-from ...metrics import rpf1_for_ks, METRICS_KS
+from ...modules.transformer import TransformerBlock
+from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
+import transformers
 
-# BERTModel
+
+SCHEDULER = {
+    "Warmup": transformers.get_cosine_schedule_with_warmup,
+    "ReduceLROnPlateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
+    "StepLR": torch.optim.lr_scheduler.StepLR,
+    "MultiStepLR": torch.optim.lr_scheduler.MultiStepLR,
+    "ExponentialLR": torch.optim.lr_scheduler.ExponentialLR,
+    "CosineAnnealingLR": torch.optim.lr_scheduler.CosineAnnealingLR,
+    "CosineAnnealingWarmRestarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+    "LambdaLR": torch.optim.lr_scheduler.LambdaLR,
+    "OneCycleLR": torch.optim.lr_scheduler.OneCycleLR,
+    "CyclicLR": torch.optim.lr_scheduler.CyclicLR,
+    "CosineAnnealingWarmRestarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+}
+
+
 class BERTModel(pl.LightningModule):
-    def __init__(
-        self,
-        d_model: int,
-        n_layers: int,
-        heads: int,
-        num_items: int,
-        max_len: int,
-        dropout: int,
-    ) -> None:
+    def __init__(self, num_items, model_params, trainer_config) -> None:
         super().__init__()
         self.save_hyperparameters()
-        self.max_len = max_len
+        self.max_len = model_params["max_len"]
+        self.d_model = model_params["d_model"]
+
         self.bert = BERT(
             max_len=self.max_len,
             num_items=num_items,
-            n_layers=n_layers,
-            d_model=d_model,
-            heads=heads,
-            dropout=dropout,
+            n_layers=model_params["n_layers"],
+            d_model=self.d_model,
+            heads=model_params["heads"],
+            dropout=model_params["dropout"],
         )
 
-        self.out = nn.Linear(d_model, num_items + 1)
-        self.lr_scheduler_name = "ReduceLROnPlateau"
+        self.out = nn.Linear(self.d_model, num_items + 1)
+        self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
+        self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
 
     def configure_optimizers(self) -> Any:
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
 
-        if self.lr_scheduler_name == "ReduceLROnPlateau":
+        if self.lr_scheduler != None:
             lr_schedulers = {
-                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                    optimizer, patience=10
-                ),
+                "scheduler": self.lr_scheduler(optimizer, **self.lr_scheduler_args),
                 "monitor": "train_loss",
             }
 
@@ -55,40 +65,59 @@ class BERTModel(pl.LightningModule):
         return self.out(x)
 
     def training_step(self, batch, batch_idx) -> torch.Tensor:
-        seqs, labels, _ = batch
-        logits = self.forward(
-            seqs
-        )  # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)
+        batch_item_seq = batch["item_seq"]
+        batch_labels = batch["labels"]
 
-        logits = logits.view(-1, logits.size(-1))  # (B * T) x V
-        labels = labels.view(-1)  # B * T
-        loss = F.cross_entropy(logits, labels, ignore_index=0)
+        logits = self.forward(batch_item_seq)  # Batch x Seq_len x Item_num
+        logits = logits.view(-1, logits.size(-1))  # (Batch * Seq_len) x Item_num
+        batch_labels = batch_labels.view(-1)  # Batch x Seq_len
 
-        if self.lr_scheduler_name == "ReduceLROnPlateau":
+        loss = F.cross_entropy(logits, batch_labels, ignore_index=0)
+
+        if self.lr_scheduler != None:
             sch = self.lr_schedulers()
-            if (batch_idx + 1) == 0:
-                sch.step(self.lr_metric)
+
+            # print(batch_idx)
+            # if (batch_idx + 1) == 0:
+            # sch.step(self.lr_metric)
+            sch.step()
 
         self.log("train_loss", loss)
         return loss
 
-    def validation_step(self, batch, batch_idx):
-        seqs, candidates, labels = batch
-        scores = self.forward(seqs)  # Batch x Seq_len x Vocab_size
-        scores = scores[:, -1, :]  # Batch x Vocab_size
-        scores = scores.gather(1, candidates)  # Batch x Candidates
-        metrics = rpf1_for_ks(scores, labels, METRICS_KS)
+    def validation_step(self, batch, batch_idx) -> None:
+        batch_item_seq = batch["item_seq"]
+        batch_candidates = batch["candidates"]
+        batch_labels = batch["labels"]
+
+        scores = self.forward(batch_item_seq)  # Batch x Seq_len x Item_num
+        scores = scores[:, -1, :]  # Batch x Item_num
+        scores[:, 0] = -999.999
+        scores[
+            :, -1
+        ] = -999.999  # pad token and mask token should not appear in the logits outpu
+
+        scores = scores.gather(1, batch_candidates)  # Batch x Candidates
+        metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, METRICS_KS)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
                 self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
 
-    def test_step(self, batch, batch_idx):
-        seqs, candidates, labels = batch
-        scores = self.forward(seqs)  # B x T x V
-        scores = scores[:, -1, :]  # B x V
-        scores = scores.gather(1, candidates)  # B x C
-        metrics = rpf1_for_ks(scores, labels, METRICS_KS)
+    def test_step(self, batch, batch_idx) -> None:
+        batch_item_seq = batch["item_seq"]
+        batch_candidates = batch["candidates"]
+        batch_labels = batch["labels"]
+
+        scores = self.forward(batch_item_seq)  # Batch x Seq_len x Item_num
+        scores = scores[:, -1, :]  # Batch x Item_num
+        scores[:, 0] = -999.999
+        scores[
+            :, -1
+        ] = -999.999  # pad token and mask token should not appear in the logits outpu
+
+        scores = scores.gather(1, batch_candidates)  # Batch x Candidates
+        metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, METRICS_KS)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
@@ -162,45 +191,11 @@ class BERTEmbedding(nn.Module):
         super().__init__()
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
-        # self.segment = SegmentEmbedding(embed_size=self.token.embedding_dim)
+
         self.dropout = nn.Dropout(p=dropout)
         self.embed_size = embed_size
 
     def forward(self, sequence):
         x = self.token(sequence) + self.position(sequence)
-        # + self.segment(segment_label)
-        return self.dropout(x)
 
-
-# Transformer
-class TransformerBlock(nn.Module):
-    """
-    Bidirectional Encoder = Transformer (self-attention)
-    Transformer = MultiHead_Attention + Feed_Forward with sublayer connection
-    """
-
-    def __init__(self, d_model, attn_heads, feed_forward_hidden, dropout):
-        """
-        :param hidden: hidden size of transformer
-        :param attn_heads: head sizes of multi-head attention
-        :param feed_forward_hidden: feed_forward_hidden, usually 4*d_model
-        :param dropout: dropout rate
-        """
-
-        super().__init__()
-        self.attention = MultiHeadedAttention(
-            h=attn_heads, d_model=d_model, dropout=dropout
-        )
-        self.feed_forward = PositionwiseFeedForward(
-            d_model=d_model, d_ff=feed_forward_hidden, dropout=dropout
-        )
-        self.input_sublayer = SublayerConnection(size=d_model, dropout=dropout)
-        self.output_sublayer = SublayerConnection(size=d_model, dropout=dropout)
-        self.dropout = nn.Dropout(p=dropout)
-
-    def forward(self, x, mask):
-        x = self.input_sublayer(
-            x, lambda _x: self.attention.forward(_x, _x, _x, mask=mask)
-        )
-        x = self.output_sublayer(x, self.feed_forward)
         return self.dropout(x)

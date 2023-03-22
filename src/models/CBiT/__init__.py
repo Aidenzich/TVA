@@ -1,10 +1,10 @@
-from src.datasets.bert_dset import BertDataset
+from src.datasets.seq_dset import SequenceDataset
 from src.models.BERT4Rec.model import BERTModel
 from src.adapters.lightning_adapter import fit
 
 
 def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
-    trainset = BertDataset(
+    trainset = SequenceDataset(
         mode="train",
         max_len=model_params["max_len"],
         mask_prob=model_params["mask_prob"],
@@ -14,7 +14,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         seed=trainer_config["seed"],
     )
 
-    valset = BertDataset(
+    valset = SequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
@@ -23,20 +23,27 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         u2answer=recdata.val_seqs,
     )
 
-    testset = BertDataset(
+    u2seqs_for_test = {}
+    for u in recdata.users_seqs:
+        # Remove the last item of the fully user's sequence
+        u2seqs_for_test[u] = recdata.users_seqs[u][:-1]
+
+    testset = SequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
         num_items=recdata.num_items,
-        u2seq=recdata.train_seqs,
-        u2val=recdata.val_seqs,
+        u2seq=u2seqs_for_test,
         u2answer=recdata.test_seqs,
     )
 
     model = BERTModel(
+        d_model=model_params["d_model"],
         num_items=recdata.num_items,
-        model_params=model_params,
-        trainer_config=trainer_config,
+        n_layers=model_params["n_layers"],
+        dropout=model_params["dropout"],
+        heads=model_params["heads"],
+        max_len=model_params["max_len"],
     )
 
     fit(
@@ -91,7 +98,7 @@ def infer(ckpt_path, recdata, rec_ks=10, negative_samples=None):
             print(k, "is not in the negative samples")
             recdata.train_seqs.pop(k, None)
 
-    inferset = BertDataset(
+    inferset = SequenceDataset(
         mode="inference",
         mask_token=recdata.num_items + 1,
         num_items=recdata.num_items,

@@ -35,26 +35,18 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         user_matrix=recdata.matrix,
     )
 
-    u2seqs_for_test = {}
-    u2timeseqs_for_test = {}
-    for u in recdata.users_seqs:
-        # Remove the last and first item of the fully user's sequence
-        temp_users_seqs = recdata.users_seqs[u][:-1]
-        temp_users_seqs = temp_users_seqs[1:]
-        u2seqs_for_test[u] = temp_users_seqs
-
-        # Remove the last and first item of the fully user's time sequence
-        temp_users_timeseqs = recdata.users_timeseqs[u][:-1]
-        temp_users_timeseqs = temp_users_timeseqs[1:]
-        u2timeseqs_for_test[u] = temp_users_timeseqs
+    # u2seqs_for_test = {}
+    # for u in recdata.users_seqs:
+    #     # Remove the last and first item of the fully user's sequence
+    #     u2seqs_for_test[u] = recdata.users_seqs[u][:-1]
 
     testset = TVASequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
-        u2seq=u2seqs_for_test,
+        u2seq=recdata.train_seqs,
         u2answer=recdata.test_seqs,
-        u2timeseq=u2timeseqs_for_test,
+        u2timeseq=recdata.train_timeseqs,
         num_items=recdata.num_items,
         u2eval_time=recdata.test_timeseqs,
         seed=trainer_config["seed"],

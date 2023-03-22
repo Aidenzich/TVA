@@ -4,8 +4,8 @@
         "tune": {
             "metrics": {
                 "loss": "train_loss",
-                "recall": "leave1out_recall@30",
-                "f1": "leave1out_f1@30"
+                "recall": "bert_recall@30",
+                "f1": "bert_f1@30"
             },
             "resources_per_trial": {
                 "cpu": 12,
@@ -18,14 +18,14 @@
             }
         },
         "early_stopping": {
-            "monitor": "leave1out_recall@30",
+            "monitor": "bert_recall@30",
             "patience": 10,
             "verbose": false,
             "mode": "max"
         },
         "limit_train_batches": 0.5,
         "max_epochs": 20,
-        "sample_size": 100,
+        "sample_size": 1024,
         "sample_method": "random",
         "seed": 12345,
         "num_workers": 12,

@@ -7,7 +7,7 @@ import pytorch_lightning as pl
 from typing import Dict
 
 from src.modules.feedforward import PointWiseFeedForward
-from ...metrics import rpf1_for_ks, METRICS_KS
+from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 
 
 class SASRecModel(pl.LightningModule):
@@ -117,7 +117,7 @@ class SASRecModel(pl.LightningModule):
 
         logits = -self.sasrec.predict(log_seqs, candidates)  # Batch x Candidates
 
-        metrics = rpf1_for_ks(logits, labels, METRICS_KS)
+        metrics = recalls_and_ndcgs_for_ks(logits, labels, METRICS_KS)
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
                 self.log(
@@ -132,7 +132,7 @@ class SASRecModel(pl.LightningModule):
         labels = batch["labels"]
 
         logits = self.sasrec.predict(log_seqs, candidates)
-        metrics = rpf1_for_ks(logits, labels, METRICS_KS)
+        metrics = recalls_and_ndcgs_for_ks(logits, labels, METRICS_KS)
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
                 self.log(
@@ -183,9 +183,7 @@ class SASRec(nn.Module):
             self.forward_layers.append(new_fwd_layer)
 
     def log2feats(self, log_seqs):
-
         seqs = self.item_emb(log_seqs)
-
         seqs *= self.item_emb.embedding_dim**0.5
 
         positions = torch.LongTensor(

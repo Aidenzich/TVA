@@ -1,9 +1,9 @@
 import torch
 
-METRICS_KS = [1, 5, 10, 20, 30, 50]
+METRICS_KS = [1, 5, 10, 20, 30, 40, 50]
 
 
-def rpf1_for_ks(scores: torch.tensor, labels: torch.tensor, ks):
+def recall_precision_f1_for_ks(scores: torch.tensor, labels: torch.tensor, ks):
     # Batch x Candidates
 
     metrics = {}

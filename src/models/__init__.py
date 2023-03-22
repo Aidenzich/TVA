@@ -1,5 +1,4 @@
 from .TVA4 import train as train_tva4
-from .TVA5 import train as train_tva5
 from .TVA6 import train as train_tva6
 from .TVAE import train as train_tvae
 
@@ -14,7 +13,6 @@ TRAIN_FACTORY = {
     "vaecf": train_vaecf,
     "vaeicf": train_vaeicf,
     "tva4": train_tva4,
-    "tva5": train_tva5,
     "tva6": train_tva6,
     "sasrec": train_sas,
     "tvae": train_tvae,

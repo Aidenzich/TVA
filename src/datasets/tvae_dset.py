@@ -74,6 +74,8 @@ class TVASequenceDataset(Dataset):
         user = self.users[index]
         seq = self.u2seq[user]
 
+        print(self.user_matrix.toarray())
+
         # Time interval sequence
         time_seq = self.u2time_seq[user]
 
@@ -83,142 +85,36 @@ class TVASequenceDataset(Dataset):
         ]
 
         if self.mode == "train":
-            train_item_seq = []
-            labels = []
-
-            train_time_interval_seq = []
-            train_time_interval_seq = time_interval_seq
-
-            train_time_seq = time_seq
-
-            # Do masking
-            for idx, s in enumerate(seq):
-                prob = self.rng.random()
-                if prob < self.mask_prob:
-                    prob /= self.mask_prob
-
-                    if prob < 0.8:
-                        train_item_seq.append(self.mask_token)
-
-                    elif prob < 0.9:
-                        train_item_seq.append(self.rng.randint(1, self.num_items))
-
-                    else:
-                        train_item_seq.append(s)
-
-                    labels.append(s)
-                else:
-                    train_item_seq.append(s)
-                    labels.append(0)
-
-            train_item_seq = train_item_seq[-self.max_len :]
-            labels = labels[-self.max_len :]
-
-            train_time_seq = train_time_seq[-self.max_len :]
-            train_time_interval_seq = train_time_interval_seq[-self.max_len :]
-
-            mask_len = self.max_len - len(train_item_seq)
-
-            train_item_seq = [0] * mask_len + train_item_seq
-            labels = [0] * mask_len + labels
-
-            train_time_seq = [0] * mask_len + train_time_seq
-            train_time_interval_seq = [0] * mask_len + train_time_interval_seq
-
-            # FIXME: This is a temporary solution
-            dates = [datetime.datetime.fromtimestamp(t) for t in train_time_seq]
-
-            years = [d.year if d is not None else 0 for d in dates]
-            months = [d.month if d is not None else 0 for d in dates]
-            days = [d.day if d is not None else 0 for d in dates]
-            hours = [d.hour if d is not None else 0 for d in dates]
-            minutes = [d.minute if d is not None else 0 for d in dates]
-            seconds = [d.second if d is not None else 0 for d in dates]
-
-            seasons = []
-            for month in months:
-                if month in [3, 4, 5]:
-                    seasons.append(1)
-                elif month in [6, 7, 8]:
-                    seasons.append(2)
-                elif month in [9, 10, 11]:
-                    seasons.append(3)
-                else:  # month in [12, 1, 2]
-                    seasons.append(4)
-
             user_matrix = torch.FloatTensor(self.user_matrix[user].toarray()[0])
-
-            data = {
-                "item_seq": torch.LongTensor(train_item_seq),
-                "time_seq": torch.FloatTensor(train_time_seq),
-                "time_interval_seq": torch.LongTensor(train_time_interval_seq),
-                "labels": torch.LongTensor(labels),
-                "user_matrix": user_matrix,
-                # Time features
-                "years": torch.LongTensor(years),
-                "months": torch.LongTensor(months),
-                "days": torch.LongTensor(days),
-                "hours": torch.LongTensor(hours),
-                "minutes": torch.LongTensor(minutes),
-                "seconds": torch.LongTensor(seconds),
-                "seasons": torch.LongTensor(seasons),
-            }
-
+            self.train_phase(seq=seq, user_matrix=user_matrix)
             return TVASequences(**data).dict(exclude_none=True)
 
         if self.mode == "eval":
             # candidates: candidates from negative sampling
             answer = self.u2answer[user]
+            user_matrix
+
             interacted = list(set(seq))
             interacted += answer
 
-            negs = [x for x in range(1, self.num_items + 1) if x not in interacted]
+            candidates = [
+                x for x in range(1, self.num_items + 1) if x not in interacted
+            ]
 
             # if negs is not enough, pad with the last negative item
-            if len(negs) < self.num_items:
-                negs += [0] * (self.num_items - len(negs))
+            if len(candidates) < self.num_items:
+                candidates += [0] * (self.num_items - len(candidates))
 
-            candidates = answer + negs
+            candidates = answer + candidates
 
             # labels: labels from user's answer and negative samples
-            labels = [1] * len(answer) + [0] * len(negs)
+            labels = [1] * len(answer) + [0] * len(candidates)
 
             # seq: user's item sequence
             seq = seq + [self.mask_token]
             seq = seq[-self.max_len :]
             padding_len = self.max_len - len(seq)
             seq = [0] * padding_len + seq
-
-            # FIXME
-            val_time = self.u2eval_time[user]
-            time_seq = time_seq + val_time
-            time_seq = time_seq[-self.max_len :]
-            time_seq = [0] * padding_len + time_seq
-
-            # time_interval_seq: time intervals of user's sequence
-            time_interval_seq = time_interval_seq + [0]
-            time_interval_seq = time_interval_seq[-self.max_len :]
-            time_interval_seq = [0] * padding_len + time_interval_seq
-
-            # FIXME: This is a temporary solution
-            dates = [datetime.datetime.fromtimestamp(t) for t in time_seq]
-            years = [d.year if d is not None else 0 for d in dates]
-            months = [d.month if d is not None else 0 for d in dates]
-            days = [d.day if d is not None else 0 for d in dates]
-            hours = [d.hour if d is not None else 0 for d in dates]
-            minutes = [d.minute if d is not None else 0 for d in dates]
-            seconds = [d.second if d is not None else 0 for d in dates]
-
-            seasons = []
-            for month in months:
-                if month in [3, 4, 5]:
-                    seasons.append(1)
-                elif month in [6, 7, 8]:
-                    seasons.append(2)
-                elif month in [9, 10, 11]:
-                    seasons.append(3)
-                else:  # month in [12, 1, 2]
-                    seasons.append(4)
 
             user_matrix = torch.FloatTensor(self.user_matrix[user].toarray()[0])
 
@@ -229,14 +125,6 @@ class TVASequenceDataset(Dataset):
                 "candidates": torch.LongTensor(candidates),
                 "labels": torch.LongTensor(labels),
                 "user_matrix": user_matrix,
-                # Time features
-                "years": torch.LongTensor(years),
-                "months": torch.LongTensor(months),
-                "days": torch.LongTensor(days),
-                "hours": torch.LongTensor(hours),
-                "minutes": torch.LongTensor(minutes),
-                "seconds": torch.LongTensor(seconds),
-                "seasons": torch.LongTensor(seasons),
             }
 
             return TVASequences(**data).dict(exclude_none=True)
@@ -260,3 +148,73 @@ class TVASequenceDataset(Dataset):
             }
 
             return TVASequences(**data).dict(exclude_none=True)
+
+    def train_phase(self, seq, user_matrix):
+
+        train_item_seq = []
+        labels = []
+
+        # Do masking
+        for idx, s in enumerate(seq):
+            prob = self.rng.random()
+            if prob < self.mask_prob:
+                prob /= self.mask_prob
+
+                if prob < 0.8:
+                    train_item_seq.append(self.mask_token)
+
+                elif prob < 0.9:
+                    train_item_seq.append(self.rng.randint(1, self.num_items))
+
+                else:
+                    train_item_seq.append(s)
+
+                labels.append(s)
+            else:
+                train_item_seq.append(s)
+                labels.append(0)
+
+        train_item_seq = train_item_seq[-self.max_len :]
+        labels = labels[-self.max_len :]
+
+        train_time_seq = train_time_seq[-self.max_len :]
+        train_time_interval_seq = train_time_interval_seq[-self.max_len :]
+
+        mask_len = self.max_len - len(train_item_seq)
+
+        train_item_seq = [0] * mask_len + train_item_seq
+        labels = [0] * mask_len + labels
+
+        train_time_seq = [0] * mask_len + train_time_seq
+        train_time_interval_seq = [0] * mask_len + train_time_interval_seq
+
+        data = {
+            "item_seq": torch.LongTensor(train_item_seq),
+            "time_seq": torch.FloatTensor(train_time_seq),
+            "time_interval_seq": torch.LongTensor(train_time_interval_seq),
+            "labels": torch.LongTensor(labels),
+            "user_matrix": user_matrix,
+        }
+
+        return data
+
+    def eval_phase():
+        pass
+
+
+def get_slidewindow(user_seq, max_len, step=10) -> List[int]:
+    user_sliding_seqs = []
+
+    if isinstance(user_seq[1], tuple):
+        seq = [x[0] for x in user_seq]
+    else:
+        seq = user_seq
+    seq_len = len(seq)
+    beg_idx = list(range(seq_len - max_len, 0, -step))
+    beg_idx.append(0)
+    for i in beg_idx:
+
+        temp = seq[i : i + max_len]
+        user_sliding_seqs.append(temp)
+
+    return user_sliding_seqs

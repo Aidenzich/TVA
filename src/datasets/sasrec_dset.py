@@ -55,11 +55,18 @@ class SASRecDataset(Dataset):
 
         if self.mode == "train":
             # (train_seq, pos_label, neg_label)
-            return {
+            data = {
                 "train_seq": torch.from_numpy(train_seq),
                 "pos_label": torch.from_numpy(pos_label),
                 "neg_label": torch.from_numpy(neg_label),
             }
+
+            # print(
+            #     data["train_seq"].shape,
+            #     data["pos_label"].shape,
+            #     data["neg_label"].shape,
+            # )
+            return data
 
         if self.mode == "eval":
             answer = self.u2answer[user]
@@ -68,15 +75,24 @@ class SASRecDataset(Dataset):
 
             negs = [x for x in range(1, self.num_items + 1) if x not in interacted]
 
+            # if negs is not enough, pad with the last negative item
+            if len(negs) < self.num_items:
+                negs += [0] * (self.num_items - len(negs))
+
             candidates = answer + negs
 
             labels = [1] * len(answer) + [0] * len(negs)
 
-            return {
+            data = {
                 "candidates": torch.from_numpy(np.array(candidates)),
                 "train_seq": torch.from_numpy(train_seq),
                 "labels": torch.from_numpy(np.array(labels)),
             }
+
+            # print(
+            #     data["candidates"].shape, data["train_seq"].shape, data["labels"].shape
+            # )
+            return data
 
 
 def random_neq(left, right, true_items):
