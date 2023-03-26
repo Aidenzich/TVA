@@ -200,21 +200,3 @@ class TVASequenceDataset(Dataset):
 
     def eval_phase():
         pass
-
-
-def get_slidewindow(user_seq, max_len, step=10) -> List[int]:
-    user_sliding_seqs = []
-
-    if isinstance(user_seq[1], tuple):
-        seq = [x[0] for x in user_seq]
-    else:
-        seq = user_seq
-    seq_len = len(seq)
-    beg_idx = list(range(seq_len - max_len, 0, -step))
-    beg_idx.append(0)
-    for i in beg_idx:
-
-        temp = seq[i : i + max_len]
-        user_sliding_seqs.append(temp)
-
-    return user_sliding_seqs

@@ -103,9 +103,10 @@ class BertDataset(Dataset):
     ) -> Dict[str, torch.LongTensor]:
 
         if val_item is not None:
+            print("val_item", val_item)
             # In test phase, we add val_item to item_seq,
             # and use the item_seq to predict the answer_item
-            item_seq = item_seq + val_item + [self.mask_token]
+            item_seq = item_seq + val_item
 
         # Mask the last item, which need to be predicted
         item_seq = item_seq + [self.mask_token]

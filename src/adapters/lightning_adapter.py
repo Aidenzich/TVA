@@ -5,6 +5,7 @@ import pytorch_lightning as pl
 from pytorch_lightning.callbacks.early_stopping import EarlyStopping
 from pytorch_lightning.callbacks.lr_monitor import LearningRateMonitor
 from src.configs import LOG_PATH
+from pytorch_lightning.callbacks import ModelCheckpoint
 
 
 def fit(
@@ -32,6 +33,7 @@ def fit(
     """
 
     early_stop_config = trainer_config.get("early_stopping")
+
     # early stopping
     if trainer_config.get("early_stopping"):
         print("Early stopping is enabled")
@@ -42,6 +44,15 @@ def fit(
             mode=early_stop_config.get("mode"),
         )
         callbacks.append(early_stop_callback)
+
+    # save top k checkpoints
+    if trainer_config.get("save_checkpoint"):
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=LOG_PATH,
+            save_top_k=trainer_config["save_checkpoint"]["save_top_k"],
+            monitor=trainer_config["save_checkpoint"]["monitor"],
+        )
+        callbacks.append(checkpoint_callback)
 
     # Learning rate monitor
     lr_monitor = LearningRateMonitor(logging_interval="step")

@@ -1,12 +1,9 @@
-from typing import Any
+from typing import Any, Dict
 import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch.nn as nn
 import torch
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
-from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
-from ...modules.attention import MultiHeadedAttention
-from ...modules.utils import SublayerConnection
 from ...modules.transformer import TransformerBlock
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 import transformers
@@ -43,16 +40,43 @@ class BERTModel(pl.LightningModule):
             dropout=model_params["dropout"],
         )
 
+        self.ks = trainer_config.get("ks", METRICS_KS)
         self.out = nn.Linear(self.d_model, num_items + 1)
+        self.lr = trainer_config["lr"]
         self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
         self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
+        self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
+        self.weight_decay = trainer_config["weight_decay"]
 
     def configure_optimizers(self) -> Any:
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        if self.weight_decay != 0:
+            print("Using weight decay")
+            param = list(self.named_parameters())
+            no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
+            optimizer_grouped_parameters = [
+                {
+                    "params": [
+                        p for n, p in param if not any(nd in n for nd in no_decay)
+                    ],
+                    "weight_decay": self.weight_decay,
+                },
+                {
+                    "params": [p for n, p in param if any(nd in n for nd in no_decay)],
+                    "weight_decay": 0.0,
+                },
+            ]
+
+            optimizer = torch.optim.Adam(
+                optimizer_grouped_parameters, lr=self.lr, weight_decay=self.weight_decay
+            )
+
+        else:
+            optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         if self.lr_scheduler != None:
             lr_schedulers = {
                 "scheduler": self.lr_scheduler(optimizer, **self.lr_scheduler_args),
+                "interval": self.lr_scheduler_interval,
                 "monitor": "train_loss",
             }
 
@@ -72,7 +96,9 @@ class BERTModel(pl.LightningModule):
         logits = logits.view(-1, logits.size(-1))  # (Batch * Seq_len) x Item_num
         batch_labels = batch_labels.view(-1)  # Batch x Seq_len
 
-        loss = F.cross_entropy(logits, batch_labels, ignore_index=0)
+        loss = F.cross_entropy(
+            logits, batch_labels, ignore_index=0, label_smoothing=0.05
+        )
 
         if self.lr_scheduler != None:
             sch = self.lr_schedulers()
@@ -86,25 +112,20 @@ class BERTModel(pl.LightningModule):
         return loss
 
     def validation_step(self, batch, batch_idx) -> None:
-        batch_item_seq = batch["item_seq"]
-        batch_candidates = batch["candidates"]
-        batch_labels = batch["labels"]
-
-        scores = self.forward(batch_item_seq)  # Batch x Seq_len x Item_num
-        scores = scores[:, -1, :]  # Batch x Item_num
-        scores[:, 0] = -999.999
-        scores[
-            :, -1
-        ] = -999.999  # pad token and mask token should not appear in the logits outpu
-
-        scores = scores.gather(1, batch_candidates)  # Batch x Candidates
-        metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, METRICS_KS)
+        metrics = self.calculate_metrics(batch)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
                 self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
 
     def test_step(self, batch, batch_idx) -> None:
+        metrics = self.calculate_metrics(batch)
+
+        for metric in metrics.keys():
+            if "recall" in metric or "ndcg" in metric:
+                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
+
+    def calculate_metrics(self, batch) -> Dict[str, float]:
         batch_item_seq = batch["item_seq"]
         batch_candidates = batch["candidates"]
         batch_labels = batch["labels"]
@@ -118,10 +139,7 @@ class BERTModel(pl.LightningModule):
 
         scores = scores.gather(1, batch_candidates)  # Batch x Candidates
         metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, METRICS_KS)
-
-        for metric in metrics.keys():
-            if "recall" in metric or "ndcg" in metric:
-                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
+        return metrics
 
 
 # BERT
