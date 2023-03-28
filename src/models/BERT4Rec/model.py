@@ -1,27 +1,12 @@
 from typing import Any, Dict
 import pytorch_lightning as pl
 import torch.nn.functional as F
-import torch.nn as nn
 import torch
+import torch.nn as nn
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.transformer import TransformerBlock
+from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
-import transformers
-
-
-SCHEDULER = {
-    "Warmup": transformers.get_cosine_schedule_with_warmup,
-    "ReduceLROnPlateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
-    "StepLR": torch.optim.lr_scheduler.StepLR,
-    "MultiStepLR": torch.optim.lr_scheduler.MultiStepLR,
-    "ExponentialLR": torch.optim.lr_scheduler.ExponentialLR,
-    "CosineAnnealingLR": torch.optim.lr_scheduler.CosineAnnealingLR,
-    "CosineAnnealingWarmRestarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
-    "LambdaLR": torch.optim.lr_scheduler.LambdaLR,
-    "OneCycleLR": torch.optim.lr_scheduler.OneCycleLR,
-    "CyclicLR": torch.optim.lr_scheduler.CyclicLR,
-    "CosineAnnealingWarmRestarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
-}
 
 
 class BERTModel(pl.LightningModule):

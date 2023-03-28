@@ -30,7 +30,7 @@ class VAECFModel(pl.LightningModule):
             activation_function=self.act_fn,
             likelihood=self.likelihood,
         )
-        self.top_k = 30
+        self.top_k = 50
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
@@ -45,8 +45,7 @@ class VAECFModel(pl.LightningModule):
 
     def training_step(self, batch, batch_idx):
         _batch, mu, logvar = self.vae(batch)
-        print(batch.shape)
-        assert False
+
         loss = self.vae.loss(batch, _batch, mu, logvar, self.beta)
 
         self.log("train_loss", loss / len(batch), sync_dist=True)
@@ -67,8 +66,8 @@ class VAECFModel(pl.LightningModule):
         )
 
         self.log(f"vae_recall@{self.top_k}", recall, sync_dist=True)
-        self.log(f"vae_precision@{self.top_k}", precision, sync_dist=True)
-        self.log(f"vae_f1@{self.top_k}", f1, sync_dist=True)
+        # self.log(f"vae_precision@{self.top_k}", precision, sync_dist=True)
+        # self.log(f"vae_f1@{self.top_k}", f1, sync_dist=True)
 
     def test_step(self, batch, batch_idx):
         x, true_y, _ = split_matrix_by_mask(batch)
@@ -83,8 +82,8 @@ class VAECFModel(pl.LightningModule):
         )
 
         self.log(f"vae_recall@{self.top_k}", recall, sync_dist=True)
-        self.log(f"vae_precision@{self.top_k}", precision, sync_dist=True)
-        self.log(f"vae_f1@{self.top_k}", f1, sync_dist=True)
+        # self.log(f"vae_precision@{self.top_k}", precision, sync_dist=True)
+        # self.log(f"vae_f1@{self.top_k}", f1, sync_dist=True)
 
 
 EPS = 1e-10

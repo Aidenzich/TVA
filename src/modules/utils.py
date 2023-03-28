@@ -1,7 +1,7 @@
 import math
 import torch
 import torch.nn as nn
-
+import transformers
 
 # Gelu
 class GELU(nn.Module):
@@ -63,3 +63,18 @@ class SublayerConnection2(nn.Module):
 
     def forward(self, x, sublayer):
         return x + self.dropout(sublayer(self.norm(x)))
+
+
+SCHEDULER = {
+    "Warmup": transformers.get_cosine_schedule_with_warmup,
+    "ReduceLROnPlateau": torch.optim.lr_scheduler.ReduceLROnPlateau,
+    "StepLR": torch.optim.lr_scheduler.StepLR,
+    "MultiStepLR": torch.optim.lr_scheduler.MultiStepLR,
+    "ExponentialLR": torch.optim.lr_scheduler.ExponentialLR,
+    "CosineAnnealingLR": torch.optim.lr_scheduler.CosineAnnealingLR,
+    "CosineAnnealingWarmRestarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+    "LambdaLR": torch.optim.lr_scheduler.LambdaLR,
+    "OneCycleLR": torch.optim.lr_scheduler.OneCycleLR,
+    "CyclicLR": torch.optim.lr_scheduler.CyclicLR,
+    "CosineAnnealingWarmRestarts": torch.optim.lr_scheduler.CosineAnnealingWarmRestarts,
+}

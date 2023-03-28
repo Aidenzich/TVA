@@ -1,5 +1,5 @@
 from torch import ne
-from src.datasets.tvaseq_dset import TVASequenceDataset
+from src.datasets.tva_dset import TVASequenceDataset
 from src.datasets.negative_sampler import NegativeSampler
 from .model import TVAModel
 from src.adapters.lightning_adapter import fit
@@ -89,10 +89,10 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
     fit(
         model=model,
         trainset=trainset,
-        valset=valset,
+        # valset=valset,
         trainer_config=trainer_config,
         model_params=model_params,
-        testset=testset,
+        # testset=testset,
         callbacks=callbacks,
     )
 

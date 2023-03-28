@@ -8,6 +8,11 @@ from .SASRec import train as train_sas, infer as infer_sasrec
 from .VAEICF import train as train_vaeicf, infer as infer_vaeicf
 from .BERT4Rec import train as train_bert4rec, infer as infer_bert4rec
 from .BERT4RecS import train as train_bert4recs, infer as infer_bert4recs
+from .CBiT import train as train_cbit
+
+import torch
+import transformers
+
 
 TRAIN_FACTORY = {
     "bert4rec": train_bert4rec,
@@ -18,9 +23,8 @@ TRAIN_FACTORY = {
     "sasrec": train_sas,
     "tvae": train_tvae,
     "bert4recs": train_bert4recs,
+    "cbit": train_cbit,
 }
-
-
 INFER_FACTORY = {
     "bert4rec": infer_bert4rec,
     "vaecf": infer_vaecf,

@@ -82,6 +82,11 @@ class TVAModel(pl.LightningModule):
 
         logits = logits.view(-1, logits.size(-1))  # (B * T) x V
         batch_labels = batch_labels.view(-1)  # B * T
+
+        print(batch_labels.shape)
+        print(batch_labels)
+        print(logits.shape)
+
         loss = F.cross_entropy(
             logits, batch_labels, ignore_index=0, label_smoothing=0.05
         )
@@ -147,7 +152,7 @@ class TVA(nn.Module):
         super().__init__()
 
         vocab_size = num_items + 2
-
+        max_len += 1
         # embedding for BERT, sum of positional, segment, token embeddings
         self.embedding = TVAEmbedding(
             vocab_size=vocab_size,
@@ -167,7 +172,21 @@ class TVA(nn.Module):
         )
 
     def forward(self, item_seq, userwise_latent_factor, itemwise_latent_factor_seq):
-        mask = (item_seq > 0).unsqueeze(1).repeat(1, item_seq.size(1), 1).unsqueeze(1)
+        temp_item_seq = torch.cat(
+            [
+                torch.zeros(item_seq.shape[0], 1, dtype=torch.long).to(item_seq.device),
+                item_seq,
+            ],
+            dim=1,
+        )
+
+        # mask = (item_seq > 0).unsqueeze(1).repeat(1, item_seq.size(1), 1).unsqueeze(1)
+        mask = (
+            (temp_item_seq > 0)
+            .unsqueeze(1)
+            .repeat(1, temp_item_seq.size(1), 1)
+            .unsqueeze(1)
+        )
 
         # embedding the indexed sequence to sequence of vectors
         x = self.embedding(item_seq, userwise_latent_factor, itemwise_latent_factor_seq)
@@ -175,6 +194,9 @@ class TVA(nn.Module):
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
             x = transformer.forward(x, mask)
+
+        # remove the first item in second index of the x, which make shape [256, 16, 256] to [256, 15, 256]
+        x = x[:, 1:, :]
 
         return x
 
@@ -210,7 +232,7 @@ class TVAEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 4, embed_size)
+        self.out = nn.Linear(embed_size, embed_size)
 
         self.user_latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
 
@@ -243,23 +265,28 @@ class TVAEmbedding(nn.Module):
             userwise_latent_factor[:, self.user_latent_factor_dim :], dim=1
         )
 
-        u_mu = u_mu.unsqueeze(1).repeat(1, self.max_len, 1)
-        u_sigma = u_sigma.unsqueeze(1).repeat(1, self.max_len, 1)
+        # u_mu = u_mu.unsqueeze(1).repeat(1, self.max_len, 1)
+        # u_sigma = u_sigma.unsqueeze(1).repeat(1, self.max_len, 1)
+
+        u_mu = u_mu.unsqueeze(1)
+        u_sigma = u_sigma.unsqueeze(1)
+
+        items = torch.cat([u_sigma, items], dim=1)
 
         positions = self.position(item_seq)
 
-        user_latent = self.user_latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
-        user_latent = self.ff(user_latent)
+        # user_latent = self.user_latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
+        # user_latent = self.ff(user_latent)
 
         item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
 
         x = self.out(
             torch.cat(
                 [
-                    items,
-                    positions,
-                    item_latent,
-                    user_latent,
+                    items + positions,
+                    # item_latent,
+                    # user_latent,
+                    # u_mu,
                 ],
                 dim=-1,
             )

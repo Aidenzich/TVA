@@ -3,9 +3,10 @@ import torch
 from torch.utils.data import Dataset
 from typing import Dict, List, Tuple
 import random
+from ..datasets.bert_dset import get_masked_seq
 
 
-class BertDataset(Dataset):
+class CBiTDataset(Dataset):
     def __init__(
         self,
         u2seq,
@@ -20,6 +21,7 @@ class BertDataset(Dataset):
         u2answer=None,
         u2test=None,
         u2val=None,
+        num_positive=0,
     ) -> None:
 
         if mode == "eval":
@@ -40,6 +42,7 @@ class BertDataset(Dataset):
         self.u2answer = u2answer
         self.u2test = u2test
         self.u2val = u2val
+        self.num_positive = num_positive
 
     def __len__(self) -> int:
         return len(self.users)
@@ -64,18 +67,35 @@ class BertDataset(Dataset):
             return self._predict(item_seq=item_seq)
 
     def _train(self, item_seq):
-        masked_item_seq, labels = get_masked_seq(
-            item_seq=item_seq,
-            max_len=self.max_len,
-            mask_prob=self.mask_prob,
-            mask_token=self.mask_token,
-            num_items=self.num_items,
-            rng=self.rng,
-        )
+        masked_item_seq = []
+        labels = []
+        item_seq_list = []
+        labels_list = []
+        for _ in range(self.num_positive):
+            # Mask the item in the sequence
+            masked_item_seq, labels = get_masked_seq(
+                item_seq=item_seq,
+                max_len=self.max_len,
+                mask_prob=self.mask_prob,
+                mask_token=self.mask_token,
+                num_items=self.num_items,
+                rng=self.rng,
+            )
+
+            item_seq_list.append(masked_item_seq)
+            labels_list.append(labels)
+
+        item_seq_list = torch.LongTensor(
+            item_seq_list
+        )  # Number of positive samples x max_len
+
+        labels_list = torch.LongTensor(
+            labels_list
+        )  # Number of positive samples x max_len
 
         return {
-            "item_seq": torch.LongTensor(masked_item_seq),
-            "labels": torch.LongTensor(labels),
+            "item_seq": item_seq_list,
+            "labels": labels_list,
         }
 
     def _eval(
@@ -117,60 +137,3 @@ class BertDataset(Dataset):
             # labels from user's answer and negative samples
             "labels": torch.LongTensor(labels),
         }
-
-    def _predict(self):
-        candidates = [x for x in range(1, self.num_items + 1)]
-        item_seq = item_seq + [self.mask_token]
-        item_seq = item_seq[-self.max_len :]
-        padding_len = self.max_len - len(item_seq)
-        item_seq = [0] * padding_len + item_seq
-
-        return {
-            "item_seq": torch.LongTensor(item_seq),
-            "candidates": torch.LongTensor(candidates),
-        }
-
-
-def get_masked_seq(
-    item_seq: list,
-    rng: random.Random,
-    mask_prob: float,
-    mask_token: int,
-    num_items: int,
-    max_len: int,
-) -> Tuple[List[int], List[int]]:
-    """
-    Mask the item in the sequence
-    """
-    masked_item_seq = []
-    labels = []
-
-    for s in item_seq:
-        prob = rng.random()
-        if prob < mask_prob:
-            prob /= mask_prob
-
-            if prob < 0.8:
-                masked_item_seq.append(mask_token)
-
-            elif prob < 0.9:
-                masked_item_seq.append(rng.randint(1, num_items))
-
-            else:
-                masked_item_seq.append(s)
-
-            labels.append(s)
-        else:
-            masked_item_seq.append(s)
-            labels.append(0)
-
-        # Truncate the sequence to max_len
-        masked_item_seq = masked_item_seq[-max_len:]
-        labels = labels[-max_len:]
-
-        # Pad the sequence to max_len
-        mask_len = max_len - len(masked_item_seq)
-        masked_item_seq = [0] * mask_len + masked_item_seq
-        labels = [0] * mask_len + labels
-
-    return masked_item_seq, labels
