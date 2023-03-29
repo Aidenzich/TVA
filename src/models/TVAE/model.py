@@ -4,8 +4,6 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
-
-from src.configs import RED_COLOR, END_COLOR
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward
 from ...modules.transformer import TransformerBlock

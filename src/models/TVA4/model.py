@@ -32,6 +32,7 @@ class TVAModel(pl.LightningModule):
             RED_COLOR + "user_latent_factor_params is None" + END_COLOR
         )
 
+        self.label_smoothing = model_params.get("label_smoothing", 0.0)
         self.max_len = model_params["max_len"]
 
         self.tva = TVA(
@@ -210,16 +211,18 @@ class TVAEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 4, embed_size)
+        self.out = nn.Linear(embed_size * 2, embed_size)
 
         self.user_latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
 
         self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
 
-        self.ff = PositionwiseFeedForward(d_model=embed_size, d_ff=128, dropout=dropout)
-        self.item_latent_emb_ff = PositionwiseFeedForward(
-            d_model=embed_size, d_ff=128, dropout=dropout
+        self.user_latent_emb_ff = PositionwiseFeedForward(
+            d_model=embed_size, d_ff=8, dropout=dropout
         )
+        # self.item_latent_emb_ff = PositionwiseFeedForward(
+        #     d_model=embed_size, d_ff=128, dropout=dropout
+        # )
 
     def forward(self, item_seq, userwise_latent_factor, itemwise_latent_factor_seq):
         items = self.token(item_seq)
@@ -248,17 +251,18 @@ class TVAEmbedding(nn.Module):
 
         positions = self.position(item_seq)
 
-        user_latent = self.user_latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
-        user_latent = self.ff(user_latent)
+        # user_latent = self.user_latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
+        user_latent = u_mu + u_sigma
+        user_latent = self.user_latent_emb_ff(user_latent)
 
-        item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
+        # item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
+        user_latent = self.dropout(user_latent)
 
         x = self.out(
             torch.cat(
                 [
-                    items,
-                    positions,
-                    item_latent,
+                    items + positions,
+                    # item_latent,
                     user_latent,
                 ],
                 dim=-1,

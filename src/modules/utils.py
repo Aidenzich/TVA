@@ -2,6 +2,7 @@ import math
 import torch
 import torch.nn as nn
 import transformers
+import copy
 
 # Gelu
 class GELU(nn.Module):
@@ -63,6 +64,11 @@ class SublayerConnection2(nn.Module):
 
     def forward(self, x, sublayer):
         return x + self.dropout(sublayer(self.norm(x)))
+
+
+def clones(module, N):
+    "Produce N identical layers."
+    return nn.ModuleList([copy.deepcopy(module) for _ in range(N)])
 
 
 SCHEDULER = {

@@ -71,6 +71,7 @@ class CBiTDataset(Dataset):
         labels = []
         item_seq_list = []
         labels_list = []
+
         for _ in range(self.num_positive):
             # Mask the item in the sequence
             masked_item_seq, labels = get_masked_seq(
@@ -82,20 +83,12 @@ class CBiTDataset(Dataset):
                 rng=self.rng,
             )
 
-            item_seq_list.append(masked_item_seq)
-            labels_list.append(labels)
-
-        item_seq_list = torch.LongTensor(
-            item_seq_list
-        )  # Number of positive samples x max_len
-
-        labels_list = torch.LongTensor(
-            labels_list
-        )  # Number of positive samples x max_len
+            item_seq_list.append(torch.LongTensor(masked_item_seq))
+            labels_list.append(torch.LongTensor(labels))
 
         return {
-            "item_seq": item_seq_list,
-            "labels": labels_list,
+            "item_seq": torch.stack(item_seq_list),
+            "labels": torch.stack(labels_list),
         }
 
     def _eval(
