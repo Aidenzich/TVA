@@ -6,22 +6,16 @@ import random
 from pydantic import BaseModel, ValidationError
 import numpy as np
 import datetime
+from ..datasets.bert_dset import get_masked_seq
 
 
-class TVASequences(BaseModel):
+class TVAEDomain(BaseModel):
     time_seq: Optional[torch.FloatTensor]
     time_interval_seq: Optional[torch.LongTensor]
     candidates: Optional[torch.LongTensor]
     item_seq: Optional[torch.LongTensor]
     vae_seq: Optional[torch.LongTensor]
     labels: Optional[torch.LongTensor]
-    years: Optional[torch.LongTensor]
-    months: Optional[torch.LongTensor]
-    days: Optional[torch.LongTensor]
-    seasons: Optional[torch.LongTensor]
-    hours: Optional[torch.LongTensor]
-    minutes: Optional[torch.LongTensor]
-    seconds: Optional[torch.LongTensor]
     user_matrix: Optional[torch.FloatTensor]
 
     class Config:
@@ -44,6 +38,7 @@ class TVASequenceDataset(Dataset):
         # Eval parameters
         u2answer: Optional[Dict[int, List[int]]] = None,
         u2eval_time: Optional[Dict[int, List[int]]] = None,
+        u2val=None,
     ) -> None:
 
         if mode == "eval":
@@ -65,36 +60,32 @@ class TVASequenceDataset(Dataset):
         self.u2time_seq = u2timeseq
         self.u2eval_time = u2eval_time
         self.user_matrix = user_matrix
+        self.u2val = u2val
 
     def __len__(self) -> int:
         return len(self.users)
 
     def __getitem__(self, index) -> Tuple[Tensor, Tensor, Tensor]:
-
         user = self.users[index]
-        seq = self.u2seq[user]
+        item_seq = self.u2seq[user]
 
-        print(self.user_matrix.toarray())
-
-        # Time interval sequence
-        time_seq = self.u2time_seq[user]
-
-        time_interval_seq = [0] + [
-            int((time_seq[i] - time_seq[i - 1]) / 100000)
-            for i in range(1, len(time_seq))
-        ]
+        if "." in str(user):
+            user = int(user.split(".")[0])
 
         if self.mode == "train":
             user_matrix = torch.FloatTensor(self.user_matrix[user].toarray()[0])
-            self.train_phase(seq=seq, user_matrix=user_matrix)
-            return TVASequences(**data).dict(exclude_none=True)
+            data = self._get_train(item_seq=item_seq, user_matrix=user_matrix)
+            return TVAEDomain(**data).dict(exclude_none=True)
 
         if self.mode == "eval":
+            val_item = self.u2val[user] if self.u2val is not None else None
+            if val_item is not None:
+                item_seq = item_seq + val_item
+
             # candidates: candidates from negative sampling
             answer = self.u2answer[user]
-            user_matrix
 
-            interacted = list(set(seq))
+            interacted = list(set(item_seq))
             interacted += answer
 
             candidates = [
@@ -111,92 +102,37 @@ class TVASequenceDataset(Dataset):
             labels = [1] * len(answer) + [0] * len(candidates)
 
             # seq: user's item sequence
-            seq = seq + [self.mask_token]
-            seq = seq[-self.max_len :]
-            padding_len = self.max_len - len(seq)
-            seq = [0] * padding_len + seq
+            item_seq = item_seq + [self.mask_token]
+            item_seq = item_seq[-self.max_len :]
+            padding_len = self.max_len - len(item_seq)
+            item_seq = [0] * padding_len + item_seq
 
             user_matrix = torch.FloatTensor(self.user_matrix[user].toarray()[0])
 
             data = {
-                "item_seq": torch.LongTensor(seq),
-                "time_seq": torch.FloatTensor(time_seq),
-                "time_interval_seq": torch.LongTensor(time_interval_seq),
+                "item_seq": torch.LongTensor(item_seq),
                 "candidates": torch.LongTensor(candidates),
                 "labels": torch.LongTensor(labels),
                 "user_matrix": user_matrix,
             }
 
-            return TVASequences(**data).dict(exclude_none=True)
+            return TVAEDomain(**data).dict(exclude_none=True)
 
-        if self.mode == "inference":
-            # candidates = self.negative_samples[user]
-            candidates = [x for x in range(1, self.num_items + 1)]
-            seq = seq + [self.mask_token]
-            seq = seq[-self.max_len :]
-            padding_len = self.max_len - len(seq)
-            seq = [0] * padding_len + seq
-
-            user_matrix = torch.FloatTensor(self.user_matrix[user].toarray()[0])
-
-            data = {
-                "item_seq": torch.LongTensor(seq),
-                "time_seq": torch.FloatTensor(train_time_seq),
-                "time_interval_seq": torch.LongTensor(train_time_interval_seq),
-                "candidates": torch.LongTensor(candidates),
-                "user_matrix": user_matrix,
-            }
-
-            return TVASequences(**data).dict(exclude_none=True)
-
-    def train_phase(self, seq, user_matrix):
-
-        train_item_seq = []
-        labels = []
-
+    def _get_train(self, item_seq, user_matrix):
         # Do masking
-        for idx, s in enumerate(seq):
-            prob = self.rng.random()
-            if prob < self.mask_prob:
-                prob /= self.mask_prob
-
-                if prob < 0.8:
-                    train_item_seq.append(self.mask_token)
-
-                elif prob < 0.9:
-                    train_item_seq.append(self.rng.randint(1, self.num_items))
-
-                else:
-                    train_item_seq.append(s)
-
-                labels.append(s)
-            else:
-                train_item_seq.append(s)
-                labels.append(0)
-
-        train_item_seq = train_item_seq[-self.max_len :]
-        labels = labels[-self.max_len :]
-
-        train_time_seq = train_time_seq[-self.max_len :]
-        train_time_interval_seq = train_time_interval_seq[-self.max_len :]
-
-        mask_len = self.max_len - len(train_item_seq)
-
-        train_item_seq = [0] * mask_len + train_item_seq
-        labels = [0] * mask_len + labels
-
-        train_time_seq = [0] * mask_len + train_time_seq
-        train_time_interval_seq = [0] * mask_len + train_time_interval_seq
+        masked_item_seq, labels = get_masked_seq(
+            item_seq=item_seq,
+            max_len=self.max_len,
+            mask_prob=self.mask_prob,
+            mask_token=self.mask_token,
+            num_items=self.num_items,
+            rng=self.rng,
+        )
 
         data = {
-            "item_seq": torch.LongTensor(train_item_seq),
-            "time_seq": torch.FloatTensor(train_time_seq),
-            "time_interval_seq": torch.LongTensor(train_time_interval_seq),
+            "item_seq": torch.LongTensor(masked_item_seq),
             "labels": torch.LongTensor(labels),
             "user_matrix": user_matrix,
         }
 
         return data
-
-    def eval_phase():
-        pass

@@ -6,9 +6,23 @@ from .model import TVAModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
 import numpy as np
+from tqdm import tqdm
+from ..BERT4RecS import get_slidewindow
 
 
 def train(model_params, trainer_config, recdata, callbacks=[]):
+    slided_u2train_seqs = {}
+
+    for u in tqdm(recdata.train_seqs):
+        slided_user_seqs = get_slidewindow(
+            recdata.train_seqs[u], model_params["max_len"], step=1
+        )
+
+        for idx, seqs in enumerate(slided_user_seqs):
+            slided_u2train_seqs[str(u) + "." + str(idx)] = seqs
+
+    print(f"Before sliding window data num: {len(recdata.train_seqs)}")
+    print(f"After sliding window data num: {len(slided_u2train_seqs)}")
 
     trainset = TVASequenceDataset(
         mode="train",
@@ -16,7 +30,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         mask_prob=model_params["mask_prob"],
         num_items=recdata.num_items,
         mask_token=recdata.num_items + 1,
-        u2seq=recdata.train_seqs,
+        u2seq=slided_u2train_seqs,
         seed=trainer_config["seed"],
         u2timeseq=recdata.train_timeseqs,
         user_matrix=recdata.matrix,
@@ -35,17 +49,13 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         user_matrix=recdata.matrix,
     )
 
-    # u2seqs_for_test = {}
-    # for u in recdata.users_seqs:
-    #     # Remove the last and first item of the fully user's sequence
-    #     u2seqs_for_test[u] = recdata.users_seqs[u][:-1]
-
     testset = TVASequenceDataset(
         mode="eval",
         max_len=model_params["max_len"],
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         u2answer=recdata.test_seqs,
+        u2val=recdata.val_seqs,
         u2timeseq=recdata.train_timeseqs,
         num_items=recdata.num_items,
         u2eval_time=recdata.test_timeseqs,
@@ -56,6 +66,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
     model = TVAModel(
         num_items=recdata.num_items,
         model_params=model_params,
+        trainer_config=trainer_config,
     )
 
     fit(

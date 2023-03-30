@@ -90,6 +90,7 @@ def fit(
         check_val_every_n_epoch=trainer_config.get("check_val_every_n_epoch"),
         # For reproducibility
         deterministic=True,
+        gradient_clip_val=trainer_config.get("gradient_clip_val", 0),
     )
     trainer.fit(model, train_loader, val_loader)
 

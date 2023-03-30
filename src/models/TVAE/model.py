@@ -9,6 +9,7 @@ from ...modules.feedforward import PositionwiseFeedForward
 from ...modules.transformer import TransformerBlock
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 from ..VAECF.model import VAE
+from ...modules.utils import SCHEDULER
 
 
 class TVAModel(pl.LightningModule):
@@ -16,6 +17,7 @@ class TVAModel(pl.LightningModule):
         self,
         num_items: int,
         model_params: Dict,
+        trainer_config: Dict,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
@@ -28,7 +30,7 @@ class TVAModel(pl.LightningModule):
         n_layers = model_params["n_layers"]
 
         self.max_len = max_len
-        self.lr = model_params["lr"]
+        self.lr = trainer_config["lr"]
 
         self.tva = TVA(
             max_len=self.max_len,
@@ -54,39 +56,24 @@ class TVAModel(pl.LightningModule):
             likelihood=self.vae_likelihood,
         )
 
-        self.lr_metric = 0
-        self.lr_scheduler_name = "ReduceLROnPlateau"
+        self.alpha = model_params["alpha"]
+        self.lambda_ = model_params["lambda_"]
+        self.theta = 0
+
+        self.lr = (
+            trainer_config["lr"] if trainer_config.get("lr", None) is not None else 1e-4
+        )
+        self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
+        self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
+        self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
-        # FIXME: This is a hack to get the optimizer in the scheduler, the best way is to use the
-        # DictConfig for the scheduler and pass the optimizer as a parameter
-        if self.lr_scheduler_name == "ReduceLROnPlateau":
+        if self.lr_scheduler != None:
             lr_schedulers = {
-                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                    optimizer, patience=10
-                ),
-                "monitor": "train_loss",
-            }
-
-            return [optimizer], [lr_schedulers]
-
-        if self.lr_scheduler_name == "LambdaLR":
-            lr_schedulers = {
-                "scheduler": torch.optim.lr_scheduler.LambdaLR(
-                    optimizer, lr_lambda=lambda epoch: 0.95**epoch
-                ),
-                "monitor": "train_loss",
-            }
-
-            return [optimizer], [lr_schedulers]
-
-        if self.lr_scheduler_name == "StepLR":
-            lr_schedulers = {
-                "scheduler": torch.optim.lr_scheduler.StepLR(
-                    optimizer, step_size=10, gamma=0.1
-                ),
+                "scheduler": self.lr_scheduler(optimizer, **self.lr_scheduler_args),
+                "interval": self.lr_scheduler_interval,
                 "monitor": "train_loss",
             }
 
@@ -117,16 +104,15 @@ class TVAModel(pl.LightningModule):
 
         bert_loss = F.cross_entropy(logits, labels, ignore_index=0)
 
-        # FIXME: This is a hack to get the optimizer in the scheduler, fixit
-        if self.lr_scheduler_name == "ReduceLROnPlateau":
-            sch = self.lr_schedulers()
-            if (batch_idx + 1) == 0:
-                sch.step(self.lr_metric)
+        num_bert_loss = bert_loss.detach().data.item()
+        num_vae_loss = vae_loss.detach().data.item()
+        theta_hat = num_bert_loss / (num_bert_loss + self.lambda_ * num_vae_loss)
+        self.theta = self.alpha * theta_hat + (1 - self.alpha) * self.theta
+        total_loss = bert_loss + self.theta * vae_loss
 
-        if self.current_epoch < 10:
-            total_loss = bert_loss * 0.2 + vae_loss
-        else:
-            total_loss = bert_loss + vae_loss
+        if self.lr_scheduler != None:
+            sch = self.lr_schedulers()
+            sch.step()
 
         self.log("bert_loss", bert_loss, sync_dist=True)
         self.log("vae_loss", vae_loss, sync_dist=True)
@@ -267,10 +253,13 @@ class TVAEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 3, embed_size)
+        self.out = nn.Linear(embed_size, embed_size)
 
-        self.latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
+        self.user_latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
         self.ff = PositionwiseFeedForward(d_model=embed_size, d_ff=128, dropout=dropout)
+        self.layer_norm = nn.LayerNorm(embed_size)
+        self.gate = nn.Linear(embed_size, 1)
+        self.sigmoid = nn.Sigmoid()
 
     def forward(self, seqs, user_features) -> Tensor:
         """
@@ -281,19 +270,29 @@ class TVAEmbedding(nn.Module):
         u_mu = F.softmax(user_features[:, : self.user_latent_factor_dim], dim=1)
         u_sigma = F.softmax(user_features[:, self.user_latent_factor_dim :], dim=1)
 
+        # TODO: use gate on vae latent factor before unsqueeze
+
         u_mu = u_mu.unsqueeze(1).repeat(1, self.max_len, 1)
         u_sigma = u_sigma.unsqueeze(1).repeat(1, self.max_len, 1)
 
         positions = self.position(seqs)
 
-        user_latent = self.latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
-        user_latent = self.ff(user_latent)
+        user_latent = torch.cat([u_mu, u_sigma], dim=-1)
+
+        user_latent = self.user_latent_emb(user_latent)
+        # user_latent = self.ff(user_latent)
+
+        gated_weights = self.sigmoid(self.gate(user_latent))
+
+        gated_features = gated_weights * user_latent
 
         x = self.out(
             torch.cat(
-                [items, positions, user_latent],
+                [items + positions],
                 dim=-1,
             )
         )
 
+        x = x + gated_features
         return self.dropout(x)
+        # return self.dropout(self.layer_norm(x))

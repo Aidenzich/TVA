@@ -67,13 +67,12 @@ class CBiTDataset(Dataset):
             return self._predict(item_seq=item_seq)
 
     def _train(self, item_seq):
-        masked_item_seq = []
+
         labels = []
-        item_seq_list = []
-        labels_list = []
+
+        return_list = []
 
         for _ in range(self.num_positive):
-            # Mask the item in the sequence
             masked_item_seq, labels = get_masked_seq(
                 item_seq=item_seq,
                 max_len=self.max_len,
@@ -82,14 +81,10 @@ class CBiTDataset(Dataset):
                 num_items=self.num_items,
                 rng=self.rng,
             )
+            return_list.append(torch.LongTensor(masked_item_seq))
+            return_list.append(torch.LongTensor(labels))
 
-            item_seq_list.append(torch.LongTensor(masked_item_seq))
-            labels_list.append(torch.LongTensor(labels))
-
-        return {
-            "item_seq": torch.stack(item_seq_list),
-            "labels": torch.stack(labels_list),
-        }
+        return tuple(return_list)
 
     def _eval(
         self, item_seq, answer_item, val_item=None

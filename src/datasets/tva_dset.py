@@ -6,6 +6,7 @@ import random
 from pydantic import BaseModel, ValidationError
 import numpy as np
 import datetime
+from ..datasets.bert_dset import get_masked_seq
 
 
 class TVASequences(BaseModel):
@@ -96,10 +97,6 @@ class TVASequenceDataset(Dataset):
 
         # User latent factor
         user_latent_factor = self.user_latent_factor[user]
-        # time_interval_seq = [0] + [
-        #     int((time_seq[i] - time_seq[i - 1]) / 100000)
-        #     for i in range(1, len(time_seq))
-        # ]
 
         if self.mode == "train":
             data = self._get_train(
@@ -125,41 +122,15 @@ class TVASequenceDataset(Dataset):
             return data
 
     def _get_train(self, item_seq, time_seq, user_latent_factor):
-        masked_item_seq = []
-        labels = []
-
         # Do masking
-        for idx, s in enumerate(item_seq):
-            prob = self.rng.random()
-            if prob < self.mask_prob:
-                prob /= self.mask_prob
-
-                if prob < 0.8:
-                    masked_item_seq.append(self.mask_token)
-
-                elif prob < 0.9:
-                    masked_item_seq.append(self.rng.randint(1, self.num_items))
-
-                else:
-                    masked_item_seq.append(s)
-
-                labels.append(s)
-            else:
-                masked_item_seq.append(s)
-                labels.append(0)
-
-        # Truncate the sequence to max_len
-        masked_item_seq = masked_item_seq[-self.max_len :]
-        labels = labels[-self.max_len :]
-
-        time_seq = time_seq[-self.max_len :]
-
-        mask_len = self.max_len - len(masked_item_seq)
-
-        masked_item_seq = [0] * mask_len + masked_item_seq
-        labels = [0] * mask_len + labels
-
-        time_seq = [0] * mask_len + time_seq
+        masked_item_seq, labels = get_masked_seq(
+            item_seq=item_seq,
+            max_len=self.max_len,
+            mask_prob=self.mask_prob,
+            mask_token=self.mask_token,
+            num_items=self.num_items,
+            rng=self.rng,
+        )
 
         # Bulid Item's latent factor sequence
         masked_item_latent_seq = []

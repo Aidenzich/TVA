@@ -48,7 +48,7 @@ class CBiTModel(pl.LightningModule):
             max_len=self.max_len, d_model=self.d_model, temperature=self.temperature
         )
 
-        self.calcsim = "dot"
+        self.calcsim = "cosine"
 
     def configure_optimizers(self) -> Any:
         if self.weight_decay != 0:
@@ -117,42 +117,35 @@ class CBiTModel(pl.LightningModule):
                 self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
 
     def calculate_loss(self, batch):
+        num_positive = len(batch) // 2
         pairs = []
 
-        item_seqs_list = batch["item_seq"]
-        labels_list = batch["labels"]
+        main_loss = torch.LongTensor([0]).to(batch[0].device)
+        cl_loss = torch.LongTensor([0]).to(batch[0].device)
 
-        main_loss = torch.LongTensor([0]).to(item_seqs_list.device)
-        cl_loss = torch.LongTensor([0]).to(item_seqs_list.device)
+        for i in range(num_positive):
+            seqs = batch[2 * i]
+            labels = batch[2 * i + 1]
 
-        for i in range(self.num_positive):
-            seqs = item_seqs_list[:, i, :]  # Batch x Seq_len
-            labels = labels_list[:, i]  # Batch x Seq_len
-
-            # Forward num_positive times as positive samples
             logits_k, c_i_k = self.forward(seqs)
-            logits_k = logits_k.view(-1, logits_k.size(-1))
-            labels = labels.reshape(-1)
-
-            loss_k = F.cross_entropy(logits_k, labels)
+            loss_k = F.cross_entropy(
+                logits_k.view(-1, logits_k.size(-1)), labels.view(-1)
+            )
             main_loss = main_loss + loss_k
-
             pairs.append(c_i_k)
-
-        for j in range(self.num_positive):
-            for k in range(self.num_positive):
+        for j in range(num_positive):
+            for k in range(num_positive):
                 if j != k:
-
                     cl_loss = (
                         self.NTXENTloss(pairs[j], pairs[k], calcsim=self.calcsim)
                         + cl_loss
                     )
+
         num_main_loss = main_loss.detach().data.item()
         num_cl_loss = cl_loss.detach().data.item()
         theta_hat = num_main_loss / (num_main_loss + self.lambda_ * num_cl_loss)
         self.theta = self.alpha * theta_hat + (1 - self.alpha) * self.theta
         total_loss = main_loss + self.theta * cl_loss
-
         return total_loss, cl_loss
 
     def calculate_metrics(self, batch) -> Dict[str, float]:
@@ -209,6 +202,9 @@ class NTXENTloss(nn.Module):
             z1, z2 = h1, h2
         z1 = z1.view(b, self.max_len * self.d_model)
         z2 = z2.view(b, self.max_len * self.d_model)
+
+        if calcsim not in ["dot", "cosine"]:
+            raise ValueError("calcsim must be either dot or cosine")
         if calcsim == "dot":
             sim11 = torch.matmul(z1, z1.T) / self.temperature
             sim22 = torch.matmul(z2, z2.T) / self.temperature
