@@ -6,7 +6,7 @@ RUN apt-get update && apt-get -y install sudo && apt-get -y install vim
 WORKDIR /home/app
 
 COPY requirements.txt ./requirements.txt
-RUN pip install torch torchvision torchaudio --extra-index-url https://download.pytorch.org/whl/cu116
+RUN pip install torch==1.13.1 torchvision==0.14.1 torchaudio==0.13.1 --extra-index-url https://download.pytorch.org/whl/cu116
 RUN pip install  -r ./requirements.txt
 RUN pip install ray[tune] 
 

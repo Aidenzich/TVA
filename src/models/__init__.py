@@ -9,9 +9,7 @@ from .VAEICF import train as train_vaeicf, infer as infer_vaeicf
 from .BERT4Rec import train as train_bert4rec, infer as infer_bert4rec
 from .BERT4RecS import train as train_bert4recs, infer as infer_bert4recs
 from .CBiT import train as train_cbit
-
-import torch
-import transformers
+from .ContrastVAE import train as train_cvae
 
 
 TRAIN_FACTORY = {
@@ -24,6 +22,7 @@ TRAIN_FACTORY = {
     "tvae": train_tvae,
     "bert4recs": train_bert4recs,
     "cbit": train_cbit,
+    "contrastvae": train_cvae,
 }
 INFER_FACTORY = {
     "bert4rec": infer_bert4rec,

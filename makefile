@@ -1,4 +1,6 @@
 ROOT=$(shell pwd)
+SHELL=/bin/zsh
+CONDA_ACTIVATE = source $$(conda info --base)/etc/profile.d/conda.sh ; conda activate ; conda activate tva
 
 run:
 	docker compose up -d
@@ -49,4 +51,4 @@ cleanall:
 	rm -rf out/*
 
 panel:
-	python3 -m tensorboard.main --logdir=logs
+	$(CONDA_ACTIVATE); python3 -m tensorboard.main --logdir=logs

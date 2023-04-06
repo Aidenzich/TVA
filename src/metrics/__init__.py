@@ -4,7 +4,8 @@ METRICS_KS = [1, 5, 10, 20, 30, 40, 50]
 
 
 def recall_precision_f1_for_ks(scores: torch.tensor, labels: torch.tensor, ks):
-    # Batch x Candidates
+    # scores: Batch x Candidates
+    # labels: Batch x Candidates
 
     metrics = {}
     answer_count = labels.sum(1)

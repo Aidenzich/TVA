@@ -81,6 +81,7 @@ class CBiTDataset(Dataset):
                 num_items=self.num_items,
                 rng=self.rng,
             )
+
             return_list.append(torch.LongTensor(masked_item_seq))
             return_list.append(torch.LongTensor(labels))
 
@@ -91,7 +92,7 @@ class CBiTDataset(Dataset):
     ) -> Dict[str, torch.LongTensor]:
 
         if val_item is not None:
-            print("val_item", val_item)
+            # print("val_item", val_item)
             # In test phase, we add val_item to item_seq,
             # and use the item_seq to predict the answer_item
             item_seq = item_seq + val_item

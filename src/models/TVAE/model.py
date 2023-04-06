@@ -295,4 +295,3 @@ class TVAEmbedding(nn.Module):
 
         x = x + gated_features
         return self.dropout(x)
-        # return self.dropout(self.layer_norm(x))

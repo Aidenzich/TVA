@@ -32,9 +32,9 @@ class TVAModel(pl.LightningModule):
             RED_COLOR + "user_latent_factor_params is None" + END_COLOR
         )
 
-        self.label_smoothing = model_params.get("label_smoothing", 0.0)
+        self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
         self.max_len = model_params["max_len"]
-
+        self.ks = trainer_config.get("ks", METRICS_KS)
         self.tva = TVA(
             max_len=self.max_len,
             num_items=num_items,
@@ -84,7 +84,7 @@ class TVAModel(pl.LightningModule):
         logits = logits.view(-1, logits.size(-1))  # (B * T) x V
         batch_labels = batch_labels.view(-1)  # B * T
         loss = F.cross_entropy(
-            logits, batch_labels, ignore_index=0, label_smoothing=0.05
+            logits, batch_labels, ignore_index=0, label_smoothing=self.label_smoothing
         )
 
         if self.lr_scheduler != None:
@@ -129,7 +129,7 @@ class TVAModel(pl.LightningModule):
         ] = -999.999  # pad token and mask token should not appear in the logits outpu
 
         scores = scores.gather(1, batch_candidates)  # Batch x Candidates
-        metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, METRICS_KS)
+        metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, self.ks)
         return metrics
 
 
@@ -220,9 +220,6 @@ class TVAEmbedding(nn.Module):
         self.user_latent_emb_ff = PositionwiseFeedForward(
             d_model=embed_size, d_ff=8, dropout=dropout
         )
-        # self.item_latent_emb_ff = PositionwiseFeedForward(
-        #     d_model=embed_size, d_ff=128, dropout=dropout
-        # )
 
     def forward(self, item_seq, userwise_latent_factor, itemwise_latent_factor_seq):
         items = self.token(item_seq)

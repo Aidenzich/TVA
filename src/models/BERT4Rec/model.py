@@ -123,7 +123,7 @@ class BERTModel(pl.LightningModule):
         ] = -999.999  # pad token and mask token should not appear in the logits outpu
 
         scores = scores.gather(1, batch_candidates)  # Batch x Candidates
-        metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, METRICS_KS)
+        metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, self.ks)
         return metrics
 
 

@@ -82,12 +82,10 @@ def infer(ckpt_path, recdata, rec_ks=100):
 
     all_z = np.concatenate([all_z_u, all_z_sigma], axis=1)
 
-    with open(latent_factor_path / (recdata.filename + "_variance.npy"), "wb+") as f:
+    with open(latent_factor_path / "decode_result.npy", "wb+") as f:
         np.save(f, all_y)
 
-    with open(
-        latent_factor_path / (recdata.filename + "_latent_factor.npy"), "wb+"
-    ) as f:
+    with open(latent_factor_path / "encode_result.npy", "wb+") as f:
         np.save(f, all_z)
 
     return predict_result

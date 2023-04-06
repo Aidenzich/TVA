@@ -86,7 +86,7 @@ class TVASequenceDataset(Dataset):
         return len(self.users)
 
     def __getitem__(self, index) -> Tuple[Tensor, Tensor, Tensor]:
-        user = self.users[index]
+        user = index
         item_seq = self.u2seq[user]
 
         # Time interval sequence
@@ -105,7 +105,6 @@ class TVASequenceDataset(Dataset):
                 user_latent_factor=user_latent_factor,
             )
             data = TVASequences(**data).dict(exclude_none=True)
-
             return data
 
         if self.mode == "eval":
@@ -119,6 +118,7 @@ class TVASequenceDataset(Dataset):
                 val_time=None if self.u2val_time is None else self.u2val_time[user],
             )
             data = TVASequences(**data).dict(exclude_none=True)
+
             return data
 
     def _get_train(self, item_seq, time_seq, user_latent_factor):
@@ -142,6 +142,10 @@ class TVASequenceDataset(Dataset):
             else:
                 masked_item_latent_seq.append(self.item_latent_factor[item_id])
 
+        # Pad the time sequence
+        time_seq = time_seq[-self.max_len :]
+        time_seq = [0] * (self.max_len - len(time_seq)) + time_seq
+
         data = {
             "item_seq": torch.LongTensor(masked_item_seq),
             "time_seq": torch.FloatTensor(time_seq),
@@ -154,6 +158,13 @@ class TVASequenceDataset(Dataset):
 
         time_features = self._get_time_features(time_seq)
         data = {**data, **time_features}
+
+        assert (
+            len(data["item_seq"])
+            == len(data["time_seq"])
+            == len(data["itemwise_latent_factor_seq"])
+            == len(data["labels"])
+        ), "The length of item_seq, time_seq, itemwise_latent_factor_seq, labels, time_features must be equal"
 
         return data
 
@@ -175,16 +186,16 @@ class TVASequenceDataset(Dataset):
             item_seq = item_seq + val_item
             time_seq = time_seq + val_time
 
-        time_seq += answer_time
-        time_seq = time_seq[-self.max_len :]
-        time_seq = [0] * (self.max_len - len(time_seq)) + time_seq
-
         # Mask the last item, which need to be predicted
         item_seq = item_seq + [self.mask_token]
         # Truncate the sequence to max_len
         item_seq = item_seq[-self.max_len :]
         # Pad the sequence to max_len
         item_seq = [0] * (self.max_len - len(item_seq)) + item_seq
+
+        time_seq += answer_time
+        time_seq = time_seq[-self.max_len :]
+        time_seq = [0] * (self.max_len - len(time_seq)) + time_seq
 
         # Get the user interacted items
         interacted = list(set(answer_item + item_seq))
@@ -210,6 +221,17 @@ class TVASequenceDataset(Dataset):
             else:
                 item_latent_factor_seq.append(self.item_latent_factor[item_id])
 
+        # Assert
+        assert len(item_seq) == len(
+            time_seq
+        ), f"item_seq {len(item_seq)} and time_seq {len(time_seq)} should have the same length"
+
+        assert len(item_latent_factor_seq) == len(
+            item_seq
+        ), f"{len(item_latent_factor_seq)} != {len(item_seq)}"
+
+        assert len(candidates) == len(labels), f"{len(candidates)} != {len(labels)}"
+
         data = {
             # user's sequence
             "item_seq": torch.LongTensor(item_seq),
@@ -217,7 +239,7 @@ class TVASequenceDataset(Dataset):
             "candidates": torch.LongTensor(candidates),
             # labels from user's answer and negative samples
             "labels": torch.LongTensor(labels),
-            "time_seq": torch.FloatTensor(time_seq),
+            # "time_seq": torch.FloatTensor(time_seq),
             "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
             "itemwise_latent_factor_seq": torch.FloatTensor(
                 np.array(item_latent_factor_seq)
@@ -225,6 +247,7 @@ class TVASequenceDataset(Dataset):
         }
 
         time_features = self._get_time_features(time_seq)
+
         data = {**data, **time_features}
 
         return data

@@ -171,3 +171,4 @@ class VAE(nn.Module):
         kld = torch.sum(kld, dim=1)
 
         return torch.mean(beta * kld - ll)
+        

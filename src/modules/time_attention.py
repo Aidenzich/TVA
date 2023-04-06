@@ -56,7 +56,6 @@ class MultiHeadedTimeAttention(nn.Module):
 
     def forward(self, query, key, value, times: list, mask=None):
         batch_size = query.size(0)
-        # print("=" * 30, query.shape, "=" * 30)
 
         x_concat = None
         for t in times:

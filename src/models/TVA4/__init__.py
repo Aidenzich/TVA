@@ -11,22 +11,25 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
     user_latent_factor = np.load(model_params["user_latent_factor"]["path"])
     item_latent_factor = np.load(model_params["user_latent_factor"]["path"])
 
+    # Sliding window
     slided_u2train_seqs = {}
-    slided_u2time_seqs = {}
-    for u in tqdm(recdata.train_seqs):
-        slided_user_seqs = get_slidewindow(
-            recdata.train_seqs[u], model_params["max_len"], step=1
-        )
-        slided_time_seqs = get_slidewindow(
-            recdata.train_timeseqs[u], model_params["max_len"], step=1
-        )
+    if model_params.get("sliding_window", None):
 
-        for idx, seqs in enumerate(slided_user_seqs):
-            slided_u2train_seqs[str(u) + "." + str(idx)] = seqs
-            slided_u2time_seqs[str(u) + "." + str(idx)] = slided_time_seqs[idx]
+        slided_u2time_seqs = {}
+        for u in tqdm(recdata.train_seqs):
+            slided_user_seqs = get_slidewindow(
+                recdata.train_seqs[u], model_params["max_len"], step=1
+            )
+            slided_time_seqs = get_slidewindow(
+                recdata.train_timeseqs[u], model_params["max_len"], step=1
+            )
 
-    print(f"Before sliding window data num: {len(recdata.train_seqs)}")
-    print(f"After sliding window data num: {len(slided_u2train_seqs)}")
+            for idx, seqs in enumerate(slided_user_seqs):
+                slided_u2train_seqs[str(u) + "." + str(idx)] = seqs
+                slided_u2time_seqs[str(u) + "." + str(idx)] = slided_time_seqs[idx]
+
+        print(f"Before sliding window data num: {len(recdata.train_seqs)}")
+        print(f"After sliding window data num: {len(slided_u2train_seqs)}")
 
     trainset = TVASequenceDataset(
         mode="train",
@@ -34,8 +37,12 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         mask_prob=model_params["mask_prob"],
         num_items=recdata.num_items,
         mask_token=recdata.num_items + 1,
-        u2seq=slided_u2train_seqs,
-        u2timeseq=slided_u2time_seqs,
+        u2seq=slided_u2train_seqs
+        if model_params.get("sliding_window", None)
+        else recdata.train_seqs,
+        u2timeseq=slided_u2time_seqs
+        if model_params.get("sliding_window", None)
+        else recdata.train_timeseqs,
         user_latent_factor=user_latent_factor,
         item_latent_factor=item_latent_factor,
         seed=trainer_config["seed"],
@@ -54,14 +61,6 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         item_latent_factor=item_latent_factor,
         seed=trainer_config["seed"],
     )
-
-    # u2seqs_for_test = {}
-    # u2timeseqs_for_test = {}
-    # for u in recdata.users_seqs:
-    #     # Remove the last item of the fully user's sequence
-    #     u2seqs_for_test[u] = recdata.users_seqs[u][:-1]
-    #     # Remove the last and first item of the fully user's time sequence
-    #     u2timeseqs_for_test[u] = recdata.users_timeseqs[u][:-1]
 
     testset = TVASequenceDataset(
         mode="eval",

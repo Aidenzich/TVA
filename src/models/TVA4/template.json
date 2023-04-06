@@ -1,33 +1,39 @@
 {
-  "data_class": "",
-  "trainer_config": {
-    "early_stopping": {
-      "monitor": "leave1out_recall@1",
-      "patience": 20,
-      "verbose": false,
-      "mode": "max"
-    },
+  "data_class": "ratings_beauty_5.pkl",
+  "trainer_config": {    
     "limit_train_batches": 1.0,
-    "max_epochs": 20,
-    "sample_size": 100,
-    "sample_method": "random",
+    "max_epochs": 250,    
     "seed": 0,
-    "num_workers": 12,
-    "devices": [0]
+    "num_workers": 14,
+    "devices": [
+      0
+    ],
+    "check_val_every_n_epoch": 20,    
+    "lr_scheduler": "Warmup",
+    "lr_scheduler_args": {
+      "num_warmup_steps": 10000,
+      "num_training_steps": 43000,
+      "num_cycles": 0.2
+    },
+    "lr_scheduler_interval": "step",
+    "lr": 0.001,
+    "label_smoothing": 0.05
   },
   "model_params": {
     "mask_prob": 0.15,
     "d_model": 256,
     "n_layers": 2,
-    "dropout": 0.2,
-    "heads": 8,
-    "max_len": 126,
-    "batch_size": 32,
+    "dropout": 0.15,
+    "heads": 2,
+    "max_len": 15,
+    "batch_size": 256,
     "user_latent_factor": {
-      "hidden_dim": 20
+      "hidden_dim": 256,
+      "path": "/home/VS6102093/TVA/logs/ratings_beauty_5.vaecf.default/version_0/latent_factor/ratings_beauty_5_latent_factor.npy"
     },
     "item_latent_factor": {
-      "hidden_dim": 512
+      "hidden_dim": 256,
+      "path": "/home/VS6102093/TVA/logs/ratings_beauty_5.vaeicf.default/version_0/latent_factor/ratings_beauty_5_latent_factor.npy"
     }
   }
 }
