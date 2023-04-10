@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from typing import Dict
+from typing import Dict, Optional
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -35,6 +35,18 @@ class TVAModel(pl.LightningModule):
         self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
         self.max_len = model_params["max_len"]
         self.ks = trainer_config.get("ks", METRICS_KS)
+
+        use_userwise_var = user_latent_factor_params.get("available", False)
+        use_itemwise_var = item_latent_factor_params.get("available", False)
+
+        if use_userwise_var:
+            print("Using userwise latent factor")
+        if use_itemwise_var:
+            print("Using itemwise latent factor")
+
+        userwise_var_dim = user_latent_factor_params.get("hidden_dim", 0)
+        itemwise_var_dim = item_latent_factor_params.get("hidden_dim", 0)
+
         self.tva = TVA(
             max_len=self.max_len,
             num_items=num_items,
@@ -42,8 +54,8 @@ class TVAModel(pl.LightningModule):
             d_model=self.d_model,
             heads=model_params["heads"],
             dropout=model_params["dropout"],
-            user_latent_factor_dim=user_latent_factor_params.get("hidden_dim"),
-            item_latent_factor_dim=item_latent_factor_params.get("hidden_dim"),
+            user_latent_factor_dim=userwise_var_dim if use_userwise_var else 0,
+            item_latent_factor_dim=itemwise_var_dim if use_itemwise_var else 0,
         )
         self.out = nn.Linear(self.d_model, num_items + 1)
         self.lr = (
@@ -53,8 +65,10 @@ class TVAModel(pl.LightningModule):
         self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
         self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
 
+        self.weight_decay = trainer_config.get("weight_decay", 0.0)
+
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
 
         if self.lr_scheduler != None:
             lr_schedulers = {
@@ -190,7 +204,7 @@ class TVAEmbedding(nn.Module):
         vocab_size,
         embed_size,
         max_len,
-        user_latent_factor_dim,
+        user_latent_factor_dim=None,
         item_latent_factor_dim=None,
         dropout=0.1,
     ) -> None:
@@ -204,6 +218,7 @@ class TVAEmbedding(nn.Module):
         # parameters
         self.embed_size = embed_size
         self.max_len = max_len
+
         self.user_latent_factor_dim = user_latent_factor_dim
         self.item_latent_factor_dim = item_latent_factor_dim
 
@@ -211,57 +226,65 @@ class TVAEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
-        self.out = nn.Linear(embed_size * 2, embed_size)
+        in_dim = embed_size
 
-        self.user_latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
+        if self.user_latent_factor_dim != 0:
+            self.user_latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
+            self.user_latent_emb_ff = PositionwiseFeedForward(
+                d_model=embed_size, d_ff=8, dropout=dropout
+            )
+            in_dim += embed_size
 
-        self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
+        if self.item_latent_factor_dim != 0:
+            self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
+            self.item_latent_emb_ff = PositionwiseFeedForward(
+                d_model=embed_size, d_ff=32, dropout=dropout
+            )
+            in_dim += embed_size
 
-        self.user_latent_emb_ff = PositionwiseFeedForward(
-            d_model=embed_size, d_ff=8, dropout=dropout
-        )
+        self.out = nn.Linear(in_dim, embed_size)
 
     def forward(self, item_seq, userwise_latent_factor, itemwise_latent_factor_seq):
         items = self.token(item_seq)
-
-        assert userwise_latent_factor.shape[1] == self.user_latent_factor_dim * 2, (
-            RED_COLOR
-            + "user latent factor dim is not correct, please check model config"
-            + END_COLOR
-        )
-
-        assert itemwise_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2, (
-            RED_COLOR
-            + "item latent factor dim is not match, please check model config"
-            + END_COLOR
-        )
-
-        u_mu = F.softmax(
-            userwise_latent_factor[:, : self.user_latent_factor_dim], dim=1
-        )
-        u_sigma = F.softmax(
-            userwise_latent_factor[:, self.user_latent_factor_dim :], dim=1
-        )
-
-        u_mu = u_mu.unsqueeze(1).repeat(1, self.max_len, 1)
-        u_sigma = u_sigma.unsqueeze(1).repeat(1, self.max_len, 1)
-
         positions = self.position(item_seq)
+        _cat = [items + positions]
 
-        # user_latent = self.user_latent_emb(torch.cat([u_mu, u_sigma], dim=-1))
-        user_latent = u_mu + u_sigma
-        user_latent = self.user_latent_emb_ff(user_latent)
+        if self.user_latent_factor_dim != 0:
+            assert userwise_latent_factor.shape[1] == self.user_latent_factor_dim * 2, (
+                RED_COLOR
+                + "user latent factor dim is not correct, please check model config"
+                + END_COLOR
+            )
 
-        # item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
-        user_latent = self.dropout(user_latent)
+            u_mu = F.softmax(
+                userwise_latent_factor[:, : self.user_latent_factor_dim], dim=1
+            )
+            u_sigma = F.softmax(
+                userwise_latent_factor[:, self.user_latent_factor_dim :], dim=1
+            )
+
+            u_mu = u_mu.unsqueeze(1).repeat(1, self.max_len, 1)
+            u_sigma = u_sigma.unsqueeze(1).repeat(1, self.max_len, 1)
+            user_latent = u_mu + u_sigma
+            user_latent = self.user_latent_emb_ff(user_latent)
+            _cat.append(user_latent)
+
+        if self.item_latent_factor_dim != 0:
+            assert (
+                itemwise_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2
+            ), (
+                RED_COLOR
+                + "item latent factor dim is not match, please check model config"
+                + END_COLOR
+            )
+
+            item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
+            item_latent = self.item_latent_emb_ff(item_latent)
+            _cat.append(item_latent)
 
         x = self.out(
             torch.cat(
-                [
-                    items + positions,
-                    # item_latent,
-                    user_latent,
-                ],
+                _cat,
                 dim=-1,
             )
         )

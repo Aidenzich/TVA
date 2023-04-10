@@ -3,8 +3,7 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch
 import torch.nn as nn
-from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
-from ...modules.transformer import TransformerBlock
+
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 from ...models.BERT4Rec.model import BERT
@@ -36,7 +35,7 @@ class CBiTModel(pl.LightningModule):
         )
         self.lr_scheduler_args = trainer_config.get("lr_scheduler_args", None)
         self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
-        self.weight_decay = trainer_config["weight_decay"]
+        self.weight_decay = trainer_config.get("weight_decay", 0.0)
 
         # CBIT
         self.num_positive = model_params["num_positive"]
@@ -51,29 +50,9 @@ class CBiTModel(pl.LightningModule):
         self.calcsim = "cosine"
 
     def configure_optimizers(self) -> Any:
-        if self.weight_decay != 0:
-            print("Using weight decay")
-            param = list(self.named_parameters())
-            no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
-            optimizer_grouped_parameters = [
-                {
-                    "params": [
-                        p for n, p in param if not any(nd in n for nd in no_decay)
-                    ],
-                    "weight_decay": self.weight_decay,
-                },
-                {
-                    "params": [p for n, p in param if any(nd in n for nd in no_decay)],
-                    "weight_decay": 0.0,
-                },
-            ]
-
-            optimizer = torch.optim.Adam(
-                optimizer_grouped_parameters, lr=self.lr, weight_decay=self.weight_decay
-            )
-
-        else:
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(
+            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
 
         if self.lr_scheduler != None:
             lr_schedulers = {
@@ -129,7 +108,7 @@ class CBiTModel(pl.LightningModule):
 
             logits_k, c_i_k = self.forward(seqs)
             loss_k = F.cross_entropy(
-                logits_k.view(-1, logits_k.size(-1)), labels.view(-1)
+                logits_k.view(-1, logits_k.size(-1)), labels.view(-1), ignore_index=0
             )
             main_loss = main_loss + loss_k
             pairs.append(c_i_k)

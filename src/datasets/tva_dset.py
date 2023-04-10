@@ -51,6 +51,8 @@ class TVASequenceDataset(Dataset):
         # Latent
         user_latent_factor=None,
         item_latent_factor=None,
+        # Sliding window
+        seqs_user = None
     ) -> None:
 
         if mode == "eval":
@@ -62,7 +64,7 @@ class TVASequenceDataset(Dataset):
 
         self.mode = mode
         self.u2seq = u2seq
-        self.users = sorted(self.u2seq.keys())
+        self.users = list(self.u2seq.keys())
         self.max_len = max_len
         self.mask_prob = mask_prob
         self.mask_token = mask_token
@@ -81,15 +83,14 @@ class TVASequenceDataset(Dataset):
         self.random_latent_factor = np.random.normal(
             0, 0.1, self.item_latent_factor[0].shape
         )
+        self.seqs_user = seqs_user
 
     def __len__(self) -> int:
         return len(self.users)
 
     def __getitem__(self, index) -> Tuple[Tensor, Tensor, Tensor]:
-        user = index
-        item_seq = self.u2seq[user]
-
-        # Time interval sequence
+        user = self.users[index]
+        item_seq = self.u2seq[user]        
         time_seq = self.u2time_seq[user]
 
         if "." in str(user):

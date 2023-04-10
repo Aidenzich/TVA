@@ -10,7 +10,9 @@ from .BERT4Rec import train as train_bert4rec, infer as infer_bert4rec
 from .BERT4RecS import train as train_bert4recs, infer as infer_bert4recs
 from .CBiT import train as train_cbit
 from .ContrastVAE import train as train_cvae
+from tabulate import tabulate
 
+from ..configs import CYAN_COLOR, END_COLOR
 
 TRAIN_FACTORY = {
     "bert4rec": train_bert4rec,
@@ -51,13 +53,51 @@ class Trainer(metaclass=ABCMeta):
             self.tune()
 
     def print_model_params(self) -> None:
-        print(self.model_params)
+        data = []
+        for k, v in self.model_params.items():
+            if type(v) == dict:
+                for k1, v1 in v.items():
+                    data.append([k1, v1])
+            else:
+                data.append([k, v])
+
+        print(
+            CYAN_COLOR,
+            "Model Parameters: \n",
+            tabulate(
+                data,
+                headers=["property", "value"],
+                tablefmt="heavy_outline",
+                numalign="right",
+            ),
+            END_COLOR,
+        )
 
     def print_trainer_config(self) -> None:
-        print(self.trainer_config)
+
+        data = []
+        for k, v in self.trainer_config.items():
+            if type(v) == dict:
+                for k1, v1 in v.items():
+                    data.append([k1, v1])
+            else:
+                data.append([k, v])
+
+        print(
+            CYAN_COLOR,
+            "Trainer Configs: \n",
+            tabulate(
+                data,
+                headers=["property", "value"],
+                tablefmt="heavy_outline",
+                numalign="right",
+            ),
+            END_COLOR,
+        )
 
     def train(self) -> None:
-
+        self.print_model_params()
+        self.print_trainer_config()
         TRAIN_FACTORY[self.model_name](
             model_params=self.model_params,
             trainer_config=self.trainer_config,

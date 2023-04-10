@@ -63,7 +63,7 @@ class RecsysData:
         number of sessions. This information is printed in an organized format using the "orgtbl" table format.
         """
         print(CYAN_COLOR)
-        print()
+        print("Dataset information:")
         print(
             tabulate(
                 [

@@ -12,21 +12,25 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
     item_latent_factor = np.load(model_params["user_latent_factor"]["path"])
 
     # Sliding window
+    use_sliding_window = trainer_config.get("sliding_window", False)
+    sliding_step = trainer_config.get("sliding_step", 1)
     slided_u2train_seqs = {}
-    if model_params.get("sliding_window", None):
+    slided_u2time_seqs = {}
+    if use_sliding_window:
+        print("Sliding window is enabled. Handle data...")
 
-        slided_u2time_seqs = {}
         for u in tqdm(recdata.train_seqs):
             slided_user_seqs = get_slidewindow(
-                recdata.train_seqs[u], model_params["max_len"], step=1
+                recdata.train_seqs[u], model_params["max_len"], step=sliding_step
             )
             slided_time_seqs = get_slidewindow(
-                recdata.train_timeseqs[u], model_params["max_len"], step=1
+                recdata.train_timeseqs[u], model_params["max_len"], step=sliding_step
             )
 
             for idx, seqs in enumerate(slided_user_seqs):
-                slided_u2train_seqs[str(u) + "." + str(idx)] = seqs
-                slided_u2time_seqs[str(u) + "." + str(idx)] = slided_time_seqs[idx]
+                save_key = str(u) + "." + str(idx)
+                slided_u2train_seqs[save_key] = seqs
+                slided_u2time_seqs[save_key] = slided_time_seqs[idx]
 
         print(f"Before sliding window data num: {len(recdata.train_seqs)}")
         print(f"After sliding window data num: {len(slided_u2train_seqs)}")
@@ -37,12 +41,8 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         mask_prob=model_params["mask_prob"],
         num_items=recdata.num_items,
         mask_token=recdata.num_items + 1,
-        u2seq=slided_u2train_seqs
-        if model_params.get("sliding_window", None)
-        else recdata.train_seqs,
-        u2timeseq=slided_u2time_seqs
-        if model_params.get("sliding_window", None)
-        else recdata.train_timeseqs,
+        u2seq=slided_u2train_seqs if use_sliding_window else recdata.train_seqs,
+        u2timeseq=slided_u2time_seqs if use_sliding_window else recdata.train_timeseqs,
         user_latent_factor=user_latent_factor,
         item_latent_factor=item_latent_factor,
         seed=trainer_config["seed"],
