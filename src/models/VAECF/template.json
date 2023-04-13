@@ -1,28 +1,28 @@
 {
-    "data_class": "ratings_beauty_5.pkl",
+  "data_class": "ratings_beauty_5.pkl",  
+  "trainer_config": {
+    "limit_train_batches": 1.0,
+    "max_epochs": 100,
+    "num_workers": 14,
+    "seed": 0,
+    "devices": [
+      0
+    ],
     "early_stopping": {
       "monitor": "vae_recall@50",
       "patience": 10,
       "verbose": false,
       "mode": "max"
-  },
-    "trainer_config": {
-      "limit_train_batches": 1.0,
-      "max_epochs": 100,
-      "num_workers": 14,
-      "seed": 0,
-      "devices": [
-        0
-      ]
-    },
-    "model_params": {
-      "batch_size": 512,
-      "hidden_dim": 256,
-      "act_fn": "tanh",
-      "autoencoder_structure": [
-        512
-      ],
-      "likelihood": "mult",
-      "beta": 0.2
     }
+  },
+  "model_params": {
+    "batch_size": 512,
+    "hidden_dim": 256,
+    "act_fn": "tanh",
+    "autoencoder_structure": [
+      512
+    ],
+    "likelihood": "mult",
+    "beta": 0.0
+  }
 }

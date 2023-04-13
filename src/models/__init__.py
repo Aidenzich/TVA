@@ -62,7 +62,7 @@ class Trainer(metaclass=ABCMeta):
                 data.append([k, v])
 
         print(
-            CYAN_COLOR,
+            CYAN_COLOR + "\n",
             "Model Parameters: \n",
             tabulate(
                 data,
@@ -70,7 +70,7 @@ class Trainer(metaclass=ABCMeta):
                 tablefmt="heavy_outline",
                 numalign="right",
             ),
-            END_COLOR,
+            END_COLOR + "\n",
         )
 
     def print_trainer_config(self) -> None:
@@ -84,7 +84,7 @@ class Trainer(metaclass=ABCMeta):
                 data.append([k, v])
 
         print(
-            CYAN_COLOR,
+            CYAN_COLOR + "\n",
             "Trainer Configs: \n",
             tabulate(
                 data,
@@ -92,7 +92,7 @@ class Trainer(metaclass=ABCMeta):
                 tablefmt="heavy_outline",
                 numalign="right",
             ),
-            END_COLOR,
+            END_COLOR + "\n",
         )
 
     def train(self) -> None:

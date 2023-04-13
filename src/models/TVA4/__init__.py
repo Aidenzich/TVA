@@ -8,8 +8,13 @@ from tqdm import tqdm
 
 
 def train(model_params, trainer_config, recdata, callbacks=[]):
-    user_latent_factor = np.load(model_params["user_latent_factor"]["path"])
-    item_latent_factor = np.load(model_params["user_latent_factor"]["path"])
+    user_latent_factor = None
+    item_latent_factor = None
+    if model_params.get("user_latent_factor", None) is not None:
+
+        user_latent_factor = np.load(model_params["user_latent_factor"]["path"])
+    if model_params.get("item_latent_factor", None) is not None:
+        item_latent_factor = np.load(model_params["item_latent_factor"]["path"])
 
     # Sliding window
     use_sliding_window = trainer_config.get("sliding_window", False)

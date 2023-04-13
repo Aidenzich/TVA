@@ -28,24 +28,33 @@ class TVAModel(pl.LightningModule):
         user_latent_factor_params = model_params.get("user_latent_factor", None)
         item_latent_factor_params = model_params.get("item_latent_factor", None)
 
-        assert user_latent_factor_params is not None, (
-            RED_COLOR + "user_latent_factor_params is None" + END_COLOR
-        )
-
         self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
         self.max_len = model_params["max_len"]
         self.ks = trainer_config.get("ks", METRICS_KS)
 
-        use_userwise_var = user_latent_factor_params.get("available", False)
-        use_itemwise_var = item_latent_factor_params.get("available", False)
+        userwise_var_dim = 0
+        itemwise_var_dim = 0
+
+        use_userwise_var = (
+            user_latent_factor_params.get("available", False)
+            if user_latent_factor_params is not None
+            else False
+        )
+        use_itemwise_var = (
+            item_latent_factor_params.get("available", False)
+            if item_latent_factor_params is not None
+            else False
+        )
 
         if use_userwise_var:
             print("Using userwise latent factor")
+            assert user_latent_factor_params is not None, (
+                RED_COLOR + "user_latent_factor_params is None" + END_COLOR
+            )
+            userwise_var_dim = user_latent_factor_params.get("hidden_dim", 0)
         if use_itemwise_var:
             print("Using itemwise latent factor")
-
-        userwise_var_dim = user_latent_factor_params.get("hidden_dim", 0)
-        itemwise_var_dim = item_latent_factor_params.get("hidden_dim", 0)
+            itemwise_var_dim = item_latent_factor_params.get("hidden_dim", 0)
 
         self.tva = TVA(
             max_len=self.max_len,
@@ -56,6 +65,7 @@ class TVAModel(pl.LightningModule):
             dropout=model_params["dropout"],
             user_latent_factor_dim=userwise_var_dim if use_userwise_var else 0,
             item_latent_factor_dim=itemwise_var_dim if use_itemwise_var else 0,
+            time_features=model_params.get("time_features", []),
         )
         self.out = nn.Linear(self.d_model, num_items + 1)
         self.lr = (
@@ -68,7 +78,9 @@ class TVAModel(pl.LightningModule):
         self.weight_decay = trainer_config.get("weight_decay", 0.0)
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr, weight_decay=self.weight_decay)
+        optimizer = torch.optim.Adam(
+            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
 
         if self.lr_scheduler != None:
             lr_schedulers = {
@@ -86,7 +98,20 @@ class TVAModel(pl.LightningModule):
         userwise_latent_factor = batch["userwise_latent_factor"]
         itemwise_latent_factor_seq = batch["itemwise_latent_factor_seq"]
 
-        x = self.tva(item_seq, userwise_latent_factor, itemwise_latent_factor_seq)
+        years = batch["years"]
+        months = batch["months"]
+        days = batch["days"]
+        seasons = batch["seasons"]
+        hours = batch["hours"]
+        minutes = batch["minutes"]
+        seconds = batch["seconds"]
+        dayofweek = batch["dayofweek"]
+
+        time_seqs = (years, months, days, seasons, hours, minutes, seconds, dayofweek)
+
+        x = self.tva(
+            item_seq, userwise_latent_factor, itemwise_latent_factor_seq, time_seqs
+        )
         return self.out(x)
 
     def training_step(self, batch, batch_idx) -> Tensor:
@@ -158,6 +183,7 @@ class TVA(nn.Module):
         dropout: float,
         user_latent_factor_dim: int,
         item_latent_factor_dim: int,
+        time_features: list = [],
     ) -> None:
         super().__init__()
 
@@ -171,6 +197,7 @@ class TVA(nn.Module):
             dropout=dropout,
             user_latent_factor_dim=user_latent_factor_dim,
             item_latent_factor_dim=item_latent_factor_dim,
+            time_features=time_features,
         )
 
         # multi-layers transformer blocks, deep network
@@ -181,11 +208,19 @@ class TVA(nn.Module):
             ]
         )
 
-    def forward(self, item_seq, userwise_latent_factor, itemwise_latent_factor_seq):
+    def forward(
+        self,
+        item_seq,
+        userwise_latent_factor,
+        itemwise_latent_factor_seq,
+        time_seqs=None,
+    ):
         mask = (item_seq > 0).unsqueeze(1).repeat(1, item_seq.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(item_seq, userwise_latent_factor, itemwise_latent_factor_seq)
+        x = self.embedding(
+            item_seq, userwise_latent_factor, itemwise_latent_factor_seq, time_seqs
+        )
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
@@ -206,6 +241,7 @@ class TVAEmbedding(nn.Module):
         max_len,
         user_latent_factor_dim=None,
         item_latent_factor_dim=None,
+        time_features=[],
         dropout=0.1,
     ) -> None:
         """
@@ -221,6 +257,7 @@ class TVAEmbedding(nn.Module):
 
         self.user_latent_factor_dim = user_latent_factor_dim
         self.item_latent_factor_dim = item_latent_factor_dim
+        self.time_features = time_features
 
         self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
@@ -242,9 +279,28 @@ class TVAEmbedding(nn.Module):
             )
             in_dim += embed_size
 
+        if len(self.time_features) > 0:
+            # Time features
+
+            self.years_emb = nn.Embedding(2100, embed_size)
+            self.months_emb = nn.Embedding(13, embed_size)
+            self.days_emb = nn.Embedding(32, embed_size)
+            self.seasons_emb = nn.Embedding(5, embed_size)
+            self.hour_emb = nn.Embedding(25, embed_size)
+            self.minute_emb = nn.Embedding(61, embed_size)
+            self.second_emb = nn.Embedding(61, embed_size)
+            self.dayofweek_emb = nn.Embedding(8, embed_size)
+            in_dim += embed_size
+
         self.out = nn.Linear(in_dim, embed_size)
 
-    def forward(self, item_seq, userwise_latent_factor, itemwise_latent_factor_seq):
+    def forward(
+        self,
+        item_seq,
+        userwise_latent_factor,
+        itemwise_latent_factor_seq,
+        time_seqs=None,
+    ):
         items = self.token(item_seq)
         positions = self.position(item_seq)
         _cat = [items + positions]
@@ -281,6 +337,38 @@ class TVAEmbedding(nn.Module):
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
             item_latent = self.item_latent_emb_ff(item_latent)
             _cat.append(item_latent)
+
+        if self.time_features:
+            years, months, days, seasons, hours, minutes, seconds, dayofweek = time_seqs
+            years = self.years_emb(years)
+            months = self.months_emb(months)
+            days = self.days_emb(days)
+            seasons = self.seasons_emb(seasons)
+            hours = self.hour_emb(hours)
+            seconds = self.second_emb(seconds)
+            minutes = self.minute_emb(minutes)
+            dayofweek = self.dayofweek_emb(dayofweek)
+            time_dict = {
+                "years": years,
+                "months": months,
+                "days": days,
+                "seasons": seasons,
+                "hours": hours,
+                "seconds": seconds,
+                "minutes": minutes,
+                "dayofweek": dayofweek,
+            }
+
+            time_features_tensor = None
+
+            for t in self.time_features:
+
+                if time_features_tensor is None:
+                    time_features_tensor = time_dict[t]
+                else:
+                    time_features_tensor = time_features_tensor + time_dict[t]
+
+            _cat.append(time_features_tensor)
 
         x = self.out(
             torch.cat(

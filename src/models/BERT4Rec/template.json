@@ -1,27 +1,38 @@
 {
-    "data_class": "carrefour_sales_cls.pkl",
-    "trainer_config": {
-        "early_stopping": {
-            "monitor": "leave1out_recall@1",
-            "patience": 10,
-            "verbose": false,
-            "mode": "max"
-        },
-        "limit_train_batches": 0.5,
-        "max_epochs": 20,
-        "sample_size": 100,
-        "sample_method": "random",
-        "seed": 12345,
-        "num_workers": 12,
-        "devices": [0]
+    "data_class": "ratings_beauty_5.pkl",
+    "trainer_config": {    
+      "limit_train_batches": 1.0,
+      "max_epochs": 250,
+      "seed": 0,
+      "num_workers": 6,
+      "devices": [
+        0
+      ],
+      "check_val_every_n_epoch": 50,
+      "lr_scheduler": "Warmup",
+      "lr_scheduler_args": {
+        "num_warmup_steps": 10000,
+        "num_training_steps": 43000,
+        "num_cycles": 0.2
+      },
+      "lr_scheduler_interval": "step",
+      "lr": 0.001,
+      "weight_decay": 0,
+      "ks": [
+        1,
+        5,
+        10,
+        20
+      ],
+      "label_smoothing": 0.0
     },
     "model_params": {
-        "mask_prob": 0.15,
-        "d_model": 256,
-        "n_layers": 2,
-        "dropout": 0,
-        "heads": 8,
-        "max_len": 64,
-        "batch_size": 12
+      "mask_prob": 0.15,
+      "d_model": 256,
+      "n_layers": 2,
+      "dropout": 0.3,
+      "heads": 2,
+      "max_len": 15,
+      "batch_size": 256
     }
 }

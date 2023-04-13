@@ -26,6 +26,7 @@ class TVASequences(BaseModel):
     hours: Optional[torch.LongTensor]
     minutes: Optional[torch.LongTensor]
     seconds: Optional[torch.LongTensor]
+    dayofweek: Optional[torch.LongTensor]
 
     class Config:
         arbitrary_types_allowed = True
@@ -52,7 +53,7 @@ class TVASequenceDataset(Dataset):
         user_latent_factor=None,
         item_latent_factor=None,
         # Sliding window
-        seqs_user = None
+        seqs_user=None,
     ) -> None:
 
         if mode == "eval":
@@ -90,14 +91,18 @@ class TVASequenceDataset(Dataset):
 
     def __getitem__(self, index) -> Tuple[Tensor, Tensor, Tensor]:
         user = self.users[index]
-        item_seq = self.u2seq[user]        
+        item_seq = self.u2seq[user]
         time_seq = self.u2time_seq[user]
 
         if "." in str(user):
             user = int(user.split(".")[0])
 
         # User latent factor
-        user_latent_factor = self.user_latent_factor[user]
+        user_latent_factor = (
+            self.user_latent_factor[user]
+            if self.user_latent_factor is not None
+            else [0]
+        )
 
         if self.mode == "train":
             data = self._get_train(
@@ -135,13 +140,14 @@ class TVASequenceDataset(Dataset):
 
         # Bulid Item's latent factor sequence
         masked_item_latent_seq = []
+
         for item_id in masked_item_seq:
             if item_id == 0:
                 masked_item_latent_seq.append(self.zero_latent_factor)
             elif item_id == self.mask_token:
                 masked_item_latent_seq.append(self.random_latent_factor)
             else:
-                masked_item_latent_seq.append(self.item_latent_factor[item_id])
+                masked_item_latent_seq.append(self.item_latent_factor[item_id - 1])
 
         # Pad the time sequence
         time_seq = time_seq[-self.max_len :]
@@ -220,7 +226,7 @@ class TVASequenceDataset(Dataset):
             elif item_id == self.mask_token:
                 item_latent_factor_seq.append(self.random_latent_factor)
             else:
-                item_latent_factor_seq.append(self.item_latent_factor[item_id])
+                item_latent_factor_seq.append(self.item_latent_factor[item_id - 1])
 
         # Assert
         assert len(item_seq) == len(
@@ -253,35 +259,6 @@ class TVASequenceDataset(Dataset):
 
         return data
 
-    # def _get_predict(self, user_latent_factor):
-    # candidates = [x for x in range(1, self.num_items + 1)]
-    # item_seq = item_seq + [self.mask_token]
-    # item_seq = item_seq[-self.max_len :]
-
-    # padding_len = self.max_len - len(item_seq)
-
-    # item_seq = [0] * padding_len + item_seq
-
-    # time_seq = time_seq[-self.max_len :]
-    # time_seq = [0] * padding_len + time_seq
-
-    # # item_latent_factor_seq: item latent factors of user's sequence
-    # item_latent_factor_seq = []
-    # for item_id in item_seq:
-    #     if item_id == 0 or item_id == self.mask_token:
-    #         item_latent_factor_seq.append(self.zero_latent_factor)
-    #     else:
-    #         item_latent_factor_seq.append(self.item_latent_factor[item_id])
-
-    # return {
-    #     "item_seq": torch.LongTensor(item_seq),
-    #     "candidates": torch.LongTensor(candidates),
-    #     "time_seq": torch.FloatTensor(time_seq),
-    #     "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-    #     "itemwise_latent_factor_seq": torch.FloatTensor(item_latent_factor_seq),
-    # }
-    # pass
-
     def _get_time_features(self, time_seq) -> Dict[str, LongTensor]:
         dates = [datetime.datetime.fromtimestamp(t) for t in time_seq]
 
@@ -291,6 +268,7 @@ class TVASequenceDataset(Dataset):
         hours = [d.hour if d is not None else 0 for d in dates]
         minutes = [d.minute if d is not None else 0 for d in dates]
         seconds = [d.second if d is not None else 0 for d in dates]
+        dayofweek = [d.weekday() if d is not None else 0 for d in dates]
 
         seasons = []
         for month in months:
@@ -311,4 +289,5 @@ class TVASequenceDataset(Dataset):
             "minutes": torch.LongTensor(minutes),
             "seconds": torch.LongTensor(seconds),
             "seasons": torch.LongTensor(seasons),
+            "dayofweek": torch.LongTensor(dayofweek),
         }
