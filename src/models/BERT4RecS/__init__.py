@@ -8,9 +8,11 @@ from tqdm import tqdm
 def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
     slided_u2train_seqs = {}
 
+    sliding_step = trainer_config.get("sliding_step", 1)
+
     for u in tqdm(recdata.train_seqs):
         slided_user_seqs = get_slidewindow(
-            recdata.train_seqs[u], model_params["max_len"], step=1
+            recdata.train_seqs[u], model_params["max_len"], step=sliding_step
         )
 
         for idx, seqs in enumerate(slided_user_seqs):

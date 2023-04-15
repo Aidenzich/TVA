@@ -1,0 +1,33 @@
+data_class: ratings_toys_and_games_5.pkl
+model_params:
+  batch_size: 256
+  d_model: 256
+  dropout: 0.3
+  heads: 2
+  mask_prob: 0.15
+  max_len: 20
+  n_layers: 2
+trainer_config:
+  check_val_every_n_epoch: 10
+  config_name: ratings_toys_and_games_5.bert4recs.re
+  devices:
+  - 0
+  ks:
+  - 1
+  - 5
+  - 10
+  - 20
+  - 40
+  label_smoothing: 0.0
+  limit_train_batches: 1.0
+  lr: 0.001
+  lr_scheduler: Warmup
+  lr_scheduler_args:
+    num_cycles: 0.2
+    num_training_steps: 43000
+    num_warmup_steps: 10000
+  lr_scheduler_interval: step
+  max_epochs: 300
+  num_workers: 12
+  seed: 0
+  weight_decay: 0

@@ -1,0 +1,17 @@
+data_class: ml1m.pkl
+model_params:
+  act_fn: tanh
+  autoencoder_structure:
+  - 128
+  batch_size: 512
+  beta: 0.5
+  hidden_dim: 256
+  likelihood: mult
+trainer_config:
+  config_name: ml1m.vaeicf.new
+  devices:
+  - 0
+  limit_train_batches: 1.0
+  max_epochs: 200
+  num_workers: 12
+  seed: 12345

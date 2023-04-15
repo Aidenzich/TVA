@@ -83,7 +83,7 @@ class BertDataset(Dataset):
     ) -> Dict[str, torch.LongTensor]:
 
         if val_item is not None:
-            print("val_item", val_item)
+            # print("val_item", val_item)
             # In test phase, we add val_item to item_seq,
             # and use the item_seq to predict the answer_item
             item_seq = item_seq + val_item

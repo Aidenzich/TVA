@@ -1,4 +1,5 @@
 import json
+import yaml
 import pickle
 import inquirer
 
@@ -19,6 +20,9 @@ def create_configs_from_template(
 
     config = json.load(open(template_path, "r"))
     config["data_class"] = data_class_name
+
+    yaml.dump(config, open(template_path.with_suffix(".yaml"), "w"))
+
     new_config_path = CONFIG_PATH / (
         f"{data_class_stem}"  # data class name
         + f".{model_path.name.lower()}"  # model name
@@ -109,6 +113,8 @@ if __name__ == "__main__":
             config["trainer_config"]["config_name"] = selected_config_path.name.replace(
                 ".json", ""
             )
+
+            yaml.dump(config, open(selected_config_path.with_suffix(".yaml"), "w"))
 
             with open(DATACLASS_PATH / config["data_class"], "rb") as f:
                 recsys_data = pickle.load(f)
