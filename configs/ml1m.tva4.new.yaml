@@ -33,9 +33,9 @@ trainer_config:
   lr_scheduler_args:
     num_cycles: 0.2
     num_training_steps: 82750
-    num_warmup_steps: 9000
+    num_warmup_steps: 10000
   lr_scheduler_interval: step
-  max_epochs: 250
+  max_epochs: 300
   num_workers: 12
   seed: 0
   sliding_step: 10

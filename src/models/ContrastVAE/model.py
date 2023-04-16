@@ -34,12 +34,21 @@ class ContrastVAEModel(pl.LightningModule):
         self.latent_clr_weight = model_params["latent_clr_weight"]
         self.store_latent = model_params["store_latent"]
 
+        assert self.train_method in [
+            "variational_dropout",
+            "latent_contrastive_learning",
+            "latent_data_augmentation",
+            "VAandDA",
+        ], """train_method should be one of [variational_dropout, 
+        latent_contrastive_learning, latent_data_augmentation, VAandDA]"""
+
         if model_params["variational_dropout"]:
 
             self.model = ContrastVAE_VD(
                 num_items,
                 hidden_size=self.d_model,
-                max_seq_length=self.max_len,
+                variational_dropout=self.variational_dropout,
+                max_len=self.max_len,
                 hidden_dropout=model_params["dropout"],
                 num_attention_heads=model_params["heads"],
                 attention_probs_dropout_prob=model_params["attention_dropout"],
@@ -50,7 +59,6 @@ class ContrastVAEModel(pl.LightningModule):
                 total_annealing_step=model_params["total_annealing_step"],
                 initializer_range=model_params["initializer_range"],
                 train_method=model_params["train_method"],
-                arguement_method=model_params["arguement_method"],
             )
         else:
             self.model = ContrastVAE(
@@ -66,7 +74,6 @@ class ContrastVAEModel(pl.LightningModule):
                 total_annealing_step=model_params["total_annealing_step"],
                 initializer_range=model_params["initializer_range"],
                 train_method=model_params["train_method"],
-                arguement_method=model_params["arguement_method"],
             )
 
         self.ks = trainer_config.get("ks", METRICS_KS)
@@ -120,10 +127,6 @@ class ContrastVAEModel(pl.LightningModule):
 
         return optimizer
 
-    def forward(self, x) -> torch.Tensor:
-        x = self.bert(x)
-        return self.out(x)
-
     def training_step(self, batch, batch_idx) -> torch.Tensor:
         # batch = tuple(t.to(self.device) for t in batch)
         # (
@@ -153,6 +156,7 @@ class ContrastVAEModel(pl.LightningModule):
                 z2,
                 alpha,
             ) = self.model.forward(input_ids, 0, self.global_step)
+
             loss, recons_auc = self.loss_fn_VD_latent_clr(
                 reconstructed_seq1,
                 reconstructed_seq2,
@@ -298,7 +302,7 @@ class ContrastVAEModel(pl.LightningModule):
         aug_input_ids = batch["aug_input_ids"]
         candidates = batch["candidates"]
 
-        if self.variational_dropout:
+        if self.train_method == "variational_dropout":
             (
                 recommend_reconstruct1,
                 reconstructed_seq2,
@@ -568,12 +572,10 @@ class ContrastVAE(nn.Module):
         total_annealing_step,
         initializer_range,
         train_method,
-        arguement_method,
     ):
         super(ContrastVAE, self).__init__()
 
         self.train_method = train_method
-        self.arguement_method = arguement_method
 
         self.total_annealing_step = total_annealing_step
         self.initializer_range = initializer_range
@@ -784,35 +786,46 @@ class ContrastVAE_VD(ContrastVAE):
         hidden_dropout_prob,
         hidden_act,
         num_hidden_layers,
+        total_annealing_step,
+        initializer_range,
+        train_method,
+        variational_dropout,
+        reparam_dropout_rate=0.1,
     ) -> None:
-        super(ContrastVAE, self).__init__()
+        super(ContrastVAE, self).__init__(
+            total_annealing_step=total_annealing_step,
+            initializer_range=initializer_range,
+            train_method=train_method,
+            variational_dropout=variational_dropout,
+            reparam_dropout_rate=reparam_dropout_rate,
+        )
 
-        self.item_embeddings = nn.Embedding(num_items, hidden_size, padding_idx=0)
+        self.item_embeddings = nn.Embedding(num_items + 2, hidden_size, padding_idx=0)
         self.position_embeddings = nn.Embedding(max_len, hidden_size)
 
         self.item_encoder_mu = Encoder(
-            hidden_size,
-            num_attention_heads,
-            attention_probs_dropout_prob,
-            hidden_dropout_prob,
-            hidden_act,
-            num_hidden_layers,
+            hidden_size=hidden_size,
+            num_attention_heads=num_attention_heads,
+            attention_probs_dropout_prob=attention_probs_dropout_prob,
+            hidden_dropout_prob=hidden_dropout_prob,
+            hidden_act=hidden_act,
+            num_hidden_layers=num_hidden_layers,
         )
         self.item_encoder_logvar = Encoder(
-            hidden_size,
-            num_attention_heads,
-            attention_probs_dropout_prob,
-            hidden_dropout_prob,
-            hidden_act,
-            num_hidden_layers,
+            hidden_size=hidden_size,
+            num_attention_heads=num_attention_heads,
+            attention_probs_dropout_prob=attention_probs_dropout_prob,
+            hidden_dropout_prob=hidden_dropout_prob,
+            hidden_act=hidden_act,
+            num_hidden_layers=num_hidden_layers,
         )
         self.item_decoder = Decoder(
-            hidden_size,
-            num_hidden_layers,
-            num_attention_heads,
-            attention_probs_dropout_prob,
-            hidden_dropout_prob,
-            hidden_act,
+            hidden_size=hidden_size,
+            num_hidden_layers=num_hidden_layers,
+            num_attention_heads=num_attention_heads,
+            attention_probs_dropout_prob=attention_probs_dropout_prob,
+            hidden_dropout_prob=hidden_dropout_prob,
+            hidden_act=hidden_act,
         )
 
         self.dropout = nn.Dropout(hidden_dropout)
@@ -821,7 +834,7 @@ class ContrastVAE_VD(ContrastVAE):
         self.latent_dropout_VD = VariationalDropout(
             inputshape=[max_len, hidden_size], adaptive="layerwise"
         )
-        self.latent_dropout = nn.Dropout(0.1)
+        self.latent_dropout = nn.Dropout(self.reparam_dropout_rate)
 
         self.apply(self.init_weights)
 
@@ -834,7 +847,8 @@ class ContrastVAE_VD(ContrastVAE):
         return res, alpha
 
     def forward(self, input_ids, augmented_input_ids, step):
-        if self.arguement_method == "variational_dropout":
+
+        if self.variational_dropout:
             sequence_emb = self.add_position_embedding(input_ids)  # shape: b*max_Sq*d
             extended_attention_mask = self.extended_attention_mask(input_ids)
             mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask)
@@ -844,7 +858,7 @@ class ContrastVAE_VD(ContrastVAE):
             reconstructed_seq1 = self.decode(z1, extended_attention_mask)
             reconstructed_seq2 = self.decode(z2, extended_attention_mask)
 
-        elif self.arguement_method == "VAandDA":
+        else:
             sequence_emb = self.add_position_embedding(input_ids)  # shape: b*max_Sq*d
             extended_attention_mask = self.extended_attention_mask(input_ids)
             aug_sequence_emb = self.add_position_embedding(
