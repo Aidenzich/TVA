@@ -62,8 +62,10 @@ class Trainer(metaclass=ABCMeta):
                 data.append([k, v])
 
         print(
-            CYAN_COLOR + "\n",
-            "Model Parameters: \n",
+            CYAN_COLOR,
+            "\n",
+            "Model Parameters: ",
+            "\n",
             tabulate(
                 data,
                 headers=["property", "value"],
@@ -84,8 +86,10 @@ class Trainer(metaclass=ABCMeta):
                 data.append([k, v])
 
         print(
-            CYAN_COLOR + "\n",
-            "Trainer Configs: \n",
+            CYAN_COLOR,
+            "\n",
+            "Trainer Configs: ",
+            "\n",
             tabulate(
                 data,
                 headers=["property", "value"],

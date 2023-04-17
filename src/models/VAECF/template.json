@@ -1,5 +1,11 @@
 {
-  "data_class": "ratings_beauty_5.pkl",  
+  "data_class": "ratings_beauty_5.pkl",
+  "early_stopping": {
+    "monitor": "vae_recall@50",
+    "patience": 10,
+    "verbose": false,
+    "mode": "max"
+},
   "trainer_config": {
     "limit_train_batches": 1.0,
     "max_epochs": 100,
@@ -8,11 +14,9 @@
     "devices": [
       0
     ],
-    "early_stopping": {
-      "monitor": "vae_recall@50",
-      "patience": 10,
-      "verbose": false,
-      "mode": "max"
+    "lr_scheduler": "ReduceLROnPlateau",
+    "lr_scheduler_args": {
+      "patience": 10
     }
   },
   "model_params": {

@@ -49,12 +49,9 @@ def train(
     testset = MatrixDataset(test_matrix)
     valset = MatrixDataset(val_matrix)
     model = VAECFModel(
-        hidden_dim=model_params["hidden_dim"],
-        item_dim=recdata.num_users,
-        act_fn=model_params["act_fn"],
-        autoencoder_structure=model_params["autoencoder_structure"],
-        likelihood=model_params["likelihood"],
-        beta=model_params["beta"],
+        num_items=recdata.num_users,
+        model_params=model_params,
+        trainer_config=trainer_config,
     )
 
     fit(

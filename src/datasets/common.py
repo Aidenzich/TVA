@@ -235,45 +235,6 @@ class RecsysData:
                     timestamps,
                 )
 
-        # elif split_method == "holdout":
-        #     print("Splitting")
-        #     np.random.seed(self.args.dataset_split_seed)
-        #     eval_set_size = self.args.eval_set_size
-
-        #     # Generate user indices
-        #     permuted_index = np.random.permutation(user_count)
-        #     train_user_index = permuted_index[: -2 * eval_set_size]
-        #     val_user_index = permuted_index[-2 * eval_set_size : -eval_set_size]
-        #     test_user_index = permuted_index[-eval_set_size:]
-
-        #     # Split DataFrames
-        #     train_df = df.loc[df[USER_COLUMN_NAME].isin(train_user_index)]
-
-        #     val_df = df.loc[df[USER_COLUMN_NAME].isin(val_user_index)]
-
-        #     test_df = df.loc[df[USER_COLUMN_NAME].isin(test_user_index)]
-
-        #     # DataFrame to dict
-        #     train_seqs = dict(
-        #         train_df.groupby(USER_COLUMN_NAME).progress_apply(
-        #             lambda d: list(d[ITEM_COLUMN_NAME])
-        #         )
-        #     )
-        #     val_seqs = dict(
-        #         val_df.groupby(USER_COLUMN_NAME).progress_apply(
-        #             lambda d: list(d[ITEM_COLUMN_NAME])
-        #         )
-        #     )
-        #     test_seqs = dict(
-        #         test_df.groupby(USER_COLUMN_NAME).progress_apply(
-        #             lambda d: list(d[ITEM_COLUMN_NAME])
-        #         )
-        #     )
-        #     fully_seqs = dict(
-        #         self.dataframe.groupby(USER_COLUMN_NAME).progress_apply(
-        #             lambda d: list(d[ITEM_COLUMN_NAME])
-        #         )
-        #     )
 
         return (
             train_seqs,

@@ -1,58 +1,85 @@
 import numpy as np
 import torch
 import torch.nn as nn
+from torch import Tensor
 from tqdm.auto import trange
 import pytorch_lightning as pl
 from typing import List
 from .utils import split_matrix_by_mask, recall_precision_f1_calculate
+from ...modules.utils import SCHEDULER
 
 
 class VAECFModel(pl.LightningModule):
     def __init__(
         self,
-        hidden_dim: int,
-        item_dim: int,
-        act_fn: str,
-        autoencoder_structure: List[int],
-        likelihood: str,
-        beta: float,
+        num_items: int,
+        trainer_config: dict,
+        model_params: dict,
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
-        self.hidden_dim = hidden_dim
-        self.act_fn = act_fn
-        self.likelihood = likelihood
-        self.autoencoder_structure = autoencoder_structure
-        self.beta = beta
+
+        self.hidden_dim = model_params["hidden_dim"]
+        self.act_fn = model_params["act_fn"]
+        self.autoencoder_structure = model_params["autoencoder_structure"]
+        self.likelihood = model_params["likelihood"]
+        self.beta = model_params["beta"]
+        self.annealing_epoch = model_params["beta_annealing_epoch"]
+        self.weight_decay = trainer_config.get("weight_decay", 0.0)
+
+        self.lr = trainer_config.get("lr", 1e-3)
+        self.lr_scheduler = SCHEDULER.get(trainer_config.get("lr_scheduler", None))
+
+        if self.lr_scheduler != None:
+            print("Using lr_scheduler: ", self.lr_scheduler)
+            self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
+            self.lr_scheduler_interval = trainer_config.get(
+                "lr_scheduler_interval", "step"
+            )
+
         self.vae = VAE(
             z_dim=self.hidden_dim,
-            ae_structure=[item_dim] + self.autoencoder_structure,
+            ae_structure=[num_items] + self.autoencoder_structure,
             activation_function=self.act_fn,
             likelihood=self.likelihood,
         )
+
         self.top_k = 50
 
     def configure_optimizers(self):
-        optimizer = torch.optim.Adam(self.parameters(), lr=1e-3)
+        optimizer = torch.optim.Adam(
+            self.parameters(), lr=self.lr, weight_decay=self.weight_decay
+        )
 
-        lr_schedulers = {
-            "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                optimizer, patience=10
-            ),
-            "monitor": "train_loss",
-        }
-        return [optimizer], [lr_schedulers]
+        if self.lr_scheduler != None:
+            lr_schedulers = {
+                "scheduler": self.lr_scheduler(optimizer, **self.lr_scheduler_args),
+                "interval": self.lr_scheduler_interval,
+                "monitor": "train_loss",
+            }
 
-    def training_step(self, batch, batch_idx):
+            return [optimizer], [lr_schedulers]
+
+        return optimizer
+
+    def training_step(self, batch, batch_idx) -> Tensor:
         _batch, mu, logvar = self.vae(batch)
 
-        loss = self.vae.loss(batch, _batch, mu, logvar, self.beta)
+        # Annealing beta by epoch
+        if self.annealing_epoch == 0:
+            annealing_beta = self.beta
+        else:
+            annealing_beta = min(
+                self.beta, self.beta * (self.current_epoch / self.annealing_epoch)
+            )
+
+        loss = self.vae.loss(batch, _batch, mu, logvar, annealing_beta)
 
         self.log("train_loss", loss / len(batch), sync_dist=True)
-
+        self.log("beta", annealing_beta, sync_dist=True)
         return loss / len(batch)
 
-    def validation_step(self, batch, batch_idx):
+    def validation_step(self, batch, batch_idx) -> None:
         x, true_y, _ = split_matrix_by_mask(batch)
 
         z_u, _ = self.vae.encode(x)
@@ -66,13 +93,12 @@ class VAECFModel(pl.LightningModule):
         )
 
         self.log(f"vae_recall@{self.top_k}", recall, sync_dist=True)
-        # self.log(f"vae_precision@{self.top_k}", precision, sync_dist=True)
-        # self.log(f"vae_f1@{self.top_k}", f1, sync_dist=True)
 
-    def test_step(self, batch, batch_idx):
+    def test_step(self, batch, batch_idx) -> None:
         x, true_y, _ = split_matrix_by_mask(batch)
         z_u, _ = self.vae.encode(x)
         pred_y = self.vae.decode(z_u)
+
         seen = x != 0
         pred_y[seen] = 0
         true_y[seen] = 0
@@ -82,8 +108,6 @@ class VAECFModel(pl.LightningModule):
         )
 
         self.log(f"vae_recall@{self.top_k}", recall, sync_dist=True)
-        # self.log(f"vae_precision@{self.top_k}", precision, sync_dist=True)
-        # self.log(f"vae_f1@{self.top_k}", f1, sync_dist=True)
 
 
 EPS = 1e-10
@@ -171,4 +195,3 @@ class VAE(nn.Module):
         kld = torch.sum(kld, dim=1)
 
         return torch.mean(beta * kld - ll)
-        

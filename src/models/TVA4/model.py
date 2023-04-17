@@ -68,12 +68,15 @@ class TVAModel(pl.LightningModule):
             time_features=model_params.get("time_features", []),
         )
         self.out = nn.Linear(self.d_model, num_items + 1)
-        self.lr = (
-            trainer_config["lr"] if trainer_config.get("lr", None) is not None else 1e-4
-        )
+        self.lr = trainer_config.get("lr", 1e-4)
+
         self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
-        self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
-        self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
+
+        if self.lr_scheduler != None:
+            self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
+            self.lr_scheduler_interval = trainer_config.get(
+                "lr_scheduler_interval", "step"
+            )
 
         self.weight_decay = trainer_config.get("weight_decay", 0.0)
 
@@ -334,8 +337,9 @@ class TVAEmbedding(nn.Module):
                 + END_COLOR
             )
 
+            itemwise_latent_factor_seq = F.softmax(itemwise_latent_factor_seq, dim=2)
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
-            item_latent = self.item_latent_emb_ff(item_latent)
+            # item_latent = self.item_latent_emb_ff(item_latent) # Using for bad vae embedding
             _cat.append(item_latent)
 
         if self.time_features:

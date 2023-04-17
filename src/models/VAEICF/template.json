@@ -7,7 +7,14 @@
       "seed": 12345,
       "devices": [
         0
-      ]
+      ],
+      "lr_scheduler": "Warmup",
+      "lr_scheduler_args": {
+        "num_warmup_steps": 860,
+        "num_training_steps": 4300,
+        "num_cycles": 0.2
+      },
+      "lr_scheduler_interval": "step"
     },
     "model_params": {
       "batch_size": 512,
