@@ -31,7 +31,7 @@ class VAECFModel(pl.LightningModule):
         self.lr_scheduler = SCHEDULER.get(trainer_config.get("lr_scheduler", None))
 
         if self.lr_scheduler != None:
-            print("Using lr_scheduler: ", self.lr_scheduler)
+
             self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
             self.lr_scheduler_interval = trainer_config.get(
                 "lr_scheduler_interval", "step"

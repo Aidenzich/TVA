@@ -27,6 +27,7 @@ class TVAModel(pl.LightningModule):
 
         user_latent_factor_params = model_params.get("user_latent_factor", None)
         item_latent_factor_params = model_params.get("item_latent_factor", None)
+        latent_ff_dim = model_params.get("latent_ff_dim", 128)
 
         self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
         self.max_len = model_params["max_len"]
@@ -66,6 +67,7 @@ class TVAModel(pl.LightningModule):
             user_latent_factor_dim=userwise_var_dim if use_userwise_var else 0,
             item_latent_factor_dim=itemwise_var_dim if use_itemwise_var else 0,
             time_features=model_params.get("time_features", []),
+            latent_ff_dim=latent_ff_dim,
         )
         self.out = nn.Linear(self.d_model, num_items + 1)
         self.lr = trainer_config.get("lr", 1e-4)
@@ -187,6 +189,7 @@ class TVA(nn.Module):
         user_latent_factor_dim: int,
         item_latent_factor_dim: int,
         time_features: list = [],
+        latent_ff_dim: int = 128,
     ) -> None:
         super().__init__()
 
@@ -201,6 +204,7 @@ class TVA(nn.Module):
             user_latent_factor_dim=user_latent_factor_dim,
             item_latent_factor_dim=item_latent_factor_dim,
             time_features=time_features,
+            latent_ff_dim=latent_ff_dim,
         )
 
         # multi-layers transformer blocks, deep network
@@ -244,6 +248,7 @@ class TVAEmbedding(nn.Module):
         max_len,
         user_latent_factor_dim=None,
         item_latent_factor_dim=None,
+        latent_ff_dim=128,
         time_features=[],
         dropout=0.1,
     ) -> None:
@@ -266,6 +271,8 @@ class TVAEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
         self.dropout = nn.Dropout(p=dropout)
 
+        self.latent_ff_dim = latent_ff_dim
+
         in_dim = embed_size
 
         if self.user_latent_factor_dim != 0:
@@ -278,7 +285,7 @@ class TVAEmbedding(nn.Module):
         if self.item_latent_factor_dim != 0:
             self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
             self.item_latent_emb_ff = PositionwiseFeedForward(
-                d_model=embed_size, d_ff=32, dropout=dropout
+                d_model=embed_size, d_ff=latent_ff_dim, dropout=dropout
             )
             in_dim += embed_size
 
@@ -333,13 +340,18 @@ class TVAEmbedding(nn.Module):
                 itemwise_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2
             ), (
                 RED_COLOR
-                + "item latent factor dim is not match, please check model config"
+                + f"item latent factor dim ({itemwise_latent_factor_seq.shape[2]})"
+                + f" is not match {self.item_latent_factor_dim * 2}, please check model config"
                 + END_COLOR
             )
 
-            itemwise_latent_factor_seq = F.softmax(itemwise_latent_factor_seq, dim=2)
+            # itemwise_latent_factor_seq = F.softmax(itemwise_latent_factor_seq, dim=2)
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
-            # item_latent = self.item_latent_emb_ff(item_latent) # Using for bad vae embedding
+            print(self.latent_ff_dim)
+            if self.latent_ff_dim != 0:
+                item_latent = self.item_latent_emb_ff(
+                    item_latent
+                )  # Using for bad vae embedding
             _cat.append(item_latent)
 
         if self.time_features:

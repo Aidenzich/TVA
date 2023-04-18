@@ -6,6 +6,7 @@ __pycache__/
 *.pyc
 *.swp
 configs/*.json
+configs/*.yaml
 res/
 .DS_Store
 
@@ -209,3 +210,4 @@ logs/*
 cache/
 
 **temp**
+

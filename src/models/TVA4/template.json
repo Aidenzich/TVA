@@ -41,6 +41,7 @@
       "path": "/home/VS6102093/TVA/logs/ml1m.vaeicf.new/version_0/latent_factor/encode_result.npy",
       "available": true
     },
+    "latent_ff_dim": 128,
     "time_features": ["dayofweek", "months", "years"]
   }
 }

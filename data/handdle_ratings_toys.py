@@ -39,7 +39,7 @@ def filter_triplets(df, min_uc=5, min_sc=5):
 df = filter_triplets(df)
 
 # %%
-df.to_csv("ratings_Toys_and_Games_5.csv", index=False)
+df.to_csv("toys.csv", index=False)
 # Remove the users with less than 5 ratings
 df = df.groupby("user_id").filter(lambda x: len(x) >= 5)
 df
