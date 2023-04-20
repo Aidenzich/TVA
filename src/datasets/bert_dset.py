@@ -20,6 +20,7 @@ class BertDataset(Dataset):
         u2answer=None,
         u2test=None,
         u2val=None,
+        num_mask=1,
     ) -> None:
 
         if mode == "eval":
@@ -31,7 +32,8 @@ class BertDataset(Dataset):
 
         self.mode = mode
         self.u2seq = u2seq
-        self.users = sorted(self.u2seq.keys())
+        self.users = sorted(list(self.u2seq.keys()))
+
         self.max_len = max_len
         self.mask_prob = mask_prob
         self.mask_token = mask_token
@@ -41,10 +43,13 @@ class BertDataset(Dataset):
         self.u2test = u2test
         self.u2val = u2val
 
+        self.num_mask = num_mask
+
     def __len__(self) -> int:
-        return len(self.users)
+        return len(self.u2seq)
 
     def __getitem__(self, index) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+
         user = self.users[index]
         item_seq = self.u2seq[user]
 
@@ -58,25 +63,33 @@ class BertDataset(Dataset):
             )
 
         if self.mode == "train":
-            return self._train(item_seq=item_seq)
+            return self._get_train(item_seq=item_seq)
 
         if self.mode == "predict":
             return self._predict(item_seq=item_seq)
 
-    def _train(self, item_seq):
-        masked_item_seq, labels = get_masked_seq(
-            item_seq=item_seq,
-            max_len=self.max_len,
-            mask_prob=self.mask_prob,
-            mask_token=self.mask_token,
-            num_items=self.num_items,
-            rng=self.rng,
-        )
+    def _get_train(self, item_seq):
 
-        return {
-            "item_seq": torch.LongTensor(masked_item_seq),
-            "labels": torch.LongTensor(labels),
-        }
+        return_dict = {}
+        for idx in range(self.num_mask):
+            # Do masking
+            masked_item_seq, labels = get_masked_seq(
+                item_seq=item_seq,
+                max_len=self.max_len,
+                mask_prob=self.mask_prob,
+                mask_token=self.mask_token,
+                num_items=self.num_items,
+                rng=self.rng,
+            )
+
+            return_dict[f"item_seq_{idx}"] = torch.LongTensor(masked_item_seq)
+            return_dict[f"labels_{idx}"] = torch.LongTensor(labels)
+
+        return return_dict
+        # return {
+        #     "item_seq": torch.LongTensor(masked_item_seq),
+        #     "labels": torch.LongTensor(labels),
+        # }
 
     def _eval(
         self, item_seq, answer_item, val_item=None

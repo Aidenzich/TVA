@@ -15,48 +15,36 @@ class BERTModel(pl.LightningModule):
         self.save_hyperparameters()
         self.max_len = model_params["max_len"]
         self.d_model = model_params["d_model"]
-
-        self.bert = BERT(
-            max_len=self.max_len,
-            num_items=num_items,
-            n_layers=model_params["n_layers"],
-            d_model=self.d_model,
-            heads=model_params["heads"],
-            dropout=model_params["dropout"],
-        )
-
+        self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
         self.ks = trainer_config.get("ks", METRICS_KS)
-        self.out = nn.Linear(self.d_model, num_items + 1)
         self.lr = trainer_config["lr"]
         self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
         self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
         self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
         self.weight_decay = trainer_config["weight_decay"]
+        self.num_mask = model_params.get("num_mask", 1)
+
+        # embedding for BERT, sum of positional, segment, token embeddings
+        self.embedding = BERTEmbedding(
+            vocab_size=num_items + 2,
+            embed_size=self.d_model,
+            max_len=self.max_len,
+            dropout=model_params["dropout"],
+        )
+
+        self.model = BERT(
+            n_layers=model_params["n_layers"],
+            d_model=self.d_model,
+            heads=model_params["heads"],
+            dropout=model_params["dropout"],
+            embedding=self.embedding,
+        )
+
+        self.out = nn.Linear(self.d_model, num_items + 1)
 
     def configure_optimizers(self) -> Any:
-        if self.weight_decay != 0:
-            print("Using weight decay")
-            param = list(self.named_parameters())
-            no_decay = ["bias", "LayerNorm.bias", "LayerNorm.weight"]
-            optimizer_grouped_parameters = [
-                {
-                    "params": [
-                        p for n, p in param if not any(nd in n for nd in no_decay)
-                    ],
-                    "weight_decay": self.weight_decay,
-                },
-                {
-                    "params": [p for n, p in param if any(nd in n for nd in no_decay)],
-                    "weight_decay": 0.0,
-                },
-            ]
 
-            optimizer = torch.optim.Adam(
-                optimizer_grouped_parameters, lr=self.lr, weight_decay=self.weight_decay
-            )
-
-        else:
-            optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
+        optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         if self.lr_scheduler != None:
             lr_schedulers = {
@@ -69,58 +57,68 @@ class BERTModel(pl.LightningModule):
 
         return optimizer
 
-    def forward(self, x) -> torch.Tensor:
-        x = self.bert(x)
-        return self.out(x)
+    def forward(self, item_seq) -> torch.Tensor:
+        item_seq = self.model(item_seq)
+        return self.out(item_seq)
 
     def training_step(self, batch, batch_idx) -> torch.Tensor:
-        batch_item_seq = batch["item_seq"]
-        batch_labels = batch["labels"]
+        main_loss = torch.FloatTensor([0]).to(batch["item_seq_0"].device)
+        for idx in range(self.num_mask):
+            batch_item_seq = batch[f"item_seq_{idx}"]
+            batch_labels = batch[f"labels_{idx}"]
 
-        logits = self.forward(batch_item_seq)  # Batch x Seq_len x Item_num
-        logits = logits.view(-1, logits.size(-1))  # (Batch * Seq_len) x Item_num
-        batch_labels = batch_labels.view(-1)  # Batch x Seq_len
+            logits = self.forward(batch_item_seq)  # Batch x Seq_len x Item_num
+            logits = logits.view(-1, logits.size(-1))  # (Batch * Seq_len) x Item_num
+            batch_labels = batch_labels.view(-1)  # Batch x Seq_len
 
-        loss = F.cross_entropy(
-            logits, batch_labels, ignore_index=0, label_smoothing=0.05
-        )
+            loss = F.cross_entropy(
+                logits,
+                batch_labels,
+                ignore_index=0,
+                label_smoothing=self.label_smoothing,
+            )
+            main_loss = main_loss + loss
 
         if self.lr_scheduler != None:
             sch = self.lr_schedulers()
-
-            # print(batch_idx)
-            # if (batch_idx + 1) == 0:
-            # sch.step(self.lr_metric)
             sch.step()
 
-        self.log("train_loss", loss)
-        return loss
+        self.log("train_loss", main_loss, sync_dist=True)
+        return main_loss
 
     def validation_step(self, batch, batch_idx) -> None:
         metrics = self.calculate_metrics(batch)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
-                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
+                self.log(
+                    "leave1out_" + metric,
+                    torch.FloatTensor([metrics[metric]]),
+                    sync_dist=True,
+                )
 
     def test_step(self, batch, batch_idx) -> None:
         metrics = self.calculate_metrics(batch)
 
         for metric in metrics.keys():
             if "recall" in metric or "ndcg" in metric:
-                self.log("leave1out_" + metric, torch.FloatTensor([metrics[metric]]))
+                self.log(
+                    "leave1out_" + metric,
+                    torch.FloatTensor([metrics[metric]]),
+                    sync_dist=True,
+                )
 
     def calculate_metrics(self, batch) -> Dict[str, float]:
-        batch_item_seq = batch["item_seq"]
-        batch_candidates = batch["candidates"]
-        batch_labels = batch["labels"]
+        scores = self.forward(item_seq=batch["item_seq"])  # Batch x Seq_len x Item_num
 
-        scores = self.forward(batch_item_seq)  # Batch x Seq_len x Item_num
         scores = scores[:, -1, :]  # Batch x Item_num
         scores[:, 0] = -999.999
         scores[
             :, -1
         ] = -999.999  # pad token and mask token should not appear in the logits outpu
+
+        batch_candidates = batch["candidates"]
+        batch_labels = batch["labels"]
 
         scores = scores.gather(1, batch_candidates)  # Batch x Candidates
         metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, self.ks)
@@ -131,24 +129,15 @@ class BERTModel(pl.LightningModule):
 class BERT(nn.Module):
     def __init__(
         self,
-        max_len: int,
-        num_items: int,
         n_layers: int,
         heads: int,
         d_model: int,
         dropout: float,
-    ):
+        embedding: nn.Module = None,
+    ) -> None:
         super().__init__()
-        # self.init_weights()
-        vocab_size = num_items + 2
 
-        # embedding for BERT, sum of positional, segment, token embeddings
-        self.embedding = BERTEmbedding(
-            vocab_size=vocab_size,
-            embed_size=d_model,
-            max_len=max_len,
-            dropout=dropout,
-        )
+        self.embedding = embedding
 
         # multi-layers transformer blocks, deep network
         self.transformer_blocks = nn.ModuleList(
@@ -158,20 +147,17 @@ class BERT(nn.Module):
             ]
         )
 
-    def forward(self, x):
+    def forward(self, x, **kwargs):
         mask = (x > 0).unsqueeze(1).repeat(1, x.size(1), 1).unsqueeze(1)
 
         # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(x)
+        x = self.embedding(x, **kwargs)
 
         # running over multiple transformer blocks
         for transformer in self.transformer_blocks:
             x = transformer.forward(x, mask)
 
         return x
-
-    def init_weights(self):
-        pass
 
 
 # Embedding
@@ -196,7 +182,6 @@ class BERTEmbedding(nn.Module):
         self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
 
         self.dropout = nn.Dropout(p=dropout)
-        self.embed_size = embed_size
 
     def forward(self, sequence):
         x = self.token(sequence) + self.position(sequence)

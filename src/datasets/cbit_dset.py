@@ -71,8 +71,8 @@ class CBiTDataset(Dataset):
         labels = []
 
         return_list = []
-
-        for _ in range(self.num_positive):
+        return_dict = {}
+        for idx in range(self.num_positive):
             masked_item_seq, labels = get_masked_seq(
                 item_seq=item_seq,
                 max_len=self.max_len,
@@ -82,10 +82,14 @@ class CBiTDataset(Dataset):
                 rng=self.rng,
             )
 
+            return_dict[f"item_seq_{idx}"] = torch.LongTensor(masked_item_seq)
+            return_dict[f"labels_{idx}"] = torch.LongTensor(labels)
+
             return_list.append(torch.LongTensor(masked_item_seq))
             return_list.append(torch.LongTensor(labels))
 
         return tuple(return_list)
+        return return_dict
 
     def _eval(
         self, item_seq, answer_item, val_item=None

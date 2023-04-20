@@ -5,6 +5,7 @@ from src.configs import CACHE_PATH
 from src.datasets.common import RecsysData
 import numpy as np
 import random
+from torch.nn import functional as F
 
 
 def _split_matrix_by_item(recdata: RecsysData):
@@ -71,7 +72,7 @@ def infer(ckpt_path, recdata, rec_ks=100):
     from tqdm import tqdm
 
     latent_factor_path = ckpt_path.parent.parent / "latent_factor/"
-    latent_factor_path.mkdir(parents=True, exist_ok=False)
+    latent_factor_path.mkdir(parents=True, exist_ok=True)
 
     device = torch.device("cuda:0")
     matrix = recdata.matrix.transpose()

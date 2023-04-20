@@ -1,3 +1,6 @@
+"""
+Current this model is not working as paper
+"""
 import numpy as np
 import torch
 import torch.nn as nn
@@ -7,6 +10,7 @@ import pytorch_lightning as pl
 from typing import Dict
 
 from src.modules.feedforward import PointWiseFeedForward
+from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 
 
@@ -15,6 +19,7 @@ class SASRecModel(pl.LightningModule):
         self,
         num_items: int,
         num_users: int,
+        trainer_config: Dict,
         model_params: Dict,
     ) -> None:
         super().__init__()
@@ -22,7 +27,6 @@ class SASRecModel(pl.LightningModule):
 
         self.max_len = model_params["max_len"]
         self.l2_emb = model_params["l2_emb"]
-        self.lr = model_params["lr"]
 
         d_model = model_params["d_model"]
         heads = model_params["heads"]
@@ -40,36 +44,18 @@ class SASRecModel(pl.LightningModule):
         )
 
         self.lr_metric = 0
-        self.lr_scheduler_name = "ReduceLROnPlateau"
+        self.lr = trainer_config["lr"]
+        self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
+        self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
+        self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
-        if self.lr_scheduler_name == "ReduceLROnPlateau":
+        if self.lr_scheduler != None:
             lr_schedulers = {
-                "scheduler": torch.optim.lr_scheduler.ReduceLROnPlateau(
-                    optimizer, patience=10
-                ),
-                "monitor": "train_loss",
-            }
-
-            return [optimizer], [lr_schedulers]
-
-        if self.lr_scheduler_name == "LambdaLR":
-            lr_schedulers = {
-                "scheduler": torch.optim.lr_scheduler.LambdaLR(
-                    optimizer, lr_lambda=lambda epoch: 0.95**epoch
-                ),
-                "monitor": "train_loss",
-            }
-
-            return [optimizer], [lr_schedulers]
-
-        if self.lr_scheduler_name == "StepLR":
-            lr_schedulers = {
-                "scheduler": torch.optim.lr_scheduler.StepLR(
-                    optimizer, step_size=10, gamma=0.1
-                ),
+                "scheduler": self.lr_scheduler(optimizer, **self.lr_scheduler_args),
+                "interval": self.lr_scheduler_interval,
                 "monitor": "train_loss",
             }
 
@@ -102,10 +88,9 @@ class SASRecModel(pl.LightningModule):
             loss += self.l2_emb * torch.norm(param)
 
         # Step the lr scheduler
-        if self.lr_scheduler_name == "ReduceLROnPlateau":
+        if self.lr_scheduler != None:
             sch = self.lr_schedulers()
-            if (batch_idx + 1) == 0:
-                sch.step(self.lr_metric)
+            sch.step()
 
         self.log("train_loss", loss, sync_dist=True)
         return loss

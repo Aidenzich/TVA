@@ -54,6 +54,7 @@ class TVASequenceDataset(Dataset):
         item_latent_factor=None,
         # Sliding window
         seqs_user=None,
+        num_mask=1,
     ) -> None:
 
         if mode == "eval":
@@ -65,7 +66,8 @@ class TVASequenceDataset(Dataset):
 
         self.mode = mode
         self.u2seq = u2seq
-        self.users = list(self.u2seq.keys())
+
+        self.users = sorted(self.u2seq.keys())
         self.max_len = max_len
         self.mask_prob = mask_prob
         self.mask_token = mask_token
@@ -85,9 +87,10 @@ class TVASequenceDataset(Dataset):
             0, 0.1, self.item_latent_factor[0].shape
         )
         self.seqs_user = seqs_user
+        self.num_mask = num_mask
 
     def __len__(self) -> int:
-        return len(self.users)
+        return len(self.u2seq)
 
     def __getitem__(self, index) -> Tuple[Tensor, Tensor, Tensor]:
         user = self.users[index]
@@ -110,7 +113,7 @@ class TVASequenceDataset(Dataset):
                 time_seq=time_seq,
                 user_latent_factor=user_latent_factor,
             )
-            data = TVASequences(**data).dict(exclude_none=True)
+            # data = TVASequences(**data).dict(exclude_none=True)
             return data
 
         if self.mode == "eval":
@@ -128,52 +131,57 @@ class TVASequenceDataset(Dataset):
             return data
 
     def _get_train(self, item_seq, time_seq, user_latent_factor):
-        # Do masking
-        masked_item_seq, labels = get_masked_seq(
-            item_seq=item_seq,
-            max_len=self.max_len,
-            mask_prob=self.mask_prob,
-            mask_token=self.mask_token,
-            num_items=self.num_items,
-            rng=self.rng,
-        )
 
-        # Bulid Item's latent factor sequence
-        masked_item_latent_seq = []
+        return_dict = {}
+        for idx in range(self.num_mask):
+            # Do masking
+            masked_item_seq, labels = get_masked_seq(
+                item_seq=item_seq,
+                max_len=self.max_len,
+                mask_prob=self.mask_prob,
+                mask_token=self.mask_token,
+                num_items=self.num_items,
+                rng=self.rng,
+            )
 
-        for item_id in masked_item_seq:
-            if item_id == 0:
-                masked_item_latent_seq.append(self.zero_latent_factor)
-            elif item_id == self.mask_token:
-                masked_item_latent_seq.append(self.random_latent_factor)
-            else:
-                masked_item_latent_seq.append(self.item_latent_factor[item_id - 1])
+            return_dict[f"item_seq_{idx}"] = torch.LongTensor(masked_item_seq)
+            return_dict[f"labels_{idx}"] = torch.LongTensor(labels)
 
-        # Pad the time sequence
-        time_seq = time_seq[-self.max_len :]
-        time_seq = [0] * (self.max_len - len(time_seq)) + time_seq
+            # Bulid Item's latent factor sequence
+            masked_item_latent_seq = []
+            for item_id in masked_item_seq:
+                if item_id == 0:
+                    masked_item_latent_seq.append(self.zero_latent_factor)
+                elif item_id == self.mask_token:
+                    masked_item_latent_seq.append(self.random_latent_factor)
+                else:
+                    masked_item_latent_seq.append(self.item_latent_factor[item_id - 1])
 
-        data = {
-            "item_seq": torch.LongTensor(masked_item_seq),
-            "time_seq": torch.FloatTensor(time_seq),
-            "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-            "itemwise_latent_factor_seq": torch.FloatTensor(
+            # Pad the time sequence
+            time_seq = time_seq[-self.max_len :]
+            time_seq = [0] * (self.max_len - len(time_seq)) + time_seq
+            time_features = self._get_time_features(time_seq)
+
+            return_dict[f"time_seq_{idx}"] = torch.FloatTensor(time_seq)
+            return_dict[f"itemwise_latent_factor_seq_{idx}"] = torch.FloatTensor(
                 np.array(masked_item_latent_seq)
-            ),
-            "labels": torch.LongTensor(labels),
-        }
+            )
 
-        time_features = self._get_time_features(time_seq)
-        data = {**data, **time_features}
+            return_dict[f"userwise_latent_factor_{idx}"] = torch.FloatTensor(
+                user_latent_factor
+            )
+
+            for k in time_features:
+                return_dict[f"{k}_{idx}"] = time_features[k]
 
         assert (
-            len(data["item_seq"])
-            == len(data["time_seq"])
-            == len(data["itemwise_latent_factor_seq"])
-            == len(data["labels"])
+            len(return_dict["item_seq_0"])
+            == len(return_dict["time_seq_0"])
+            == len(return_dict["itemwise_latent_factor_seq_0"])
+            == len(return_dict["labels_0"])
         ), "The length of item_seq, time_seq, itemwise_latent_factor_seq, labels, time_features must be equal"
 
-        return data
+        return return_dict
 
     def _get_eval(
         self,

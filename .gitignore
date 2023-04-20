@@ -211,3 +211,5 @@ cache/
 
 **temp**
 
+data/*.json*
+data/*.txt

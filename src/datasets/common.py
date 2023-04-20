@@ -198,19 +198,30 @@ class RecsysData:
         if split_method == "leave_one_out":
 
             user_group = df.groupby(USER_COLUMN_NAME)
+
             user2items = user_group.progress_apply(
                 lambda d: list(
-                    d.sort_values(by=TIMESTAMP_COLUMN_NAME)[ITEM_COLUMN_NAME]
+                    d.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="stable")[
+                        ITEM_COLUMN_NAME
+                    ]
                 )
             )
 
             user2time = user_group.progress_apply(
                 lambda t: list(
-                    t.sort_values(by=TIMESTAMP_COLUMN_NAME)[
+                    t.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="stable")[
                         TIMESTAMP_COLUMN_NAME
                     ].astype(np.int64)
                 )
             )
+
+            for d in user2time:
+                compare = 0
+                for t in d:
+                    if t < compare:
+
+                        assert False, "Timestamps are not sorted"
+                    compare = t
 
             for user in users:
                 items = user2items[user]
@@ -234,7 +245,6 @@ class RecsysData:
                     timestamps[-1:],
                     timestamps,
                 )
-
 
         return (
             train_seqs,

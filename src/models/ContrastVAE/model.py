@@ -3,7 +3,14 @@ import pytorch_lightning as pl
 import torch.nn.functional as F
 import torch
 import torch.nn as nn
-from .temp import Encoder, LayerNorm, Decoder, VariationalDropout, NCELoss, priorKL
+from ...modules.sasrec_modules import (
+    Encoder,
+    LayerNorm,
+    Decoder,
+    VariationalDropout,
+    NCELoss,
+    priorKL,
+)
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 import numpy as np

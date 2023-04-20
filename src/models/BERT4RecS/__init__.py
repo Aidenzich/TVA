@@ -21,6 +21,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
     print(f"Before sliding window data num: {len(recdata.train_seqs)}")
     print(f"After sliding window data num: {len(slided_u2train_seqs)}")
 
+    
     trainset = BertDataset(
         mode="train",
         max_len=model_params["max_len"],
@@ -29,6 +30,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         mask_token=recdata.num_items + 1,
         u2seq=slided_u2train_seqs,
         seed=trainer_config["seed"],
+        num_mask=model_params.get("num_mask", 1),
     )
 
     valset = BertDataset(

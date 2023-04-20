@@ -11,18 +11,19 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
     user_latent_factor = None
     item_latent_factor = None
     if model_params.get("user_latent_factor", None) is not None:
-
         user_latent_factor = np.load(model_params["user_latent_factor"]["path"])
+
     if model_params.get("item_latent_factor", None) is not None:
         item_latent_factor = np.load(model_params["item_latent_factor"]["path"])
 
     # Sliding window
     use_sliding_window = trainer_config.get("sliding_window", False)
     sliding_step = trainer_config.get("sliding_step", 1)
+
     slided_u2train_seqs = {}
     slided_u2time_seqs = {}
     if use_sliding_window:
-        print("Sliding window is enabled. Handle data...")
+        print("Sliding window is enabled. Handling data...")
 
         for u in tqdm(recdata.train_seqs):
             slided_user_seqs = get_slidewindow(
@@ -40,6 +41,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         print(f"Before sliding window data num: {len(recdata.train_seqs)}")
         print(f"After sliding window data num: {len(slided_u2train_seqs)}")
 
+    
     trainset = TVASequenceDataset(
         mode="train",
         max_len=model_params["max_len"],
@@ -51,6 +53,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         user_latent_factor=user_latent_factor,
         item_latent_factor=item_latent_factor,
         seed=trainer_config["seed"],
+        num_mask=model_params.get("num_mask", 1),
     )
 
     valset = TVASequenceDataset(

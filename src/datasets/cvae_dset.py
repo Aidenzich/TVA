@@ -4,7 +4,7 @@ import torch
 from torch.utils.data import Dataset
 import math
 import numpy as np
-import random
+from .utils import neg_sample
 
 
 class CVAEDataset(Dataset):
@@ -214,10 +214,3 @@ class CVAEDataset(Dataset):
         return len(self.users)
 
 
-def neg_sample(
-    item_set, item_size
-):  # random sample an item id that is not in the user's interact history
-    item = random.randint(1, item_size - 1)
-    while item in item_set:
-        item = random.randint(1, item_size - 1)
-    return item

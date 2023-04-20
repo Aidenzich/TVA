@@ -11,6 +11,7 @@ from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
 from ...modules.transformer import TransformerBlock
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
+from ...models.BERT4Rec.model import BERT, BERTEmbedding
 
 
 class TVAModel(pl.LightningModule):
@@ -24,14 +25,18 @@ class TVAModel(pl.LightningModule):
         self.save_hyperparameters()
         self.max_len = model_params["max_len"]
         self.d_model = model_params["d_model"]
+        self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
+        self.ks = trainer_config.get("ks", METRICS_KS)
+        self.lr = trainer_config.get("lr", 1e-4)
+        self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
+        self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
+        self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
+        self.weight_decay = trainer_config.get("weight_decay", 0.0)
+        self.num_mask = model_params.get("num_mask", 1)
 
         user_latent_factor_params = model_params.get("user_latent_factor", None)
         item_latent_factor_params = model_params.get("item_latent_factor", None)
         latent_ff_dim = model_params.get("latent_ff_dim", 128)
-
-        self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
-        self.max_len = model_params["max_len"]
-        self.ks = trainer_config.get("ks", METRICS_KS)
 
         userwise_var_dim = 0
         itemwise_var_dim = 0
@@ -57,30 +62,26 @@ class TVAModel(pl.LightningModule):
             print("Using itemwise latent factor")
             itemwise_var_dim = item_latent_factor_params.get("hidden_dim", 0)
 
-        self.tva = TVA(
+        self.embedding = TVAEmbedding(
+            vocab_size=num_items + 2,
+            embed_size=self.d_model,
             max_len=self.max_len,
-            num_items=num_items,
-            n_layers=model_params["n_layers"],
-            d_model=self.d_model,
-            heads=model_params["heads"],
             dropout=model_params["dropout"],
             user_latent_factor_dim=userwise_var_dim if use_userwise_var else 0,
             item_latent_factor_dim=itemwise_var_dim if use_itemwise_var else 0,
             time_features=model_params.get("time_features", []),
             latent_ff_dim=latent_ff_dim,
         )
+
+        self.model = BERT(
+            n_layers=model_params["n_layers"],
+            d_model=self.d_model,
+            heads=model_params["heads"],
+            dropout=model_params["dropout"],
+            embedding=self.embedding,
+        )
+
         self.out = nn.Linear(self.d_model, num_items + 1)
-        self.lr = trainer_config.get("lr", 1e-4)
-
-        self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
-
-        if self.lr_scheduler != None:
-            self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
-            self.lr_scheduler_interval = trainer_config.get(
-                "lr_scheduler_interval", "step"
-            )
-
-        self.weight_decay = trainer_config.get("weight_decay", 0.0)
 
     def configure_optimizers(self):
         optimizer = torch.optim.Adam(
@@ -98,45 +99,77 @@ class TVAModel(pl.LightningModule):
 
         return optimizer
 
-    def forward(self, batch) -> Tensor:
-        item_seq = batch["item_seq"]
-        userwise_latent_factor = batch["userwise_latent_factor"]
-        itemwise_latent_factor_seq = batch["itemwise_latent_factor_seq"]
+    def forward(
+        self,
+        item_seq,
+        userwise_latent_factor,
+        itemwise_latent_factor_seq,
+        years,
+        months,
+        days,
+        seasons,
+        hours,
+        minutes,
+        seconds,
+        dayofweek,
+    ) -> torch.Tensor:
 
-        years = batch["years"]
-        months = batch["months"]
-        days = batch["days"]
-        seasons = batch["seasons"]
-        hours = batch["hours"]
-        minutes = batch["minutes"]
-        seconds = batch["seconds"]
-        dayofweek = batch["dayofweek"]
-
-        time_seqs = (years, months, days, seasons, hours, minutes, seconds, dayofweek)
-
-        x = self.tva(
-            item_seq, userwise_latent_factor, itemwise_latent_factor_seq, time_seqs
+        time_seqs = (
+            years,
+            months,
+            days,
+            seasons,
+            hours,
+            minutes,
+            seconds,
+            dayofweek,
         )
+
+        x = self.model(
+            x=item_seq,
+            userwise_latent_factor=userwise_latent_factor,
+            itemwise_latent_factor_seq=itemwise_latent_factor_seq,
+            time_seqs=time_seqs,
+        )
+
         return self.out(x)
 
     def training_step(self, batch, batch_idx) -> Tensor:
-        batch_labels = batch["labels"]
-        logits = self.forward(
-            batch=batch
-        )  # B x T x V (128 x 100 x 3707) (BATCH x SEQENCE_LEN x ITEM_NUM)
+        main_loss = torch.FloatTensor([0]).to(batch["item_seq_0"].device)
+        for idx in range(self.num_mask):
+            item_seq = batch[f"item_seq_{idx}"]
+            batch_labels = batch[f"labels_{idx}"]
 
-        logits = logits.view(-1, logits.size(-1))  # (B * T) x V
-        batch_labels = batch_labels.view(-1)  # B * T
-        loss = F.cross_entropy(
-            logits, batch_labels, ignore_index=0, label_smoothing=self.label_smoothing
-        )
+            logits = self.forward(
+                item_seq=item_seq,
+                userwise_latent_factor=batch[f"userwise_latent_factor_{idx}"],
+                itemwise_latent_factor_seq=batch[f"itemwise_latent_factor_seq_{idx}"],
+                years=batch[f"years_{idx}"],
+                months=batch[f"months_{idx}"],
+                days=batch[f"days_{idx}"],
+                seasons=batch[f"seasons_{idx}"],
+                hours=batch[f"hours_{idx}"],
+                minutes=batch[f"minutes_{idx}"],
+                seconds=batch[f"seconds_{idx}"],
+                dayofweek=batch[f"dayofweek_{idx}"],
+            )
+            logits = logits.view(-1, logits.size(-1))  # (Batch * Seq_len) x Item_num
+            batch_labels = batch_labels.view(-1)  # Batch x Seq_len
+
+            loss = F.cross_entropy(
+                logits,
+                batch_labels,
+                ignore_index=0,
+                label_smoothing=self.label_smoothing,
+            )
+            main_loss = main_loss + loss
 
         if self.lr_scheduler != None:
             sch = self.lr_schedulers()
             sch.step()
 
-        self.log("train_loss", loss, sync_dist=True)
-        return loss
+        self.log("train_loss", main_loss, sync_dist=True)
+        return main_loss
 
     def validation_step(self, batch, batch_idx) -> None:
         metrics = self.calculate_metrics(batch)
@@ -161,82 +194,33 @@ class TVAModel(pl.LightningModule):
                 )
 
     def calculate_metrics(self, batch) -> Dict[str, float]:
+        scores = self.forward(
+            item_seq=batch[f"item_seq"],
+            userwise_latent_factor=batch[f"userwise_latent_factor"],
+            itemwise_latent_factor_seq=batch[f"itemwise_latent_factor_seq"],
+            years=batch[f"years"],
+            months=batch[f"months"],
+            days=batch[f"days"],
+            seasons=batch[f"seasons"],
+            hours=batch[f"hours"],
+            minutes=batch[f"minutes"],
+            seconds=batch[f"seconds"],
+            dayofweek=batch[f"dayofweek"],
+        )
 
-        batch_candidates = batch["candidates"]
-        batch_labels = batch["labels"]
-
-        scores = self.forward(batch)  # Batch x Seq_len x Item_num
+        # scores = self.forward(batch)  # Batch x Seq_len x Item_num
         scores = scores[:, -1, :]  # Batch x Item_num
         scores[:, 0] = -999.999
         scores[
             :, -1
         ] = -999.999  # pad token and mask token should not appear in the logits outpu
 
+        batch_candidates = batch["candidates"]
+        batch_labels = batch["labels"]
+
         scores = scores.gather(1, batch_candidates)  # Batch x Candidates
         metrics = recalls_and_ndcgs_for_ks(scores, batch_labels, self.ks)
         return metrics
-
-
-class TVA(nn.Module):
-    def __init__(
-        self,
-        max_len: int,
-        num_items: int,
-        n_layers: int,
-        heads: int,
-        d_model: int,
-        dropout: float,
-        user_latent_factor_dim: int,
-        item_latent_factor_dim: int,
-        time_features: list = [],
-        latent_ff_dim: int = 128,
-    ) -> None:
-        super().__init__()
-
-        vocab_size = num_items + 2
-
-        # embedding for BERT, sum of positional, segment, token embeddings
-        self.embedding = TVAEmbedding(
-            vocab_size=vocab_size,
-            embed_size=d_model,
-            max_len=max_len,
-            dropout=dropout,
-            user_latent_factor_dim=user_latent_factor_dim,
-            item_latent_factor_dim=item_latent_factor_dim,
-            time_features=time_features,
-            latent_ff_dim=latent_ff_dim,
-        )
-
-        # multi-layers transformer blocks, deep network
-        self.transformer_blocks = nn.ModuleList(
-            [
-                TransformerBlock(d_model, heads, d_model * 4, dropout)
-                for _ in range(n_layers)
-            ]
-        )
-
-    def forward(
-        self,
-        item_seq,
-        userwise_latent_factor,
-        itemwise_latent_factor_seq,
-        time_seqs=None,
-    ):
-        mask = (item_seq > 0).unsqueeze(1).repeat(1, item_seq.size(1), 1).unsqueeze(1)
-
-        # embedding the indexed sequence to sequence of vectors
-        x = self.embedding(
-            item_seq, userwise_latent_factor, itemwise_latent_factor_seq, time_seqs
-        )
-
-        # running over multiple transformer blocks
-        for transformer in self.transformer_blocks:
-            x = transformer.forward(x, mask)
-
-        return x
-
-    def init_weights(self):
-        pass
 
 
 # Embedding
@@ -258,21 +242,18 @@ class TVAEmbedding(nn.Module):
         :param dropout: dropout rate
         """
         super().__init__()
+        self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
+        self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
+
+        self.dropout = nn.Dropout(p=dropout)
 
         # parameters
         self.embed_size = embed_size
         self.max_len = max_len
-
         self.user_latent_factor_dim = user_latent_factor_dim
         self.item_latent_factor_dim = item_latent_factor_dim
         self.time_features = time_features
-
-        self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
-        self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
-        self.dropout = nn.Dropout(p=dropout)
-
         self.latent_ff_dim = latent_ff_dim
-
         in_dim = embed_size
 
         if self.user_latent_factor_dim != 0:
@@ -302,7 +283,10 @@ class TVAEmbedding(nn.Module):
             self.dayofweek_emb = nn.Embedding(8, embed_size)
             in_dim += embed_size
 
-        self.out = nn.Linear(in_dim, embed_size)
+        if in_dim != embed_size:
+            self.cat_layer = nn.Linear(
+                in_dim, embed_size
+            )  # if you declare an un-used layer, it still will effect the output value
 
     def forward(
         self,
@@ -311,9 +295,8 @@ class TVAEmbedding(nn.Module):
         itemwise_latent_factor_seq,
         time_seqs=None,
     ):
-        items = self.token(item_seq)
-        positions = self.position(item_seq)
-        _cat = [items + positions]
+        x = self.token(item_seq) + self.position(item_seq)
+        _cat = [x]
 
         if self.user_latent_factor_dim != 0:
             assert userwise_latent_factor.shape[1] == self.user_latent_factor_dim * 2, (
@@ -347,7 +330,7 @@ class TVAEmbedding(nn.Module):
 
             # itemwise_latent_factor_seq = F.softmax(itemwise_latent_factor_seq, dim=2)
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
-            print(self.latent_ff_dim)
+
             if self.latent_ff_dim != 0:
                 item_latent = self.item_latent_emb_ff(
                     item_latent
@@ -386,11 +369,43 @@ class TVAEmbedding(nn.Module):
 
             _cat.append(time_features_tensor)
 
-        x = self.out(
-            torch.cat(
-                _cat,
-                dim=-1,
+        if len(_cat) != 1:
+            x = self.cat_layer(
+                torch.cat(
+                    _cat,
+                    dim=-1,
+                )
             )
-        )
+
+        return self.dropout(x)
+
+
+class TVAEmbedding2(nn.Module):
+    def __init__(
+        self,
+        vocab_size,
+        embed_size,
+        max_len,
+        user_latent_factor_dim=None,
+        item_latent_factor_dim=None,
+        latent_ff_dim=128,
+        time_features=[],
+        dropout=0.1,
+    ):
+
+        super().__init__()
+        self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
+        self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
+
+        self.dropout = nn.Dropout(p=dropout)
+
+    def forward(
+        self,
+        sequence,
+        userwise_latent_factor,
+        itemwise_latent_factor_seq,
+        time_seqs=None,
+    ):
+        x = self.token(sequence) + self.position(sequence)
 
         return self.dropout(x)

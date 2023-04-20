@@ -1,6 +1,5 @@
 import torch
-from src.datasets.sasrec_dset import SASRecDataset
-from src.datasets.negative_sampler import NegativeSampler
+from src.datasets.sasrect_dset import SASRecDataset
 from .model import SASRecModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
