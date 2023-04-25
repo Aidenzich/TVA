@@ -28,8 +28,8 @@ class TVAModel(pl.LightningModule):
         self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
         self.ks = trainer_config.get("ks", METRICS_KS)
         self.lr = trainer_config.get("lr", 1e-4)
-        self.lr_scheduler = SCHEDULER.get(trainer_config["lr_scheduler"], None)
-        self.lr_scheduler_args = trainer_config["lr_scheduler_args"]
+        self.lr_scheduler = SCHEDULER.get(trainer_config.get("lr_scheduler"), None)
+        self.lr_scheduler_args = trainer_config.get("lr_scheduler_args")
         self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
         self.weight_decay = trainer_config.get("weight_decay", 0.0)
         self.num_mask = model_params.get("num_mask", 1)
