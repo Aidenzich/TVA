@@ -12,6 +12,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         mask_token=recdata.num_items + 1,
         u2seq=recdata.train_seqs,
         seed=trainer_config["seed"],
+        num_mask=model_params.get("num_mask", 1),
     )
 
     valset = BertDataset(
@@ -21,6 +22,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         num_items=recdata.num_items,
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
+        
     )
 
     testset = BertDataset(

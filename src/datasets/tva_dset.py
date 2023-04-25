@@ -3,7 +3,7 @@ from torch.utils.data import Dataset
 from torch import Tensor, LongTensor
 from typing import Dict, List, Tuple, Any, Optional
 import random
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel
 import numpy as np
 import datetime
 from ..datasets.bert_dset import get_masked_seq
@@ -194,8 +194,8 @@ class TVASequenceDataset(Dataset):
         val_time=None,
     ):
         if val_item is not None and val_time is not None:
-            # print("val_item founded", val_item)
-            # print("val_time founded", val_time)
+            print("val_item founded", val_item)
+            print("val_time founded", val_time)
             # In test phase, we add val_item to item_seq,
             # and use the item_seq to predict the answer_item
             item_seq = item_seq + val_item
@@ -229,11 +229,11 @@ class TVASequenceDataset(Dataset):
         # item_latent_factor_seq: item latent factors of user's sequence
         item_latent_factor_seq = []
         for item_id in item_seq:
-            if item_id == 0:
+            if item_id == 0:  # Padding
                 item_latent_factor_seq.append(self.zero_latent_factor)
-            elif item_id == self.mask_token:
+            elif item_id == self.mask_token:  # Mask
                 item_latent_factor_seq.append(self.random_latent_factor)
-            else:
+            else:  # Latent factor of item
                 item_latent_factor_seq.append(self.item_latent_factor[item_id - 1])
 
         # Assert

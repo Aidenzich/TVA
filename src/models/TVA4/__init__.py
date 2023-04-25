@@ -41,7 +41,6 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         print(f"Before sliding window data num: {len(recdata.train_seqs)}")
         print(f"After sliding window data num: {len(slided_u2train_seqs)}")
 
-    
     trainset = TVASequenceDataset(
         mode="train",
         max_len=model_params["max_len"],
@@ -79,6 +78,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         u2answer_time=recdata.test_timeseqs,
         u2timeseq=recdata.train_timeseqs,
         num_items=recdata.num_items,
+        # Add val item into item seqence
         u2val=recdata.val_seqs,
         u2val_time=recdata.val_timeseqs,
         user_latent_factor=user_latent_factor,
