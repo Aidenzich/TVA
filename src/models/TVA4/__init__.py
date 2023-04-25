@@ -90,6 +90,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]):
         num_items=recdata.num_items,
         trainer_config=trainer_config,
         model_params=model_params,
+        data_class=recdata.filename
     )
 
     fit(

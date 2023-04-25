@@ -10,7 +10,7 @@ from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 
 
 class BERTModel(pl.LightningModule):
-    def __init__(self, num_items, model_params, trainer_config) -> None:
+    def __init__(self, num_items, model_params, trainer_config, data_class) -> None:
         super().__init__()
         self.save_hyperparameters()
         self.max_len = model_params["max_len"]

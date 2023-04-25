@@ -20,6 +20,7 @@ class TVAModel(pl.LightningModule):
         num_items: int,
         model_params: Dict,
         trainer_config: Dict,
+        data_class
     ) -> None:
         super().__init__()
         self.save_hyperparameters()

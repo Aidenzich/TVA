@@ -112,7 +112,7 @@ if __name__ == "__main__":
             # config = json.load(open(selected_config_path))
             config = yaml.safe_load(open(selected_config_path))
 
-            config["trainer_config"]["config_name"] = selected_config_path.name.replace( j
+            config["trainer_config"]["config_name"] = selected_config_path.name.replace(
                 ".json", ""
             ).replace(".yaml", "")
 

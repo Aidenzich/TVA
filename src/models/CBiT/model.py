@@ -10,7 +10,7 @@ from ...models.BERT4Rec.model import BERT
 
 
 class CBiTModel(pl.LightningModule):
-    def __init__(self, num_items, model_params, trainer_config) -> None:
+    def __init__(self, num_items, model_params, trainer_config, data_class) -> None:
         super().__init__()
         self.save_hyperparameters()
         self.max_len = model_params["max_len"]
