@@ -19,7 +19,7 @@ preprocess:
 	@echo "ROOT: $(ROOT)"
 
 train:
-	python -m src.cli.train_cli
+	$(CONDA_ACTIVATE); python -m src.cli.train_cli
 
 pp:
 	python -m src.cli.preprocess_cli
