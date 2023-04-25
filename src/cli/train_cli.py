@@ -109,10 +109,12 @@ if __name__ == "__main__":
             print("Using existing config")
             selected_config_path = answers["config"]
 
-            config = json.load(open(selected_config_path))
-            config["trainer_config"]["config_name"] = selected_config_path.name.replace(
+            # config = json.load(open(selected_config_path))
+            config = yaml.safe_load(open(selected_config_path))
+
+            config["trainer_config"]["config_name"] = selected_config_path.name.replace( j
                 ".json", ""
-            )
+            ).replace(".yaml", "")
 
             yaml.dump(config, open(selected_config_path.with_suffix(".yaml"), "w"))
 

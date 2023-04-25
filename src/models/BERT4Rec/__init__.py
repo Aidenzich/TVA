@@ -39,6 +39,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         num_items=recdata.num_items,
         model_params=model_params,
         trainer_config=trainer_config,
+        data_class=recdata.filename
     )
 
     fit(
