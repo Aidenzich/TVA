@@ -116,7 +116,7 @@ if __name__ == "__main__":
                 ".json", ""
             ).replace(".yaml", "")
 
-            yaml.dump(config, open(selected_config_path.with_suffix(".yaml"), "w"))
+            # yaml.dump(config, open(selected_config_path.with_suffix(".yaml"), "w"))
 
             with open(DATACLASS_PATH / config["data_class"], "rb") as f:
                 recsys_data = pickle.load(f)
