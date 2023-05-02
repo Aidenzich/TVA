@@ -224,6 +224,35 @@ class TVAModel(pl.LightningModule):
         return metrics
 
 
+class SoftGate(nn.Module):
+    def __init__(self, input_size, num_inputs):
+        super(SoftGate, self).__init__()
+        self.input_size = input_size
+        self.num_inputs = num_inputs
+        self.attention = nn.Linear(input_size * num_inputs, num_inputs)
+        self.softmax = nn.Softmax(dim=-1)
+
+    def forward(self, inputs):
+        assert len(inputs) == self.num_inputs
+        batch_size, seq_len, _ = inputs[0].size()
+
+        # Concatenate inputs along the feature dimension
+        combined_inputs = torch.cat(inputs, dim=-1)
+        attention_weights = self.attention(combined_inputs.view(batch_size * seq_len, -1))
+        attention_weights = self.softmax(attention_weights)
+
+        # Reshape attention weights to match the input shape
+        attention_weights = attention_weights.view(batch_size, seq_len, self.num_inputs, 1)
+
+        # Apply attention weights to each input
+        gated_inputs = [input * attention_weights[:, :, i] for i, input in enumerate(inputs)]
+
+        # Sum the gated inputs to get the final output
+        output = torch.sum(torch.stack(gated_inputs), dim=0)
+        return output
+
+
+
 # Embedding
 class TVAEmbedding(nn.Module):
     def __init__(
@@ -256,6 +285,7 @@ class TVAEmbedding(nn.Module):
         self.time_features = time_features
         self.latent_ff_dim = latent_ff_dim
         in_dim = embed_size
+        features_num = 1
 
         if self.user_latent_factor_dim != 0:
             self.user_latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
@@ -263,6 +293,7 @@ class TVAEmbedding(nn.Module):
                 d_model=embed_size, d_ff=8, dropout=dropout
             )
             in_dim += embed_size
+            features_num += 1
 
         if self.item_latent_factor_dim != 0:
             self.item_latent_emb = nn.Linear(item_latent_factor_dim * 2, embed_size)
@@ -270,24 +301,27 @@ class TVAEmbedding(nn.Module):
                 d_model=embed_size, d_ff=latent_ff_dim, dropout=dropout
             )
             in_dim += embed_size
+            features_num += 1
 
         if len(self.time_features) > 0:
             # Time features
 
             self.years_emb = nn.Embedding(2100, embed_size)
             self.months_emb = nn.Embedding(13, embed_size)
-            # self.days_emb = nn.Embedding(32, embed_size)
-            # self.seasons_emb = nn.Embedding(5, embed_size)
-            # self.hour_emb = nn.Embedding(25, embed_size)
+            self.days_emb = nn.Embedding(32, embed_size)
+            self.seasons_emb = nn.Embedding(5, embed_size)
+            self.hour_emb = nn.Embedding(25, embed_size)
             # self.minute_emb = nn.Embedding(61, embed_size)
             # self.second_emb = nn.Embedding(61, embed_size)
             # self.dayofweek_emb = nn.Embedding(8, embed_size)
+            features_num += 1
             in_dim += embed_size
 
         if in_dim != embed_size:
             self.cat_layer = nn.Linear(
                 in_dim, embed_size
-            )  # if you declare an un-used layer, it still will effect the output value
+            )  # if you declare an un-used layer, it still will effect the output value                        
+            self.gate = SoftGate(embed_size, features_num)
 
     def forward(
         self,
@@ -296,7 +330,7 @@ class TVAEmbedding(nn.Module):
         itemwise_latent_factor_seq,
         time_seqs=None,
     ):
-        x = self.token(item_seq) + self.position(item_seq)
+        x = self.token(item_seq) + self.position(item_seq)        
         _cat = [x]
 
         if self.user_latent_factor_dim != 0:
@@ -319,6 +353,7 @@ class TVAEmbedding(nn.Module):
             user_latent = self.user_latent_emb_ff(user_latent)
             _cat.append(user_latent)
 
+
         if self.item_latent_factor_dim != 0:
             assert (
                 itemwise_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2
@@ -331,33 +366,35 @@ class TVAEmbedding(nn.Module):
 
             # itemwise_latent_factor_seq = F.softmax(itemwise_latent_factor_seq, dim=2)
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
-
+            
             if self.latent_ff_dim != 0:
                 item_latent = self.item_latent_emb_ff(
                     item_latent
                 )  # Using for bad vae embedding
+            
             _cat.append(item_latent)
 
         if self.time_features:
             years, months, days, seasons, hours, minutes, seconds, dayofweek = time_seqs
             years = self.years_emb(years)
             months = self.months_emb(months)
-            # days = self.days_emb(days)
-            # seasons = self.seasons_emb(seasons)
-            # hours = self.hour_emb(hours)
+            days = self.days_emb(days)
+            seasons = self.seasons_emb(seasons)
+            hours = self.hour_emb(hours)
             # seconds = self.second_emb(seconds)
             # minutes = self.minute_emb(minutes)
             # dayofweek = self.dayofweek_emb(dayofweek)
             time_dict = {
                 "years": years,
                 "months": months,
-                # "days": days,
-                # "seasons": seasons,
-                # "hours": hours,
+                "days": days,
+                "seasons": seasons,
+                "hours": hours,
                 # "seconds": seconds,
                 # "minutes": minutes,
                 # "dayofweek": dayofweek,
             }
+
 
             time_features_tensor = None
 
@@ -367,46 +404,17 @@ class TVAEmbedding(nn.Module):
                     time_features_tensor = time_dict[t]
                 else:
                     time_features_tensor = time_features_tensor + time_dict[t]
-
+            
             _cat.append(time_features_tensor)
 
         if len(_cat) != 1:
-            x = self.cat_layer(
-                torch.cat(
-                    _cat,
-                    dim=-1,
-                )
-            )
-
-        return self.dropout(x)
-
-
-class TVAEmbedding2(nn.Module):
-    def __init__(
-        self,
-        vocab_size,
-        embed_size,
-        max_len,
-        user_latent_factor_dim=None,
-        item_latent_factor_dim=None,
-        latent_ff_dim=128,
-        time_features=[],
-        dropout=0.1,
-    ):
-
-        super().__init__()
-        self.token = TokenEmbedding(vocab_size=vocab_size, embed_size=embed_size)
-        self.position = PositionalEmbedding(max_len=max_len, d_model=embed_size)
-
-        self.dropout = nn.Dropout(p=dropout)
-
-    def forward(
-        self,
-        sequence,
-        userwise_latent_factor,
-        itemwise_latent_factor_seq,
-        time_seqs=None,
-    ):
-        x = self.token(sequence) + self.position(sequence)
+            
+            x = self.gate(_cat)
+            # x = self.cat_layer(
+            #     torch.cat(
+            #         _cat,
+            #         dim=-1,
+            #     )
+            # )
 
         return self.dropout(x)
