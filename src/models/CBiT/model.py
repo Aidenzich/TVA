@@ -6,7 +6,7 @@ import torch.nn as nn
 
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
-from ...models.BERT4Rec.model import BERT
+from ...models.BERT4Rec.model import BERT, BERTEmbedding
 
 
 class CBiTModel(pl.LightningModule):
@@ -16,13 +16,19 @@ class CBiTModel(pl.LightningModule):
         self.max_len = model_params["max_len"]
         self.d_model = model_params["d_model"]
 
-        self.bert = BERT(
+        self.embedding = BERTEmbedding(
+            vocab_size=num_items + 2,
+            embed_size=self.d_model,
             max_len=self.max_len,
-            num_items=num_items,
+            dropout=model_params["dropout"],
+        )
+
+        self.model = BERT(
             n_layers=model_params["n_layers"],
             d_model=self.d_model,
             heads=model_params["heads"],
             dropout=model_params["dropout"],
+            embedding=self.embedding,
         )
 
         self.ks = trainer_config.get("ks", METRICS_KS)
@@ -66,7 +72,7 @@ class CBiTModel(pl.LightningModule):
         return optimizer
 
     def forward(self, x) -> torch.Tensor:
-        x = self.bert(x)
+        x = self.model(x)
 
         return self.out(x), x
 

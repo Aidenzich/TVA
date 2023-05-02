@@ -12,16 +12,20 @@ def get_models():
     return models, model_paths
 
 
-def get_configs(model_name, extention="yaml"):
-    
+def get_configs(model_name, data_class="", extention="yaml"):
     p = Path(f"./configs").glob("**/*")
+    
 
     configs = [
         x
         for x in p
         if x.is_file()
-        and (model_name.lower() in str(x.name).split(".") and f".{extention}" in str(x))
+        and (model_name.lower() in str(x.name).split(".") 
+        and f".{extention}" in str(x))
+        and (data_class.replace(".pkl", "").lower()) in str(x.name).split(".") 
     ]
+
+    configs = sorted(configs)
 
     return configs
 

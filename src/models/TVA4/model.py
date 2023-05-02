@@ -276,12 +276,12 @@ class TVAEmbedding(nn.Module):
 
             self.years_emb = nn.Embedding(2100, embed_size)
             self.months_emb = nn.Embedding(13, embed_size)
-            self.days_emb = nn.Embedding(32, embed_size)
-            self.seasons_emb = nn.Embedding(5, embed_size)
-            self.hour_emb = nn.Embedding(25, embed_size)
-            self.minute_emb = nn.Embedding(61, embed_size)
-            self.second_emb = nn.Embedding(61, embed_size)
-            self.dayofweek_emb = nn.Embedding(8, embed_size)
+            # self.days_emb = nn.Embedding(32, embed_size)
+            # self.seasons_emb = nn.Embedding(5, embed_size)
+            # self.hour_emb = nn.Embedding(25, embed_size)
+            # self.minute_emb = nn.Embedding(61, embed_size)
+            # self.second_emb = nn.Embedding(61, embed_size)
+            # self.dayofweek_emb = nn.Embedding(8, embed_size)
             in_dim += embed_size
 
         if in_dim != embed_size:
@@ -342,21 +342,21 @@ class TVAEmbedding(nn.Module):
             years, months, days, seasons, hours, minutes, seconds, dayofweek = time_seqs
             years = self.years_emb(years)
             months = self.months_emb(months)
-            days = self.days_emb(days)
-            seasons = self.seasons_emb(seasons)
-            hours = self.hour_emb(hours)
-            seconds = self.second_emb(seconds)
-            minutes = self.minute_emb(minutes)
-            dayofweek = self.dayofweek_emb(dayofweek)
+            # days = self.days_emb(days)
+            # seasons = self.seasons_emb(seasons)
+            # hours = self.hour_emb(hours)
+            # seconds = self.second_emb(seconds)
+            # minutes = self.minute_emb(minutes)
+            # dayofweek = self.dayofweek_emb(dayofweek)
             time_dict = {
                 "years": years,
                 "months": months,
-                "days": days,
-                "seasons": seasons,
-                "hours": hours,
-                "seconds": seconds,
-                "minutes": minutes,
-                "dayofweek": dayofweek,
+                # "days": days,
+                # "seasons": seasons,
+                # "hours": hours,
+                # "seconds": seconds,
+                # "minutes": minutes,
+                # "dayofweek": dayofweek,
             }
 
             time_features_tensor = None

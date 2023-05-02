@@ -22,16 +22,13 @@ train:
 	$(CONDA_ACTIVATE); python -m src.cli.train_cli
 
 pp:
-	python -m src.cli.preprocess_cli
+	$(CONDA_ACTIVATE); python -m src.cli.preprocess_cli
 
 infer:
-	python -m src.cli.inference_cli
+	$(CONDA_ACTIVATE); python -m src.cli.inference_cli
 
 predict:
-	python -m src.cli.predict_cli
-
-otto_infer:
-	python -m src.cli.otto_inference_cli
+	$(CONDA_ACTIVATE); python -m src.cli.predict_cli
 
 cds:
 	python -m src.cli.cornac_cli
@@ -51,4 +48,4 @@ cleanall:
 	rm -rf out/*
 
 panel:
-	$(CONDA_ACTIVATE); python3 -m tensorboard.main --logdir=logs
+	$(CONDA_ACTIVATE); python3 -m tensorboard.main --logdir=logs --port 3395

@@ -73,7 +73,13 @@ def create_new_config_inquirer() -> None:
 
 if __name__ == "__main__":
     models, models_path = get_models()
-    which_models = [
+    data_classes, data_classes_paths = get_dataclass()
+    questions = [
+        inquirer.List(
+            "data_class",
+            message="Which data class do you need? (Check in data/cache/dataclass)",
+            choices=data_classes,
+        ),
         inquirer.List(
             "model",
             message="Which model do you need?",
@@ -81,12 +87,15 @@ if __name__ == "__main__":
         ),
     ]
 
-    answers = inquirer.prompt(which_models)
-
+    answers = inquirer.prompt(questions)
     midx = models.index(answers["model"])
-    model_path = models_path[midx]
-    configs = get_configs(model_path.name)
 
+    dcls = answers["data_class"]
+    
+    model_path = models_path[midx]
+    configs = get_configs(model_name=model_path.name, data_class=dcls)
+    
+    
     if configs == []:
         print(f'No config of {answers["model"]} found')
         create_new_config_inquirer()

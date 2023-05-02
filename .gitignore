@@ -5,8 +5,8 @@ __pycache__/
 *.un~
 *.pyc
 *.swp
-configs/*.json
-configs/*.yaml
+configs/**/**.json
+configs/**/*.yaml
 res/
 .DS_Store
 
