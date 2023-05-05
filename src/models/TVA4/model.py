@@ -313,7 +313,7 @@ class TVAEmbedding(nn.Module):
             self.hour_emb = nn.Embedding(25, embed_size)
             # self.minute_emb = nn.Embedding(61, embed_size)
             # self.second_emb = nn.Embedding(61, embed_size)
-            # self.dayofweek_emb = nn.Embedding(8, embed_size)
+            self.dayofweek_emb = nn.Embedding(8, embed_size)
             features_num += 1
             in_dim += embed_size
 
@@ -383,7 +383,7 @@ class TVAEmbedding(nn.Module):
             hours = self.hour_emb(hours)
             # seconds = self.second_emb(seconds)
             # minutes = self.minute_emb(minutes)
-            # dayofweek = self.dayofweek_emb(dayofweek)
+            dayofweek = self.dayofweek_emb(dayofweek)
             time_dict = {
                 "years": years,
                 "months": months,
@@ -392,7 +392,7 @@ class TVAEmbedding(nn.Module):
                 "hours": hours,
                 # "seconds": seconds,
                 # "minutes": minutes,
-                # "dayofweek": dayofweek,
+                "dayofweek": dayofweek,
             }
 
 
