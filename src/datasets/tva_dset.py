@@ -193,9 +193,7 @@ class TVASequenceDataset(Dataset):
         val_item=None,
         val_time=None,
     ):
-        if val_item is not None and val_time is not None:
-            print("val_item founded", val_item)
-            print("val_time founded", val_time)
+        if val_item is not None and val_time is not None:            
             # In test phase, we add val_item to item_seq,
             # and use the item_seq to predict the answer_item
             item_seq = item_seq + val_item

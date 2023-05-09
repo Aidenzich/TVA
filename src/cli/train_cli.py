@@ -89,10 +89,9 @@ if __name__ == "__main__":
 
     answers = inquirer.prompt(questions)
     midx = models.index(answers["model"])
-
-    dcls = answers["data_class"]
-    
+    dcls = answers["data_class"]    
     model_path = models_path[midx]
+    
     configs = get_configs(model_name=model_path.name, data_class=dcls)
     
     
@@ -112,7 +111,7 @@ if __name__ == "__main__":
 
         answers = inquirer.prompt(which_configs)
 
-        if answers["config"] == "➕ create new config":
+        if answers["config"] == "+ create new config":
             create_new_config_inquirer()
         else:
             print("Using existing config")
