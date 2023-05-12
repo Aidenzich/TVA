@@ -74,6 +74,7 @@ class TVAModel(pl.LightningModule):
             latent_ff_dim=latent_ff_dim,
         )
 
+        
         self.model = BERT(
             n_layers=model_params["n_layers"],
             d_model=self.d_model,
@@ -170,6 +171,7 @@ class TVAModel(pl.LightningModule):
             sch.step()
 
         self.log("train_loss", main_loss, sync_dist=True)
+
         return main_loss
 
     def validation_step(self, batch, batch_idx) -> None:

@@ -64,16 +64,16 @@ class Trainer(metaclass=ABCMeta):
         print(
             CYAN_COLOR,
             "\n",
-            "Model Parameters: ",
-            "\n",
-            tabulate(
-                data,
-                headers=["property", "value"],
-                tablefmt="heavy_outline",
-                numalign="right",
-            ),
-            END_COLOR + "\n",
+            "Model Parameters: ",            
         )
+
+        print(tabulate(
+            data,
+            headers=["property", "value"],
+            tablefmt="heavy_outline",
+            numalign="right",
+        ))
+        print(END_COLOR + "\n")
 
     def print_trainer_config(self) -> None:
 
@@ -89,15 +89,15 @@ class Trainer(metaclass=ABCMeta):
             CYAN_COLOR,
             "\n",
             "Trainer Configs: ",
-            "\n",
-            tabulate(
+            "\n"
+        )
+        print(tabulate(
                 data,
                 headers=["property", "value"],
                 tablefmt="heavy_outline",
                 numalign="right",
-            ),
-            END_COLOR + "\n",
-        )
+            ))
+        print(END_COLOR + "\n")
 
     def train(self) -> None:
         self.print_model_params()

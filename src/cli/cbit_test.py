@@ -1,15 +1,17 @@
 #%%
 import sys
 sys.path.append("../../")
-from src.models.TVA4.model import TVAModel
-from src.datasets.tva_dset import TVASequenceDataset
+# from src.models.TVA4.model import TVAModel
+from src.models.CBiT.model import CBiTModel
+
+from src.datasets.cbit_dset import CBiTDataset
 from src.configs import DATACLASS_PATH
 import numpy as np
 import pickle
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 from tqdm import tqdm
-model = TVAModel.load_from_checkpoint("/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_1/checkpoints/epoch=249-step=43000.ckpt")
+model = CBiTModel.load_from_checkpoint("/home/VS6102093/thesis/TVA/logs/beauty.cbit.re/version_2/checkpoints/epoch=249-step=43000.ckpt")
 user_latent_factor = None
 item_latent_factor = np.load("/home/VS6102093/thesis/TVA/logs/beauty.vaeicf.d128/version_0/latent_factor/encode_result.npy")
 
@@ -115,22 +117,16 @@ len(train_seqs)
 #%%
 
 
-testset = TVASequenceDataset(
+testset = CBiTDataset(
     mode="eval",
     max_len=model.max_len,
     mask_token=recdata.num_items + 1,
-    u2seq=train_seqs,
-    u2answer=test_seqs,
-    u2answer_time=test_timeseqs,
-    u2timeseq=train_timeseqs,
     num_items=recdata.num_items,
-    # Add val item into item seqence
+    u2seq=train_seqs,
     u2val=val_seqs,
-    u2val_time=val_timeseqs,
-    user_latent_factor=user_latent_factor,
-    seed=0,
-    item_latent_factor=item_latent_factor,
+    u2answer=test_seqs,    
 )
+
 
 
 test_loader = DataLoader(
