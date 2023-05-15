@@ -20,7 +20,9 @@ class CVAEDataset(Dataset):
         self.max_len = max_len
 
         self.u2seq = u2seq
+
         self.users = sorted(self.u2seq.keys())
+
         self.test_neg_items = test_neg_items
         self.mode = mode
 
@@ -30,9 +32,8 @@ class CVAEDataset(Dataset):
         self.num_items = num_items
 
     def __getitem__(self, index):
-
-        user_id = index
-        items = self.u2seq[index]
+        user_id = self.users[index]
+        items = self.u2seq[user_id]
 
         assert self.mode in {"train", "valid", "test"}
 
@@ -212,5 +213,3 @@ class CVAEDataset(Dataset):
 
     def __len__(self):
         return len(self.users)
-
-

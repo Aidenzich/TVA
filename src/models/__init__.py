@@ -4,7 +4,6 @@ from .TVAE import train as train_tvae
 
 
 from .VAECF import train as train_vaecf, infer as infer_vaecf
-from .SASRec import train as train_sas, infer as infer_sasrec
 from .VAEICF import train as train_vaeicf, infer as infer_vaeicf
 from .BERT4Rec import train as train_bert4rec, infer as infer_bert4rec
 from .BERT4RecS import train as train_bert4recs, infer as infer_bert4recs
@@ -20,7 +19,6 @@ TRAIN_FACTORY = {
     "vaeicf": train_vaeicf,
     "tva4": train_tva4,
     "tva6": train_tva6,
-    "sasrec": train_sas,
     "tvae": train_tvae,
     "bert4recs": train_bert4recs,
     "cbit": train_cbit,
@@ -30,7 +28,6 @@ INFER_FACTORY = {
     "bert4rec": infer_bert4rec,
     "vaecf": infer_vaecf,
     "vaeicf": infer_vaeicf,
-    "sasrec": infer_sasrec,
 }
 
 

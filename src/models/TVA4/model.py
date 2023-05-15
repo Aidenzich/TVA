@@ -16,11 +16,7 @@ from ...models.BERT4Rec.model import BERT, BERTEmbedding
 
 class TVAModel(pl.LightningModule):
     def __init__(
-        self,
-        num_items: int,
-        model_params: Dict,
-        trainer_config: Dict,
-        data_class
+        self, num_items: int, model_params: Dict, trainer_config: Dict, data_class
     ) -> None:
         super().__init__()
         self.save_hyperparameters()
@@ -74,7 +70,6 @@ class TVAModel(pl.LightningModule):
             latent_ff_dim=latent_ff_dim,
         )
 
-        
         self.model = BERT(
             n_layers=model_params["n_layers"],
             d_model=self.d_model,
@@ -115,7 +110,6 @@ class TVAModel(pl.LightningModule):
         seconds,
         dayofweek,
     ) -> torch.Tensor:
-
         time_seqs = (
             years,
             months,
@@ -240,19 +234,24 @@ class SoftGate(nn.Module):
 
         # Concatenate inputs along the feature dimension
         combined_inputs = torch.cat(inputs, dim=-1)
-        attention_weights = self.attention(combined_inputs.view(batch_size * seq_len, -1))
+        attention_weights = self.attention(
+            combined_inputs.view(batch_size * seq_len, -1)
+        )
         attention_weights = self.softmax(attention_weights)
 
         # Reshape attention weights to match the input shape
-        attention_weights = attention_weights.view(batch_size, seq_len, self.num_inputs, 1)
+        attention_weights = attention_weights.view(
+            batch_size, seq_len, self.num_inputs, 1
+        )
 
         # Apply attention weights to each input
-        gated_inputs = [input * attention_weights[:, :, i] for i, input in enumerate(inputs)]
+        gated_inputs = [
+            input * attention_weights[:, :, i] for i, input in enumerate(inputs)
+        ]
 
         # Sum the gated inputs to get the final output
         output = torch.sum(torch.stack(gated_inputs), dim=0)
         return output
-
 
 
 # Embedding
@@ -322,7 +321,7 @@ class TVAEmbedding(nn.Module):
         if in_dim != embed_size:
             self.cat_layer = nn.Linear(
                 in_dim, embed_size
-            )  # if you declare an un-used layer, it still will effect the output value                        
+            )  # if you declare an un-used layer, it still will effect the output value
             self.gate = SoftGate(embed_size, features_num)
 
     def forward(
@@ -332,7 +331,7 @@ class TVAEmbedding(nn.Module):
         itemwise_latent_factor_seq,
         time_seqs=None,
     ):
-        x = self.token(item_seq) + self.position(item_seq)        
+        x = self.token(item_seq) + self.position(item_seq)
         _cat = [x]
 
         if self.user_latent_factor_dim != 0:
@@ -355,7 +354,6 @@ class TVAEmbedding(nn.Module):
             user_latent = self.user_latent_emb_ff(user_latent)
             _cat.append(user_latent)
 
-
         if self.item_latent_factor_dim != 0:
             assert (
                 itemwise_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2
@@ -368,12 +366,12 @@ class TVAEmbedding(nn.Module):
 
             # itemwise_latent_factor_seq = F.softmax(itemwise_latent_factor_seq, dim=2)
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
-            
+
             if self.latent_ff_dim != 0:
                 item_latent = self.item_latent_emb_ff(
                     item_latent
                 )  # Using for bad vae embedding
-            
+
             _cat.append(item_latent)
 
         if self.time_features:
@@ -397,20 +395,17 @@ class TVAEmbedding(nn.Module):
                 "dayofweek": dayofweek,
             }
 
-
             time_features_tensor = None
 
             for t in self.time_features:
-
                 if time_features_tensor is None:
                     time_features_tensor = time_dict[t]
                 else:
                     time_features_tensor = time_features_tensor + time_dict[t]
-            
+
             _cat.append(time_features_tensor)
 
         if len(_cat) != 1:
-            
             x = self.gate(_cat)
             # x = self.cat_layer(
             #     torch.cat(
