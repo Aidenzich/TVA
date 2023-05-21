@@ -18,15 +18,20 @@ seed_everything(0, workers=True)
 user_latent_factor = None
 
 # # Beauty
-# model_path = "/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_1/checkpoints/epoch=249-step=43000.ckpt"
-# latent_path = "/home/VS6102093/thesis/TVA/logs/beauty.vaeicf.d128/version_0/latent_factor/encode_result.npy"
-# dataset = "beauty.pkl"
+model_path = "/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_1/checkpoints/epoch=249-step=43000.ckpt"
+latent_path = "/home/VS6102093/thesis/TVA/logs/beauty.vaeicf.d128/version_0/latent_factor/encode_result.npy"
+dataset = "beauty.pkl"
 
 # Toys
-model_path = "/home/VS6102093/thesis/TVA/logs/toys.tva4.n24_vd256/version_1/checkpoints/epoch=249-step=31000.ckpt"
-latent_path = "/home/VS6102093/thesis/TVA/logs/toys.vaeicf.d256/version_0/latent_factor/encode_result.npy"
-dataset = "toys.pkl"
+# model_path = "/home/VS6102093/thesis/TVA/logs/toys.tva4.n24_vd256/version_1/checkpoints/epoch=249-step=31000.ckpt"
+# latent_path = "/home/VS6102093/thesis/TVA/logs/toys.vaeicf.d256/version_0/latent_factor/encode_result.npy"
+# dataset = "toys.pkl"
 
+
+# ML1m
+# model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.tva4.28_len80_n3_m0.4_best/version_0/checkpoints/epoch=249-step=67000.ckpt"
+# latent_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaeicf.d256/version_0/latent_factor/encode_result.npy"
+# dataset = "ml1m.pkl"
 
 model = TVAModel.load_from_checkpoint(model_path)
 model.eval()
@@ -68,16 +73,19 @@ def test_group_performance(group, recdata) -> None:
 
     test_loader = DataLoader(
         testset,
-        batch_size=2048,
+        batch_size=5096,
         shuffle=False,
         pin_memory=False,
         num_workers=1,
     )
 
-    trainer = pl.Trainer(gpus=[2], logger=False)
+    trainer = pl.Trainer(gpus=[1], logger=False)
 
     result = trainer.test(model, dataloaders=test_loader)
     print(result)
+
+
+# test_group_performance(set(recdata.users_seqs.keys()), recdata)
 
 
 seq_groups = generate_seqlen_group(recdata)

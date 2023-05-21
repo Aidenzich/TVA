@@ -1,7 +1,6 @@
 # %%
 import sys
 
-
 sys.path.append("../../")
 
 from utils import generate_seqlen_group
@@ -12,12 +11,22 @@ import pickle
 import pytorch_lightning as pl
 from torch.utils.data import DataLoader
 
+# Toys
+model_path = "/home/VS6102093/thesis/TVA/logs/toys.cbit.re/version_2/checkpoints/epoch=249-step=31000.ckpt"
+dataset = "toys.pkl"
 
-model = CBiTModel.load_from_checkpoint(
-    "/home/VS6102093/thesis/TVA/logs/toys.cbit.default/version_1/checkpoints/epoch=249-step=31000.ckpt"
-)
 
-with open(DATACLASS_PATH / "toys.pkl", "rb") as f:
+# ML-1M
+model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.cbit.re/version_3/checkpoints/epoch=249-step=82750.ckpt"
+dataset = "ml1m.pkl"
+
+
+# Beauty
+
+
+model = CBiTModel.load_from_checkpoint(model_path)
+
+with open(DATACLASS_PATH / dataset, "rb") as f:
     recdata = pickle.load(f)
 
 recdata.show_info_table()
@@ -50,7 +59,7 @@ def test_group_performance(group, recdata) -> None:
         num_workers=1,
     )
 
-    trainer = pl.Trainer(gpus=[1], logger=False)
+    trainer = pl.Trainer(gpus=[0], logger=False)
 
     result = trainer.test(model, dataloaders=test_loader)
     print(result)
@@ -60,3 +69,5 @@ seq_groups = generate_seqlen_group(recdata)
 
 for group in seq_groups:
     test_group_performance(group, recdata)
+
+# %%

@@ -7,11 +7,10 @@ from torch import Tensor
 
 from src.configs import RED_COLOR, END_COLOR
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
-from ...modules.feedforward import PositionwiseFeedForward, PointWiseFeedForward
-from ...modules.transformer import TransformerBlock
+from ...modules.feedforward import PositionwiseFeedForward
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
-from ...models.BERT4Rec.model import BERT, BERTEmbedding
+from ...models.BERT4Rec.model import BERT
 
 
 class TVAModel(pl.LightningModule):
@@ -251,6 +250,14 @@ class SoftGate(nn.Module):
 
         # Sum the gated inputs to get the final output
         output = torch.sum(torch.stack(gated_inputs), dim=0)
+        # print("\n")
+        # print("=" * 50)
+        # print(attention_weights.shape)
+        # mean = attention_weights.mean(dim=(0, 1))
+        # print(mean.shape)
+        # print(mean)
+        # print("=" * 50)
+
         return output
 
 
@@ -364,7 +371,9 @@ class TVAEmbedding(nn.Module):
                 + END_COLOR
             )
 
-            # itemwise_latent_factor_seq = F.softmax(itemwise_latent_factor_seq, dim=2)
+            itemwise_latent_factor_seq = F.softmax(
+                itemwise_latent_factor_seq, dim=2
+            )  # FIXME
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
 
             if self.latent_ff_dim != 0:
@@ -383,6 +392,7 @@ class TVAEmbedding(nn.Module):
             hours = self.hour_emb(hours)
             # seconds = self.second_emb(seconds)
             # minutes = self.minute_emb(minutes)
+
             dayofweek = self.dayofweek_emb(dayofweek)
             time_dict = {
                 "years": years,
@@ -390,9 +400,9 @@ class TVAEmbedding(nn.Module):
                 "days": days,
                 "seasons": seasons,
                 "hours": hours,
+                "dayofweek": dayofweek,
                 # "seconds": seconds,
                 # "minutes": minutes,
-                "dayofweek": dayofweek,
             }
 
             time_features_tensor = None

@@ -10,7 +10,9 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
 
     for u in tqdm(recdata.train_seqs):
         slided_user_seqs = get_slidewindow(
-            recdata.train_seqs[u], model_params["max_len"], step=1
+            recdata.train_seqs[u],
+            model_params["max_len"],
+            step=trainer_config["sliding_step"],
         )
 
         for idx, seqs in enumerate(slided_user_seqs):
@@ -55,7 +57,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         num_items=recdata.num_items,
         model_params=model_params,
         trainer_config=trainer_config,
-        data_class=recdata.filename
+        data_class=recdata.filename,
     )
 
     fit(

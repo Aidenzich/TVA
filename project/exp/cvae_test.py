@@ -20,8 +20,13 @@ seed_everything(0, workers=True)
 
 
 # toys
-model_path = "/home/VS6102093/thesis/TVA/logs/toys.contrastvae.re/version_0/checkpoints/epoch=399-step=30400.ckpt"
-dataset = "toys.pkl"
+# model_path = "/home/VS6102093/thesis/TVA/logs/toys.contrastvae.re/version_0/checkpoints/epoch=399-step=30400.ckpt"
+# dataset = "toys.pkl"
+
+# ML1m
+model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.contrastvae.nowarm_l2/version_1/checkpoints/epoch=399-step=9600.ckpt"
+dataset = "ml1m.pkl"
+
 
 model = ContrastVAEModel.load_from_checkpoint(model_path)
 

@@ -1,17 +1,38 @@
-#%%
+# %%
 import sys
-import matplotlib.pyplot as plt
 
 sys.path.append("../../")
+
+import matplotlib.pyplot as plt
+
+
 import pickle
 from src.configs import DATACLASS_PATH, LOG_PATH
 from tqdm import tqdm
 
-data_class_name = "ratings_beauty_5.pkl"
+# %%
+data_class_name = "ratings_toys_and_games_5_test.pkl"
 
 
 with open(DATACLASS_PATH / data_class_name, "rb") as f:
     recsys_data = pickle.load(f)
+
+# %%
+data_class_name2 = "toys.pkl"
+
+
+with open(DATACLASS_PATH / data_class_name2, "rb") as f:
+    recsys_data2 = pickle.load(f)
+
+# %%
+recsys_data.show_info_table()
+recsys_data2.show_info_table()
+count = 0
+for i in recsys_data2.users_seqs:
+    if recsys_data2.users_seqs[i] == recsys_data.users_seqs[i] != True:
+        count += 1
+
+print(count)
 
 # %%
 import numpy as np
@@ -24,7 +45,7 @@ with open(
     vae_result = np.load(f)
 
 
-#%%
+# %%
 len(recsys_data.users_seqs)
 
 user_item_matrix = np.zeros_like(vae_result)
@@ -39,7 +60,7 @@ for u in range(recsys_data.num_users):
         user_item_matrix[u, i] = 1
 
 
-#%%
+# %%
 count = 0
 
 for u in range(recsys_data.num_users):
