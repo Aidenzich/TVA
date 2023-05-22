@@ -1,4 +1,4 @@
-#%%
+# %%
 """
 This script is used to check the distribution of the 'beauty.txt', 
 Which is the dataset used in the S3-Rec paper.
@@ -9,7 +9,7 @@ But current is difficult to restore the id mapping from the 'beauty.txt' to the 
 
 from tqdm import tqdm
 
-with open("./beauty.txt") as f:
+with open("/home/VS6102093/thesis/TVA/data/Beauty.txt") as f:
     data = f.read()
 
 
@@ -30,6 +30,8 @@ average_seq_len = 0
 
 for line in tqdm(lines):
     items = line.split()
+    if len(items) == 0:
+        continue
     user = items[0]
     user_seq = list(map(int, items[1:]))
     average_seq_len = average_seq_len + len(user_seq)
@@ -54,16 +56,21 @@ print(item_count)
 print(result_dict)
 
 
-#%%
 import pandas as pd
 
-df = pd.read_csv("ratings_Beauty_5.csv")
-df.columns
-print(df.user_id.nunique())
-print(df.item_id.nunique())
+df = pd.DataFrame(df_dict)
+df.to_csv("/home/VS6102093/thesis/TVA/data/Beauty_online.csv", index=False)
 
-print(df.item_id.value_counts().tolist())
-print(sorted(list(item_count.values()), reverse=True))
+# %%
+# import pandas as pd
 
-#%%
-df.item_id.value_counts().to_dict()
+# df = pd.read_csv("ratings_Beauty_5.csv")
+# df.columns
+# print(df.user_id.nunique())
+# print(df.item_id.nunique())
+
+# print(df.item_id.value_counts().tolist())
+# print(sorted(list(item_count.values()), reverse=True))
+
+# #%%
+# df.item_id.value_counts().to_dict()

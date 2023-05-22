@@ -1,5 +1,5 @@
 import pytorch_lightning as pl
-from typing import Dict, Optional
+from typing import Dict, Optional, Any
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -17,10 +17,13 @@ class TVAModel(pl.LightningModule):
     def __init__(
         self, num_items: int, model_params: Dict, trainer_config: Dict, data_class
     ) -> None:
+        # Inherit from LightningModule to utilize built-in features
         super().__init__()
+
+        # Save hyperparameters into log
         self.save_hyperparameters()
-        self.max_len = model_params["max_len"]
-        self.d_model = model_params["d_model"]
+
+        # Handle trainer config
         self.label_smoothing = trainer_config.get("label_smoothing", 0.0)
         self.ks = trainer_config.get("ks", METRICS_KS)
         self.lr = trainer_config.get("lr", 1e-4)
@@ -28,11 +31,19 @@ class TVAModel(pl.LightningModule):
         self.lr_scheduler_args = trainer_config.get("lr_scheduler_args")
         self.lr_scheduler_interval = trainer_config.get("lr_scheduler_interval", "step")
         self.weight_decay = trainer_config.get("weight_decay", 0.0)
-        self.num_mask = model_params.get("num_mask", 1)
 
+        # Handle model config
         user_latent_factor_params = model_params.get("user_latent_factor", None)
         item_latent_factor_params = model_params.get("item_latent_factor", None)
-        latent_ff_dim = model_params.get("latent_ff_dim", 128)
+        latent_ff_dim = model_params.get("latent_ff_dim", 0)
+
+        self.max_len = model_params["max_len"]
+        self.d_model = model_params["d_model"]
+        self.num_mask = model_params.get("num_mask", 1)
+        self.use_gate = model_params.get("use_gate", None)
+        self.use_softmax_on_item_latent = model_params.get(
+            "use_softmax_on_item_latent", None
+        )
 
         userwise_var_dim = 0
         itemwise_var_dim = 0
@@ -58,6 +69,7 @@ class TVAModel(pl.LightningModule):
             print("Using itemwise latent factor")
             itemwise_var_dim = item_latent_factor_params.get("hidden_dim", 0)
 
+        # Declare Embedding layers
         self.embedding = TVAEmbedding(
             vocab_size=num_items + 2,
             embed_size=self.d_model,
@@ -67,8 +79,10 @@ class TVAModel(pl.LightningModule):
             item_latent_factor_dim=itemwise_var_dim if use_itemwise_var else 0,
             time_features=model_params.get("time_features", []),
             latent_ff_dim=latent_ff_dim,
+            use_gate=self.use_gate,
         )
 
+        # Since we are using BERT as our base model, we can just use BERT class
         self.model = BERT(
             n_layers=model_params["n_layers"],
             d_model=self.d_model,
@@ -77,13 +91,15 @@ class TVAModel(pl.LightningModule):
             embedding=self.embedding,
         )
 
+        # Declare output(decoder) layer
         self.out = nn.Linear(self.d_model, num_items + 1)
 
-    def configure_optimizers(self):
+    def configure_optimizers(self) -> Any:
         optimizer = torch.optim.Adam(
             self.parameters(), lr=self.lr, weight_decay=self.weight_decay
         )
 
+        # Setting up learning rate scheduler
         if self.lr_scheduler != None:
             lr_schedulers = {
                 "scheduler": self.lr_scheduler(optimizer, **self.lr_scheduler_args),
@@ -148,7 +164,7 @@ class TVAModel(pl.LightningModule):
                 seconds=batch[f"seconds_{idx}"],
                 dayofweek=batch[f"dayofweek_{idx}"],
             )
-            logits = logits.view(-1, logits.size(-1))  # (Batch * Seq_len) x Item_num
+            logits = logits.view(-1, logits.size(-1))  # Batch x Seq_len x Item_num
             batch_labels = batch_labels.view(-1)  # Batch x Seq_len
 
             loss = F.cross_entropy(
@@ -220,14 +236,14 @@ class TVAModel(pl.LightningModule):
 
 
 class SoftGate(nn.Module):
-    def __init__(self, input_size, num_inputs):
+    def __init__(self, input_size, num_inputs) -> None:
         super(SoftGate, self).__init__()
         self.input_size = input_size
         self.num_inputs = num_inputs
         self.attention = nn.Linear(input_size * num_inputs, num_inputs)
         self.softmax = nn.Softmax(dim=-1)
 
-    def forward(self, inputs):
+    def forward(self, inputs) -> Tensor:
         assert len(inputs) == self.num_inputs
         batch_size, seq_len, _ = inputs[0].size()
 
@@ -250,18 +266,19 @@ class SoftGate(nn.Module):
 
         # Sum the gated inputs to get the final output
         output = torch.sum(torch.stack(gated_inputs), dim=0)
-        # print("\n")
-        # print("=" * 50)
-        # print(attention_weights.shape)
-        # mean = attention_weights.mean(dim=(0, 1))
-        # print(mean.shape)
-        # print(mean)
-        # print("=" * 50)
+        print("\n")
+        print("=" * 50)
+        print(attention_weights.shape)
+        print(attention_weights)
+        mean = attention_weights.mean(dim=(0, 1))
+        print(mean.shape)
+        print(mean)
+        print("=" * 50)
 
         return output
 
 
-# Embedding
+# TVA Embedding
 class TVAEmbedding(nn.Module):
     def __init__(
         self,
@@ -273,6 +290,8 @@ class TVAEmbedding(nn.Module):
         latent_ff_dim=128,
         time_features=[],
         dropout=0.1,
+        use_softmax_on_item_latent=False,
+        use_gate=True,
     ) -> None:
         """
         :param vocab_size: total vocab size
@@ -294,6 +313,10 @@ class TVAEmbedding(nn.Module):
         self.latent_ff_dim = latent_ff_dim
         in_dim = embed_size
         features_num = 1
+
+        # boolean parameters
+        self.use_softmax_on_item_latent = use_softmax_on_item_latent
+        self.use_gate = use_gate
 
         if self.user_latent_factor_dim != 0:
             self.user_latent_emb = nn.Linear(user_latent_factor_dim * 2, embed_size)
@@ -371,15 +394,17 @@ class TVAEmbedding(nn.Module):
                 + END_COLOR
             )
 
-            itemwise_latent_factor_seq = F.softmax(
-                itemwise_latent_factor_seq, dim=2
-            )  # FIXME
+            # Use softmax on item latent factor
+            if self.use_softmax_on_item_latent:
+                itemwise_latent_factor_seq = F.softmax(
+                    itemwise_latent_factor_seq, dim=2
+                )
+
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
 
+            # If latent_ff_dim is not 0, use ff layer to reduce the dimension
             if self.latent_ff_dim != 0:
-                item_latent = self.item_latent_emb_ff(
-                    item_latent
-                )  # Using for bad vae embedding
+                item_latent = self.item_latent_emb_ff(item_latent)
 
             _cat.append(item_latent)
 
@@ -415,13 +440,18 @@ class TVAEmbedding(nn.Module):
 
             _cat.append(time_features_tensor)
 
+        # Len of _cat is 1 means only original bert embedding
         if len(_cat) != 1:
-            x = self.gate(_cat)
-            # x = self.cat_layer(
-            #     torch.cat(
-            #         _cat,
-            #         dim=-1,
-            #     )
-            # )
+            # If use gate, then use gate to combine all features
+            if self.use_gate:
+                x = self.gate(_cat)
+            # Otherwise, use concat to combine all features
+            else:
+                x = self.cat_layer(
+                    torch.cat(
+                        _cat,
+                        dim=-1,
+                    )
+                )
 
         return self.dropout(x)

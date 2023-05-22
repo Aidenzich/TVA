@@ -143,7 +143,6 @@ class RecsysData:
 
         # Remove the last 2 items from each user's sequence for sequence test and validation
         for u in tqdm(self.val_seqs):
-
             # Get the values of the user's dataframe
             udf = uir_df[uir_df[USER_COLUMN_NAME] == u]
             val = udf.values
@@ -196,12 +195,11 @@ class RecsysData:
         users = df[USER_COLUMN_NAME].unique()
 
         if split_method == "leave_one_out":
-
             user_group = df.groupby(USER_COLUMN_NAME)
 
             user2items = user_group.progress_apply(
                 lambda d: list(
-                    d.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="stable")[
+                    d.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="mergesort")[
                         ITEM_COLUMN_NAME
                     ]
                 )
@@ -209,7 +207,7 @@ class RecsysData:
 
             user2time = user_group.progress_apply(
                 lambda t: list(
-                    t.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="stable")[
+                    t.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="mergesort")[
                         TIMESTAMP_COLUMN_NAME
                     ].astype(np.int64)
                 )
@@ -219,7 +217,6 @@ class RecsysData:
                 compare = 0
                 for t in d:
                     if t < compare:
-
                         assert False, "Timestamps are not sorted"
                     compare = t
 

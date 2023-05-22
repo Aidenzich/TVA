@@ -18,7 +18,7 @@ seed_everything(0, workers=True)
 user_latent_factor = None
 
 # # Beauty
-model_path = "/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_1/checkpoints/epoch=249-step=43000.ckpt"
+model_path = "/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_7/checkpoints/epoch=99-step=17200.ckpt"
 latent_path = "/home/VS6102093/thesis/TVA/logs/beauty.vaeicf.d128/version_0/latent_factor/encode_result.npy"
 dataset = "beauty.pkl"
 
@@ -85,11 +85,11 @@ def test_group_performance(group, recdata) -> None:
     print(result)
 
 
-# test_group_performance(set(recdata.users_seqs.keys()), recdata)
+test_group_performance(set(recdata.users_seqs.keys()), recdata)
 
 
-seq_groups = generate_seqlen_group(recdata)
-for group in tqdm(seq_groups):
-    test_group_performance(group, recdata)
+# seq_groups = generate_seqlen_group(recdata)
+# for group in tqdm(seq_groups):
+#     test_group_performance(group, recdata)
 
 # %%
