@@ -5,12 +5,13 @@ import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
-from src.configs import RED_COLOR, END_COLOR
+from src.configs import RED_COLOR, END_COLOR, OUTPUT_PATH
 from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 from ...models.BERT4Rec.model import BERT
+import pickle
 
 
 class TVAModel(pl.LightningModule):
@@ -454,4 +455,6 @@ class TVAEmbedding(nn.Module):
                     )
                 )
 
-        return self.dropout(x)
+        x = self.dropout(x)
+
+        return x

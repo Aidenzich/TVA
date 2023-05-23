@@ -5,8 +5,6 @@ Which is the dataset used in the S3-Rec paper.
 The distribution of the dataset looks like the same as the 'ratings_Beauty_5.csv'
 But current is difficult to restore the id mapping from the 'beauty.txt' to the 'ratings_Beauty_5.csv'
 """
-
-
 from tqdm import tqdm
 
 with open("/home/VS6102093/thesis/TVA/data/Beauty.txt") as f:
@@ -36,7 +34,7 @@ for line in tqdm(lines):
     user_seq = list(map(int, items[1:]))
     average_seq_len = average_seq_len + len(user_seq)
     total_user_num += 1
-    for item in user_seq:
+    for idx, item in enumerate(user_seq):
         if item not in item_count:
             item_count[item] = 1
         else:
@@ -45,7 +43,7 @@ for line in tqdm(lines):
         df_dict["user"].append(user)
         df_dict["item"].append(item)
         df_dict["rate"].append(1)
-        df_dict["time"].append(0)
+        df_dict["time"].append(idx)
 
     result_dict[user] = user_seq
 
@@ -59,7 +57,7 @@ print(result_dict)
 import pandas as pd
 
 df = pd.DataFrame(df_dict)
-df.to_csv("/home/VS6102093/thesis/TVA/data/Beauty_online.csv", index=False)
+df.to_csv("/home/VS6102093/thesis/TVA/data/WTF.csv", index=False)
 
 # %%
 # import pandas as pd

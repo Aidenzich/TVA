@@ -66,6 +66,7 @@ def infer(ckpt_path, recdata, rec_ks=100):
 
             y = y.cpu().numpy().astype(np.float16)
 
+            # Saving latent factor
             if all_y is None:
                 all_y, all_z_u, all_z_sigma = y, z_u, z_sigma
             else:

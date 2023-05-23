@@ -18,7 +18,7 @@ seed_everything(0, workers=True)
 user_latent_factor = None
 
 # # Beauty
-model_path = "/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_7/checkpoints/epoch=99-step=17200.ckpt"
+model_path = "/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_4/checkpoints/epoch=249-step=43000.ckpt"
 latent_path = "/home/VS6102093/thesis/TVA/logs/beauty.vaeicf.d128/version_0/latent_factor/encode_result.npy"
 dataset = "beauty.pkl"
 
@@ -79,17 +79,50 @@ def test_group_performance(group, recdata) -> None:
         num_workers=1,
     )
 
-    trainer = pl.Trainer(gpus=[1], logger=False)
+    # SHOW the test result
+    # trainer = pl.Trainer(gpus=[1], logger=False)
+    # result = trainer.test(model, dataloaders=test_loader)
+    # print(result)
 
-    result = trainer.test(model, dataloaders=test_loader)
-    print(result)
+    # get the embed
+    total_embed = []
+
+    for batch in test_loader:
+        time_seqs = (
+            batch[f"years"],
+            batch[f"months"],
+            batch[f"days"],
+            batch[f"seasons"],
+            batch[f"hours"],
+            batch[f"minutes"],
+            batch[f"seconds"],
+            batch[f"dayofweek"],
+        )
+        embed = model.embedding(
+            item_seq=batch[f"item_seq"],
+            userwise_latent_factor=batch[f"userwise_latent_factor"],
+            itemwise_latent_factor_seq=batch[f"itemwise_latent_factor_seq"],
+            time_seqs=time_seqs,
+        )
+
+        total_embed.extend(embed.tolist())
+
+    # Change total_embed list into numpy array
+    total_embed = np.array(total_embed)
+    print(total_embed.shape)
+
+    return total_embed
 
 
-test_group_performance(set(recdata.users_seqs.keys()), recdata)
+# Exp1. Test the total performance
+# test_group_performance(set(recdata.users_seqs.keys()), recdata)
 
 
+# Exp2. Get different seq_len group and test
 # seq_groups = generate_seqlen_group(recdata)
 # for group in tqdm(seq_groups):
 #     test_group_performance(group, recdata)
 
-# %%
+# Exp3. Get total embed
+total_embed = test_group_performance(set(recdata.users_seqs.keys()), recdata)
+print(total_embed.shape)
