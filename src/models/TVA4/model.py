@@ -41,7 +41,7 @@ class TVAModel(pl.LightningModule):
         self.max_len = model_params["max_len"]
         self.d_model = model_params["d_model"]
         self.num_mask = model_params.get("num_mask", 1)
-        self.use_gate = model_params.get("use_gate", None)
+        self.use_gate = model_params.get("use_gate", True)
         self.use_softmax_on_item_latent = model_params.get(
             "use_softmax_on_item_latent", None
         )
@@ -267,6 +267,7 @@ class SoftGate(nn.Module):
 
         # Sum the gated inputs to get the final output
         output = torch.sum(torch.stack(gated_inputs), dim=0)
+
         print("\n")
         print("=" * 50)
         print(attention_weights.shape)
@@ -445,6 +446,7 @@ class TVAEmbedding(nn.Module):
         if len(_cat) != 1:
             # If use gate, then use gate to combine all features
             if self.use_gate:
+                print("use gate")
                 x = self.gate(_cat)
             # Otherwise, use concat to combine all features
             else:

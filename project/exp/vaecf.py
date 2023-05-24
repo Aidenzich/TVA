@@ -17,11 +17,11 @@ from tqdm import tqdm
 
 dataset = "beauty.pkl"
 dataset = "toys.pkl"
+dataset = "ml1m.pkl"
 device = torch.device("cuda:0")
 
 if dataset == "beauty.pkl":
     model_path = "/home/VS6102093/thesis/TVA/logs/beauty.vaecf.d128/version_0/checkpoints/epoch=99-step=4300.ckpt"
-
 if dataset == "toys.pkl":
     # model_path = "/home/VS6102093/thesis/TVA/logs/toys.vaecf.d128/version_0/checkpoints/epoch=25-step=988.ckpt"
     # model_path = "/home/VS6102093/thesis/TVA/logs/toys.vaecf.d128/version_1/checkpoints/epoch=99-step=3800.ckpt"
@@ -29,6 +29,17 @@ if dataset == "toys.pkl":
     # model_path = "/home/VS6102093/thesis/TVA/logs/toys.vaecf.d512/version_0/checkpoints/epoch=24-step=950.ckpt"
     # model_path = "/home/VS6102093/thesis/TVA/logs/toys.vaecf.d512/version_1/checkpoints/epoch=99-step=3800.ckpt"
     # model_path = "/home/VS6102093/thesis/TVA/logs/toys.vaecf.d512_beta0.2/version_0/checkpoints/epoch=99-step=3800.ckpt"
+
+if dataset == "ml1m.pkl":
+    # model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d256/version_0/checkpoints/epoch=99-step=1200.ckpt"
+    # model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d512/version_0/checkpoints/epoch=99-step=1200.ckpt"
+    # model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d128/version_0/checkpoints/epoch=99-step=1200.ckpt"
+    # model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d256_as256/version_1/checkpoints/epoch=99-step=1200.ckpt"
+    # model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d256_as1024/version_0/checkpoints/epoch=99-step=1200.ckpt"
+    # model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d256_as256_beta1.0/version_0/checkpoints/epoch=99-step=1200.ckpt"
+    model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d256_as256_beta0.4/version_30/checkpoints/epoch=99-step=1200.ckpt"
+
+
 with open(DATACLASS_PATH / dataset, "rb") as f:
     recdata = pickle.load(f)
 
@@ -97,9 +108,9 @@ recall_10 = sum_recall_10 / len(recdata.test_seqs)
 recall_20 = sum_recall_20 / len(recdata.test_seqs)
 
 
-print("ndcg@5", ndcg_5)
-print("ndcg@10", ndcg_10)
-print("ndcg@20", ndcg_20)
-print("recall@5", recall_5)
-print("recall@10", recall_10)
-print("recall@20", recall_20)
+print(recall_5)
+print(recall_10)
+print(recall_20)
+print(ndcg_5)
+print(ndcg_10)
+print(ndcg_20)

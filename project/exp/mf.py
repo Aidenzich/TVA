@@ -11,7 +11,9 @@ from utils import recall_at_k, ndcg_at_k
 sys.path.append("../../")
 from src.configs import DATACLASS_PATH
 
-dataset = "toys.pkl"
+# dataset = "toys.pkl"
+# dataset = "beauty.pkl"
+dataset = "ml1m.pkl"
 
 
 class MatrixFactorization:
@@ -99,17 +101,25 @@ with open(DATACLASS_PATH / dataset, "rb") as f:
     dataset = pickle.load(f)
 
 df = dataset.dataframe
-for user in tqdm(dataset.test_seqs):
-    # popout the test seq:
-    for item in dataset.test_seqs[user]:
-        df = df.drop(df[(df.user_id == user) & (df.item_id == item)].index)
+print("original dataframe len", len(df))
+
 
 # dataset.test_seqs is a dictionary where each value is a list
 test_seqs_df = pd.DataFrame(
     [(k, i) for k, v in dataset.test_seqs.items() for i in v],
     columns=["user_id", "item_id"],
 )
-df = df.merge(test_seqs_df, on=["user_id", "item_id"], how="left", indicator=True)
+
+
+val_seqs_df = pd.DataFrame(
+    [(k, i) for k, v in dataset.val_seqs.items() for i in v],
+    columns=["user_id", "item_id"],
+)
+
+drop_seqs_df = test_seqs_df.append(val_seqs_df).drop_duplicates(keep=False)
+
+
+df = df.merge(drop_seqs_df, on=["user_id", "item_id"], how="left", indicator=True)
 df = df[df["_merge"] == "left_only"]
 df.drop(columns="_merge", inplace=True)
 
@@ -159,9 +169,12 @@ for svdk in [5, 10, 50, 100, 200, 500]:
     recall_5 = sum_recall_5 / len(dataset.test_seqs)
     recall_10 = sum_recall_10 / len(dataset.test_seqs)
     recall_20 = sum_recall_20 / len(dataset.test_seqs)
-    print("ndcg@5", ndcg_5)
-    print("ndcg@10", ndcg_10)
-    print("ndcg@20", ndcg_20)
-    print("recall@5", recall_5)
-    print("recall@10", recall_10)
-    print("recall@20", recall_20)
+
+    print(ndcg_5)
+    print(ndcg_10)
+    print(ndcg_20)
+    print(recall_5)
+    print(recall_10)
+    print(recall_20)
+
+# %%

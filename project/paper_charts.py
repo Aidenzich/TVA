@@ -4,6 +4,11 @@ import matplotlib.pyplot as plt
 from matplotlib.ticker import MaxNLocator
 import matplotlib.ticker as ticker
 from typing import Any
+import sys
+
+sys.path.append("..")
+
+from src.configs import OUTPUT_PATH
 
 
 def plot_scores(
@@ -21,11 +26,12 @@ def plot_scores(
     plt.rcParams["font.weight"] = "bold"
     plt.rcParams["text.usetex"] = True
     plt.rcParams["font.family"] = "serif"
+    plt.rcParams["font.size"] = 18
     # If we were to simply plot the data, we'd lose most of the interesting
     # details due to the outliers. So let's 'break' or 'cut-out' the y-axis
     # into two portions - use the top (ax1) for the outliers, and the bottom
     # (ax2) for the details of the majority of our data
-    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(5, 4))
+    fig, (ax1, ax2) = plt.subplots(2, 1, sharex=True, figsize=(5.5, 5))
     fig.subplots_adjust(hspace=0.05)  # adjust space between axes
     # param_values = [2 * i for i in param_values]
 
@@ -44,8 +50,8 @@ def plot_scores(
     ax2.set_ylim(ax2_ylim_min, ax2_ylim_max)  # most of the data
 
     # Set the interval of the y-axis to 0.005
-    ax1.yaxis.set_major_locator(ticker.MultipleLocator(0.005))
-    ax2.yaxis.set_major_locator(ticker.MultipleLocator(0.005))
+    ax1.yaxis.set_major_locator(ticker.MultipleLocator(0.01))
+    ax2.yaxis.set_major_locator(ticker.MultipleLocator(0.01))
 
     # hide the spines between ax and ax2
     ax1.spines.bottom.set_visible(False)
@@ -75,8 +81,15 @@ def plot_scores(
     ax1.plot([0, 1], [0, 0], transform=ax1.transAxes, **kwargs)
     ax2.plot([0, 1], [1, 1], transform=ax2.transAxes, **kwargs)
 
-    plt.xlabel(r"\textbf{" + param_name + "}", fontdict={"fontsize": 14})
-    plt.ylabel(r"\textbf{" + metric_name + "}", fontdict={"fontsize": 14}, loc="top")
+    plt.xlabel(r"\textbf{" + param_name + "}", fontdict={"fontsize": 24})
+    # plt.ylabel(r"\textbf{" + metric_name + "}", fontdict={"fontsize": 18}, loc="top")
+
+    # save image
+    plt.savefig(
+        OUTPUT_PATH / ("plot/" + param_name.replace("(", "").replace(")", "") + ".png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
 
     return plt
 
@@ -244,12 +257,12 @@ def exp_vd() -> None:
     plt.show()
 
 
-# exp_length()
-# exp_dropout()
-# exp_layers()
-# exp_heads()
-# exp_mask()
-# exp_vd()
+exp_length()
+exp_dropout()
+exp_layers()
+exp_heads()
+exp_mask()
+exp_vd()
 
 # %%
 
@@ -386,7 +399,7 @@ def plot_weight2():
     plt.show()
 
 
-plot_weight()
-plot_weight2()
+# plot_weight()
+# plot_weight2()
 
 # %%

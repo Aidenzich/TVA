@@ -80,38 +80,38 @@ def test_group_performance(group, recdata) -> None:
     )
 
     # SHOW the test result
-    # trainer = pl.Trainer(gpus=[1], logger=False)
-    # result = trainer.test(model, dataloaders=test_loader)
-    # print(result)
+    trainer = pl.Trainer(gpus=[1], logger=False)
+    result = trainer.test(model, dataloaders=test_loader)
+    print(result)
 
     # get the embed
-    total_embed = []
+    # total_embed = []
 
-    for batch in test_loader:
-        time_seqs = (
-            batch[f"years"],
-            batch[f"months"],
-            batch[f"days"],
-            batch[f"seasons"],
-            batch[f"hours"],
-            batch[f"minutes"],
-            batch[f"seconds"],
-            batch[f"dayofweek"],
-        )
-        embed = model.embedding(
-            item_seq=batch[f"item_seq"],
-            userwise_latent_factor=batch[f"userwise_latent_factor"],
-            itemwise_latent_factor_seq=batch[f"itemwise_latent_factor_seq"],
-            time_seqs=time_seqs,
-        )
+    # for batch in test_loader:
+    #     time_seqs = (
+    #         batch[f"years"],
+    #         batch[f"months"],
+    #         batch[f"days"],
+    #         batch[f"seasons"],
+    #         batch[f"hours"],
+    #         batch[f"minutes"],
+    #         batch[f"seconds"],
+    #         batch[f"dayofweek"],
+    #     )
+    #     embed = model.embedding(
+    #         item_seq=batch[f"item_seq"],
+    #         userwise_latent_factor=batch[f"userwise_latent_factor"],
+    #         itemwise_latent_factor_seq=batch[f"itemwise_latent_factor_seq"],
+    #         time_seqs=time_seqs,
+    #     )
 
-        total_embed.extend(embed.tolist())
+    #     total_embed.extend(embed.tolist())
 
-    # Change total_embed list into numpy array
-    total_embed = np.array(total_embed)
-    print(total_embed.shape)
+    # # Change total_embed list into numpy array
+    # total_embed = np.array(total_embed)
+    # print(total_embed.shape)
 
-    return total_embed
+    # return total_embed
 
 
 # Exp1. Test the total performance
@@ -119,10 +119,10 @@ def test_group_performance(group, recdata) -> None:
 
 
 # Exp2. Get different seq_len group and test
-# seq_groups = generate_seqlen_group(recdata)
-# for group in tqdm(seq_groups):
-#     test_group_performance(group, recdata)
+seq_groups = generate_seqlen_group(recdata)
+for group in tqdm(seq_groups):
+    test_group_performance(group, recdata)
 
 # Exp3. Get total embed
-total_embed = test_group_performance(set(recdata.users_seqs.keys()), recdata)
-print(total_embed.shape)
+# total_embed = test_group_performance(set(recdata.users_seqs.keys()), recdata)
+# print(total_embed.shape)
