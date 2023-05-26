@@ -268,14 +268,14 @@ class SoftGate(nn.Module):
         # Sum the gated inputs to get the final output
         output = torch.sum(torch.stack(gated_inputs), dim=0)
 
-        print("\n")
-        print("=" * 50)
-        print(attention_weights.shape)
-        print(attention_weights)
-        mean = attention_weights.mean(dim=(0, 1))
-        print(mean.shape)
-        print(mean)
-        print("=" * 50)
+        # print("\n")
+        # print("=" * 50)
+        # print(attention_weights.shape)
+        # print(attention_weights)
+        # mean = attention_weights.mean(dim=(0, 1))
+        # print(mean.shape)
+        # print(mean)
+        # print("=" * 50)
 
         return output
 
@@ -412,9 +412,13 @@ class TVAEmbedding(nn.Module):
 
         if self.time_features:
             years, months, days, seasons, hours, minutes, seconds, dayofweek = time_seqs
+
+            print(torch.max(days), torch.min(days))
+
             years = self.years_emb(years)
             months = self.months_emb(months)
             days = self.days_emb(days)
+
             seasons = self.seasons_emb(seasons)
             hours = self.hour_emb(hours)
             # seconds = self.second_emb(seconds)
@@ -446,7 +450,7 @@ class TVAEmbedding(nn.Module):
         if len(_cat) != 1:
             # If use gate, then use gate to combine all features
             if self.use_gate:
-                print("use gate")
+                # print("use gate")
                 x = self.gate(_cat)
             # Otherwise, use concat to combine all features
             else:

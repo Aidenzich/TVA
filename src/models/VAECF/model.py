@@ -4,7 +4,7 @@ import torch.nn as nn
 from torch import Tensor
 from tqdm.auto import trange
 import pytorch_lightning as pl
-from typing import List
+from typing import List, Tuple, Any
 from .utils import split_matrix_by_mask, recall_precision_f1_calculate
 from ...modules.utils import SCHEDULER
 
@@ -25,6 +25,7 @@ class VAECFModel(pl.LightningModule):
         self.likelihood = model_params["likelihood"]
         self.beta = model_params["beta"]
         self.annealing_epoch = model_params["beta_annealing_epoch"]
+        self.batch_size = model_params["batch_size"]
         self.weight_decay = trainer_config.get("weight_decay", 0.0)
 
         self.lr = trainer_config.get("lr", 1e-3)
@@ -74,9 +75,9 @@ class VAECFModel(pl.LightningModule):
 
         loss = self.vae.loss(batch, _batch, mu, logvar, annealing_beta)
 
-        self.log("train_loss", loss / len(batch), sync_dist=True)
+        self.log("train_loss", loss / self.batch_size, sync_dist=True)
         self.log("beta", annealing_beta, sync_dist=True)
-        return loss / len(batch)
+        return loss / self.batch_size
 
     def validation_step(self, batch, batch_idx) -> None:
         x, true_y, _ = split_matrix_by_mask(batch)
@@ -168,12 +169,14 @@ class VAE(nn.Module):
         eps = torch.randn_like(mu)
         return mu + eps * std
 
-    def forward(self, x):
+    def forward(self, x) -> Tuple[Tensor, Any, Any]:
         mu, logvar = self.encode(x)
         z = self.reparameterize(mu, logvar)
-        return self.decode(z), mu, logvar
+        decoded_z = self.decode(z)
 
-    def loss(self, x, x_, mu, logvar, beta):
+        return decoded_z, mu, logvar
+
+    def loss(self, x, x_, mu, logvar, beta) -> Tensor:
         # Likelihood
         ll_choices = {
             "mult": x * torch.log(x_ + EPS),

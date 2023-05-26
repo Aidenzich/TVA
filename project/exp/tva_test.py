@@ -18,7 +18,7 @@ seed_everything(0, workers=True)
 user_latent_factor = None
 
 # # Beauty
-model_path = "/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_4/checkpoints/epoch=249-step=43000.ckpt"
+model_path = "/home/VS6102093/thesis/TVA/logs/beauty.tva4.34_vd128/version_5/checkpoints/epoch=249-step=43000.ckpt"
 latent_path = "/home/VS6102093/thesis/TVA/logs/beauty.vaeicf.d128/version_0/latent_factor/encode_result.npy"
 dataset = "beauty.pkl"
 

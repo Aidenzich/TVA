@@ -3,54 +3,6 @@ import torch
 METRICS_KS = [1, 5, 10, 20, 30, 40, 50]
 
 
-def recall_precision_f1_for_ks(scores: torch.tensor, labels: torch.tensor, ks):
-    # scores: Batch x Candidates
-    # labels: Batch x Candidates
-
-    metrics = {}
-    answer_count = labels.sum(1)
-
-    labels_float = labels.float()
-    rank = (-scores).argsort(dim=1)
-    cut = rank
-    for k in sorted(ks, reverse=True):
-        cut = cut[:, :k]
-        hits = labels_float.gather(1, cut)
-        metrics["recall@%d" % k] = (
-            (
-                hits.sum(1)
-                / torch.min(torch.Tensor([k]).to(labels.device), labels.sum(1).float())
-            )
-            .mean()
-            .cpu()
-            .item()
-        )
-
-        metrics["precision@%d" % k] = (
-            (hits.sum(1) / torch.Tensor([k]).to(labels.device)).mean().cpu().item()
-        )
-
-        metrics["f1@%d" % k] = 0
-        if (metrics["recall@%d" % k] + metrics["precision@%d" % k]) != 0:
-            metrics["f1@%d" % k] = (
-                2
-                * metrics["recall@%d" % k]
-                * metrics["precision@%d" % k]
-                / (metrics["recall@%d" % k] + metrics["precision@%d" % k])
-            )
-
-        position = torch.arange(2, 2 + k)
-        weights = 1 / torch.log2(position.float())
-        dcg = (hits * weights.to(hits.device)).sum(1)
-        idcg = torch.Tensor([weights[: min(int(n), k)].sum() for n in answer_count]).to(
-            dcg.device
-        )
-        ndcg = (dcg / idcg).mean()
-        metrics["ndcg@%d" % k] = ndcg.cpu().item()
-
-    return metrics
-
-
 def ndcg(scores, labels, k):
     scores = scores.cpu()
     labels = labels.cpu()
