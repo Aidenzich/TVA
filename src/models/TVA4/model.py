@@ -413,8 +413,6 @@ class TVAEmbedding(nn.Module):
         if self.time_features:
             years, months, days, seasons, hours, minutes, seconds, dayofweek = time_seqs
 
-            print(torch.max(days), torch.min(days))
-
             years = self.years_emb(years)
             months = self.months_emb(months)
             days = self.days_emb(days)
