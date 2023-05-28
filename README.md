@@ -1,5 +1,5 @@
 # TVaR
-![bg](./assets/bg.jpg)
+![bg](./assets/bg.png)
 
 ## Requirements
 1. Docker and Docker Compose: You can download them [here](https://www.docker.com/products/docker-desktop).
