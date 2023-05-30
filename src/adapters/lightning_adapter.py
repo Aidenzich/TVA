@@ -77,7 +77,7 @@ def fit(
         val_loader = None
 
     tb_logger = pl.loggers.TensorBoardLogger(
-        save_dir=LOG_PATH, name=trainer_config["config_name"]
+        save_dir=LOG_PATH, name=trainer_config["config_name"].replace(".", "/")
     )
 
     trainer = pl.Trainer(

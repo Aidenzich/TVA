@@ -43,7 +43,6 @@ class BERTModel(pl.LightningModule):
         self.out = nn.Linear(self.d_model, num_items + 1)
 
     def configure_optimizers(self) -> Any:
-
         optimizer = torch.optim.Adam(self.parameters(), lr=self.lr)
 
         if self.lr_scheduler != None:

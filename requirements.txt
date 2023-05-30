@@ -1,8 +1,10 @@
+torch==1.13.1
+torchvision==0.14.1
+torchaudio==0.13.1
 wget==3.2
 tqdm==4.64.0
 numpy==1.23.1
 pytorch-lightning==1.7.6
-torchvision==0.14.0
 matplotlib==3.5.3
 inquirer==2.10.0
 cornac==1.14.2

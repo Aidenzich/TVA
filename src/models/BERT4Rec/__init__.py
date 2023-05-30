@@ -1,16 +1,42 @@
 from src.datasets.bert_dset import BertDataset
 from src.models.BERT4Rec.model import BERTModel
 from src.adapters.lightning_adapter import fit
+from tqdm import tqdm
+from typing import List
 
 
 def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
+    # Sliding window
+    use_sliding_window = trainer_config.get("sliding_window", False)
+    sliding_step = trainer_config.get("sliding_step", 1)
+
+    train_seqs = recdata.train_seqs
+
+    if use_sliding_window:
+        slided_u2train_seqs = {}
+        print("Sliding window is enabled. Handling data...")
+
+        for u in tqdm(recdata.train_seqs):
+            slided_user_seqs = get_slidewindow(
+                recdata.train_seqs[u], model_params["max_len"], step=sliding_step
+            )
+
+            for idx, seqs in enumerate(slided_user_seqs):
+                save_key = str(u) + "." + str(idx)
+                slided_u2train_seqs[save_key] = seqs
+
+        train_seqs = slided_u2train_seqs
+
+        print(f"Before sliding window data num: {len(recdata.train_seqs)}")
+        print(f"After sliding window data num: {len(slided_u2train_seqs)}")
+
     trainset = BertDataset(
         mode="train",
         max_len=model_params["max_len"],
         mask_prob=model_params["mask_prob"],
         num_items=recdata.num_items,
         mask_token=recdata.num_items + 1,
-        u2seq=recdata.train_seqs,
+        u2seq=train_seqs,
         seed=trainer_config["seed"],
         num_mask=model_params.get("num_mask", 1),
     )
@@ -22,7 +48,6 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         num_items=recdata.num_items,
         u2seq=recdata.train_seqs,
         u2answer=recdata.val_seqs,
-        
     )
 
     testset = BertDataset(
@@ -39,7 +64,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         num_items=recdata.num_items,
         model_params=model_params,
         trainer_config=trainer_config,
-        data_class=recdata.filename
+        data_class=recdata.filename,
     )
 
     fit(
@@ -98,7 +123,7 @@ def infer(ckpt_path, recdata, rec_ks=10, negative_samples=None):
         mode="inference",
         mask_token=recdata.num_items + 1,
         num_items=recdata.num_items,
-        u2seq=recdata.train_seqs,  # TODO 把 inference 的 train_seqs 改成新資料(注意要把id都轉成新的)
+        u2seq=recdata.train_seqs,
         max_len=model.max_len,
     )
 
@@ -108,7 +133,6 @@ def infer(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     predict_result: dict = {}
     with torch.no_grad():
         for batch in tqdm(infer_loader):
-
             seqs, candidates, users = batch
             seqs, candidates, users = (
                 seqs.to(device),
@@ -129,3 +153,21 @@ def infer(ckpt_path, recdata, rec_ks=10, negative_samples=None):
             predict_result.update(predict_dict)
 
     return predict_result
+
+
+def get_slidewindow(user_seq, max_len, step=10) -> List[int]:
+    user_sliding_seqs = []
+
+    if isinstance(user_seq[1], tuple):
+        seq = [x[0] for x in user_seq]
+    else:
+        seq = user_seq
+
+    seq_len = len(seq)
+    beg_idx = list(range(seq_len - max_len, 0, -step))
+    beg_idx.append(0)
+    for i in beg_idx:
+        temp = seq[i : i + max_len]
+        user_sliding_seqs.append(temp)
+
+    return user_sliding_seqs

@@ -1,12 +1,10 @@
 # %%
-import numpy as np
 import matplotlib.pyplot as plt
-from matplotlib.ticker import MaxNLocator
 import matplotlib.ticker as ticker
 from typing import Any
 import sys
 
-sys.path.append("..")
+sys.path.append("../../")
 
 from src.configs import OUTPUT_PATH
 
@@ -84,18 +82,13 @@ def plot_scores(
     plt.xlabel(r"\textbf{" + param_name + "}", fontdict={"fontsize": 24})
     # plt.ylabel(r"\textbf{" + metric_name + "}", fontdict={"fontsize": 18}, loc="top")
 
-    # save image
-    plt.savefig(
-        OUTPUT_PATH / ("plot/" + param_name.replace("(", "").replace(")", "") + ".png"),
-        dpi=300,
-        bbox_inches="tight",
-    )
-
     return plt
 
 
 def exp_length() -> None:
+    param_name = "(a)Length"
     param_values = [10, 15, 20, 25, 30, 35, 40, 45, 50]
+    param_values = [2 * i for i in param_values]
     beauty = [
         0.05284,
         0.05584,
@@ -119,10 +112,18 @@ def exp_length() -> None:
         0.05163,
     ]
     ml_1m = [0.1652, 0.1729, 0.1753, 0.1703, 0.1772, 0.1721, 0.1781, 0.1704, 0.1687]
-    plot_scores("(a)Length", "NDCG@10", param_values, beauty, toys, ml_1m).show()
+    plt = plot_scores(param_name, "NDCG@10", param_values, beauty, toys, ml_1m)
+
+    # save image
+    plt.savefig(
+        OUTPUT_PATH / ("plot/" + param_name.replace("(", "").replace(")", "") + ".png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
 
 
 def exp_dropout() -> None:
+    param_name = "(b)Dropout"
     param_values = [0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
     beauty = [
         0.0468,
@@ -157,12 +158,20 @@ def exp_dropout() -> None:
         0.1487,
         0.1342,
     ]
-    plot_scores(
-        "(b)Dropout", "NDCG@10", param_values, beauty, toys, ml_1m, ax1_ylim_min=0.13
-    ).show()
+    plt = plot_scores(
+        param_name, "NDCG@10", param_values, beauty, toys, ml_1m, ax1_ylim_min=0.13
+    )
+
+    # save image
+    plt.savefig(
+        OUTPUT_PATH / ("plot/" + param_name.replace("(", "").replace(")", "") + ".png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
 
 
 def exp_mask() -> None:
+    param_name = "(c)Mask Proportion"
     param_values = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
     beauty = [
         0.0510,
@@ -187,8 +196,8 @@ def exp_mask() -> None:
         0.0335,
     ]
     ml_1m = [0.1721, 0.1759, 0.1755, 0.1791, 0.1761, 0.1723, 0.1649, 0.1550, 0.1357]
-    plot_scores(
-        "(c)Mask Proportion",
+    plt = plot_scores(
+        param_name,
         "NDCG@10",
         param_values,
         beauty,
@@ -196,11 +205,19 @@ def exp_mask() -> None:
         ml_1m,
         ax1_ylim_min=0.13,
         ax2_ylim_min=0.03,
-    ).show()
+    )
+
+    # save image
+    plt.savefig(
+        OUTPUT_PATH / ("plot/" + param_name.replace("(", "").replace(")", "") + ".png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
 
 
 def exp_layers() -> None:
     param_values = [1, 2, 3, 4]
+    param_name = "(d)Layers"
     beauty = [
         0.0510,
         0.0553,
@@ -210,20 +227,27 @@ def exp_layers() -> None:
     toys = [0.0510, 0.0547, 0.0509, 0.0485]
     ml_1m = [0.1734, 0.1735, 0.1706, 0.1651]
     plt = plot_scores(
-        "(d)Layers", "NDCG@10", param_values, beauty, toys, ml_1m, ax1_ylim_min=0.13
+        param_name, "NDCG@10", param_values, beauty, toys, ml_1m, ax1_ylim_min=0.13
     )
 
     plt.xticks(range(1, 5))
-    plt.show()
+
+    # save image
+    plt.savefig(
+        OUTPUT_PATH / ("plot/" + param_name.replace("(", "").replace(")", "") + ".png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
 
 
 def exp_heads() -> None:
+    param_name = "(e)Heads"
     param_values = [1, 2, 4, 8]
     beauty = [0.0518, 0.0533, 0.0553, 0.0549]
     toys = [0.0480, 0.0501, 0.0547, 0.0505]
     ml_1m = [0.1622, 0.1675, 0.1735, 0.1781]
     plt = plot_scores(
-        "(e)Heads",
+        param_name,
         "NDCG@10",
         range(len(param_values)),
         beauty,
@@ -234,16 +258,23 @@ def exp_heads() -> None:
     param_values_str = [str(x) for x in param_values]
 
     plt.xticks(range(len(param_values)), param_values_str)
-    plt.show()
+
+    # save image
+    plt.savefig(
+        OUTPUT_PATH / ("plot/" + param_name.replace("(", "").replace(")", "") + ".png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
 
 
 def exp_vd() -> None:
+    param_name = "(f)Hidden size of VAE"
     param_values = [64, 128, 256, 512]
     beauty = [0.05453, 0.05584, 0.05374, 0.0554]
     toys = [0.05235, 0.0540, 0.05485, 0.0502]
     ml_1m = [0.1728, 0.1752, 0.1791, 0.1693]
     plt = plot_scores(
-        "(f)Hidden Dimensions of VAE",
+        param_name,
         "NDCG@10",
         range(len(param_values)),
         beauty,
@@ -254,7 +285,13 @@ def exp_vd() -> None:
     param_values_str = [str(x) for x in param_values]
 
     plt.xticks(range(len(param_values)), param_values_str)
-    plt.show()
+
+    # save image
+    plt.savefig(
+        OUTPUT_PATH / ("plot/" + param_name.replace("(", "").replace(")", "") + ".png"),
+        dpi=300,
+        bbox_inches="tight",
+    )
 
 
 exp_length()
@@ -263,143 +300,3 @@ exp_layers()
 exp_heads()
 exp_mask()
 exp_vd()
-
-# %%
-
-
-# %%
-# import pandas as pd
-# import matplotlib.pyplot as plt
-# import numpy as np
-
-
-# plt.rcParams["text.usetex"] = True
-# plt.rcParams["font.family"] = "serif"
-# plt.rcParams["font.size"] = 16
-# dataset = "Toys"
-
-
-# # Create DataFrame
-# if dataset == "Beauty":
-#     data = {
-#         "TVA": [0.048877, 0.078693, 0.095381, 0.145780, 0.150063],
-#         "ContrastVAE": [0.0371, 0.0526, 0.0816, 0.1025, 0.1437],
-#         "CBiT": [0.0464, 0.0626, 0.0905, 0.1255, 0.1533],
-#     }
-
-# if dataset == "Toys":
-#     data = {
-#         "TVA": [0.05219, 0.06015, 0.07550, 0.08367, 0.09926],
-#         "ContrastVAE": [0.04650, 0.04320, 0.03703, 0.04669, 0.05921],
-#         "CBiT": [0.04842, 0.04096, 0.04288, 0.05942, 0.08643],
-#     }
-
-# df = pd.DataFrame(data)
-
-# # Bar width
-# barWidth = 0.175
-
-# # Set position of bar on X axis
-# r1 = np.arange(len(df["TVA"]))
-# r2 = [x + barWidth for x in r1]
-# r3 = [x + barWidth for x in r2]
-
-# # Make the plot
-# plt.figure(figsize=(5, 5))
-# plt.bar(r1, df["TVA"], color="#528ef3", width=barWidth, label="TVA")
-# plt.bar(r2, df["ContrastVAE"], color="#ea4335", width=barWidth, label="ContrastVAE")
-# plt.bar(r3, df["CBiT"], color="#fab70e", width=barWidth, label="CBiT")
-
-
-# # Adding xticks
-# plt.xlabel(r"\textbf{" + dataset + r"}", fontweight="bold")
-# plt.xticks(
-#     [r + barWidth for r in range(len(df["TVA"]))],
-#     ["$\leq$10", "$[$10, 20$]$", "$[$20, 30$]$", "$[$30, 40$]$", "${>}$ 40"],
-# )
-
-
-# plt.ylabel("NDCG@10")
-# # plt.legend()
-
-# plt.show()
-
-# %%
-
-
-# %%
-def plot_weight():
-    import matplotlib.pyplot as plt
-
-    plt.rcParams["font.weight"] = "bold"
-    plt.rcParams["text.usetex"] = True
-    plt.rcParams["font.family"] = "serif"
-    # Define the x-axis values (the labels from your data)
-    x = ["$\leq$10", "$[$10, 20$]$", "$[$20, 30$]$", "$[$30, 40$]$", "${>}$ 40"]
-    # Define the y-axis values (the weights from your data)
-    BERT_Weight = [0.3659, 0.3988, 0.3727, 0.3621, 0.3707]
-    Variation_Weight = [0.357625, 0.3659, 0.3942, 0.4034, 0.4051]
-    Time_Weight = [0.2615, 0.2353, 0.2331, 0.2345, 0.2242]
-
-    # Create a figure and a set of subplots
-    fig, ax = plt.subplots(figsize=(5, 4))
-    ax.set_ylim([0.10, 0.7])
-    # ax.yaxis.set_major_locator(ticker.MultipleLocator(0.01))
-    # Plot the data
-    ax.plot(x, BERT_Weight, label="BERT Weight", marker="o")
-    ax.plot(x, Variation_Weight, label="Variation Weight", marker="o", color="red")
-    ax.plot(x, Time_Weight, label="Time Weight", marker="o", color="purple")
-
-    # Set the title and labels for the axes
-    ax.set_title("")
-    ax.set_xlabel(r"\textbf{Toys}", fontdict={"fontsize": 14})
-    ax.set_ylabel("Weights")
-
-    # Add a legend
-    ax.legend()
-
-    # Display the plot
-    plt.show()
-
-
-def plot_weight2():
-    import matplotlib.pyplot as plt
-
-    plt.rcParams["font.weight"] = "bold"
-    plt.rcParams["text.usetex"] = True
-    plt.rcParams["font.family"] = "serif"
-
-    # Define the x-axis values (the labels from your data)
-    x = ["$\leq$10", "$[$10, 20$]$", "$[$20, 30$]$", "$[$30, 40$]$", "${>}$ 40"]
-
-    # Define the y-axis values (the weights from your data)
-    BERT_Weight = [0.2239, 0.2183, 0.2156, 0.2179, 0.2203]
-    Variation_Weight = [0.578525, 0.6342, 0.6342, 0.6434, 0.6412]
-    Time_Weight = [0.197575, 0.1475, 0.1475, 0.1386, 0.1385]
-
-    # Create a figure and a set of subplots
-    fig, ax = plt.subplots(figsize=(5, 4))
-
-    ax.set_ylim([0.10, 0.7])
-
-    # Plot the data
-    ax.plot(x, BERT_Weight, label="BERT Weight", marker="o")
-    ax.plot(x, Variation_Weight, label="Variation Weight", marker="o", color="red")
-    ax.plot(x, Time_Weight, label="Time Weight", marker="o", color="purple")
-
-    # Set the title and labels for the axes
-
-    ax.set_xlabel(r"\textbf{Beauty}", fontdict={"fontsize": 14})
-    ax.set_ylabel("Weights", fontdict={"fontsize": 14})
-
-    # Add a legend
-    ax.legend()
-
-    # Display the plot
-    plt.show()
-
-
-# plot_weight()
-# plot_weight2()
-
-# %%

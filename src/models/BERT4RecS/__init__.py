@@ -21,7 +21,6 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
     print(f"Before sliding window data num: {len(recdata.train_seqs)}")
     print(f"After sliding window data num: {len(slided_u2train_seqs)}")
 
-    
     trainset = BertDataset(
         mode="train",
         max_len=model_params["max_len"],
@@ -56,7 +55,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         num_items=recdata.num_items,
         model_params=model_params,
         trainer_config=trainer_config,
-        data_class=recdata.filename
+        data_class=recdata.filename,
     )
 
     fit(
@@ -115,7 +114,7 @@ def infer(ckpt_path, recdata, rec_ks=10, negative_samples=None):
         mode="inference",
         mask_token=recdata.num_items + 1,
         num_items=recdata.num_items,
-        u2seq=recdata.train_seqs,  # TODO 把 inference 的 train_seqs 改成新資料(注意要把id都轉成新的)
+        u2seq=recdata.train_seqs,
         max_len=model.max_len,
     )
 
@@ -125,7 +124,6 @@ def infer(ckpt_path, recdata, rec_ks=10, negative_samples=None):
     predict_result: dict = {}
     with torch.no_grad():
         for batch in tqdm(infer_loader):
-
             seqs, candidates, users = batch
             seqs, candidates, users = (
                 seqs.to(device),

@@ -17,7 +17,11 @@ To create the `tvar` conda environment, run the following command:
 
 ```
 conda create --name tvar python=3.8
+conda activate tvar
+pip install -r requirements.txt
 ```
+
+
 
 ## How to use the Makefile
 ### Preprocess the Data
