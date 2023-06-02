@@ -42,7 +42,7 @@ plt.bar(
     wo_Multi_Mask,
     color="#34A853",
     width=bar_width,
-    label="w/o Multi-Mask",
+    label="w/o Multi-Masking",
 )
 
 # plt.xlabel("Datasets", fontweight="bold", fontsize=15)
@@ -108,7 +108,7 @@ plt.bar(
     wo_Multi_Mask,
     color="#34A853",
     width=bar_width,
-    label="w/o Multi-Mask",
+    label="w/o Multi-Masking",
 )
 
 # plt.xlabel("Datasets", fontweight="bold", fontsize=15)

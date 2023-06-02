@@ -86,7 +86,7 @@ def plot_scores(
 
 
 def exp_length() -> None:
-    param_name = "(a)Length"
+    param_name = "(a)Max Seq Length"
     param_values = [10, 15, 20, 25, 30, 35, 40, 45, 50]
     param_values = [2 * i for i in param_values]
     beauty = [
@@ -217,7 +217,7 @@ def exp_mask() -> None:
 
 def exp_layers() -> None:
     param_values = [1, 2, 3, 4]
-    param_name = "(d)Layers"
+    param_name = "(d)Number of Layers"
     beauty = [
         0.0510,
         0.0553,
@@ -241,7 +241,7 @@ def exp_layers() -> None:
 
 
 def exp_heads() -> None:
-    param_name = "(e)Heads"
+    param_name = "(e)Number of Heads"
     param_values = [1, 2, 4, 8]
     beauty = [0.0518, 0.0533, 0.0553, 0.0549]
     toys = [0.0480, 0.0501, 0.0547, 0.0505]
