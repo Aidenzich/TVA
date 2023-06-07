@@ -88,7 +88,7 @@ def plot_scores(
 def exp_length() -> None:
     param_name = "(a)Max Seq Length"
     param_values = [10, 15, 20, 25, 30, 35, 40, 45, 50]
-    param_values = [2 * i for i in param_values]
+    # param_values = [2 * i for i in param_values]
     beauty = [
         0.05284,
         0.05584,

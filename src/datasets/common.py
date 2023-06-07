@@ -2,6 +2,7 @@ from pathlib import Path
 from typing import Dict, List, Any, Tuple
 from tabulate import tabulate
 from tqdm import tqdm
+from scipy.sparse import csr_matrix
 import pandas as pd
 import numpy as np
 import pickle
@@ -167,8 +168,6 @@ class RecsysData:
         print("Shape of uir_df after drop:", uir_df.shape)
         uir_vals = uir_df.values
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
-
-        from scipy.sparse import csr_matrix
 
         self.matrix = csr_matrix(
             (r_values, (u_indices, i_indices)),

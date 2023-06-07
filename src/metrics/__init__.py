@@ -1,9 +1,12 @@
 import torch
+from torch import Tensor
+from typing import Dict, List
+
 
 METRICS_KS = [1, 5, 10, 20, 30, 40, 50]
 
 
-def ndcg(scores, labels, k):
+def ndcg(scores: Tensor, labels: Tensor, k: int = 10) -> Tensor:
     scores = scores.cpu()
     labels = labels.cpu()
     rank = (-scores).argsort(dim=1)
@@ -17,11 +20,10 @@ def ndcg(scores, labels, k):
     return ndcg.mean()
 
 
-def recalls_and_ndcgs_for_ks(scores, labels, ks):
+def recalls_and_ndcgs_for_ks(
+    scores: Tensor, labels: Tensor, ks: List[int]
+) -> Dict[str, float]:
     metrics = {}
-
-    scores = scores
-    labels = labels
     answer_count = labels.sum(1)
 
     labels_float = labels.float()

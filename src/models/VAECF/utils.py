@@ -1,9 +1,11 @@
-# from turtle import shape
 import numpy as np
 import torch
+from torch import Tensor
+from typing import Turple
+from scipy.sparse import csr_matrix
 
 
-def split_matrix_by_mask(matrix):
+def split_matrix_by_mask(matrix: csr_matrix):
     buy_idxs = np.nonzero(matrix)  # SHAPE (USER_ROW, ITEM_COL)
     buy_idxs = buy_idxs.transpose(0, 1)
 
@@ -31,7 +33,9 @@ def split_matrix_by_mask(matrix):
     return non_masked_matrix, masked_matrix, masked_idx
 
 
-def recall_precision_f1_calculate(pred_tensor, true_tensor, k=100):
+def recall_precision_f1_calculate(
+    pred_tensor: Tensor, true_tensor: Tensor, k: int = 100
+) -> Turple[float, float, float]:
     nonzero = torch.nonzero(true_tensor)
     pred_top_idx = pred_tensor.topk(k, dim=1).indices
 
@@ -40,7 +44,7 @@ def recall_precision_f1_calculate(pred_tensor, true_tensor, k=100):
 
     recall = hit_num / len(nonzero)
     precision = hit_num / (k * true_tensor.shape[0])
-    
+
     if precision + recall == 0:
         f1_score = 0
     else:
