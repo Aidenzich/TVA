@@ -9,7 +9,7 @@ from utils import recall_at_k, ndcg_at_k
 sys.path.append("../../")
 from src.configs import DATACLASS_PATH, LOG_PATH
 from src.models.VAECF import VAECFModel
-from src.datasets.matrix_dset import MatrixDataset
+from src.datasets.vaecf_dset import VAECFDataset
 from torch.utils.data import DataLoader
 import torch
 from tqdm import tqdm
@@ -45,7 +45,7 @@ with open(DATACLASS_PATH / dataset, "rb") as f:
 
 recdata.show_info_table()
 
-inferset = MatrixDataset(recdata.matrix)
+inferset = VAECFDataset(recdata.matrix)
 model = VAECFModel.load_from_checkpoint(model_path)
 infer_loader = DataLoader(
     inferset, batch_size=1024, shuffle=False, num_workers=8, pin_memory=True

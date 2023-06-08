@@ -1,4 +1,4 @@
-from src.datasets.matrix_dset import MatrixDataset
+from src.datasets.vaecf_dset import VAECFDataset
 from src.models.VAECF.model import VAECFModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
@@ -11,9 +11,9 @@ def train(
     recdata,
     callbacks: list = [],
 ) -> None:
-    trainset = MatrixDataset(recdata.train_matrix)
-    testset = MatrixDataset(recdata.test_matrix)
-    valset = MatrixDataset(recdata.val_matrix)
+    trainset = VAECFDataset(recdata.train_matrix)
+    testset = VAECFDataset(recdata.test_matrix)
+    valset = VAECFDataset(recdata.val_matrix)
     model = VAECFModel(
         num_items=recdata.num_items,
         model_params=model_params,
@@ -40,7 +40,7 @@ def infer(ckpt_path, recdata, rec_ks=100):
     latent_factor_path.mkdir(parents=True, exist_ok=False)
 
     device = torch.device("cuda:0")
-    inferset = MatrixDataset(recdata.matrix)
+    inferset = VAECFDataset(recdata.matrix)
     model = VAECFModel.load_from_checkpoint(ckpt_path)
     infer_loader = DataLoader(inferset, batch_size=3096, shuffle=False, pin_memory=True)
     model.to(device)

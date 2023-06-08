@@ -3,7 +3,7 @@ import torch
 import numpy as np
 
 
-class MatrixDataset(Dataset):
+class VAECFDataset(Dataset):
     def __init__(self, data, wise="row"):
         self.data = data
         self.wise = wise
