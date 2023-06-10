@@ -1,0 +1,49 @@
+{
+    "data_class": "ratings_beauty_5.pkl",
+    "trainer_config": {    
+      "check_val_every_n_epoch": 50,
+      "lr": 0.001,
+      "lr_scheduler": "Warmup",
+      "lr_scheduler_args": {
+        "num_warmup_steps": 200,
+        "num_training_steps": 35000,
+        "num_cycles": 0.2
+      },
+      "weight_decay": 0,
+      "ks": [
+        1,
+        5,
+        10,
+        20
+      ],
+      "label_smoothing": 0.0,
+      "limit_train_batches": 1.0,
+      "max_epochs": 400,
+      "seed": 0,
+      "num_workers": 12,
+      "devices": [
+        0
+      ]
+    },
+    "model_params": {
+      "mask_prob": 0.15,
+      "d_model": 128,
+      "n_layers": 1,
+      "dropout": 0.3,
+      "attention_dropout": 0,
+      "activation": "gelu",
+      "reparam_dropout_rate": 0.0,    
+      "initializer_range": 0.02,
+      "train_method": "latent_contrastive_learning",
+      "arguement_method": "",
+      "variational_dropout": 0.1,
+      "heads": 4,
+      "max_len": 50,
+      "batch_size": 256,
+      "total_annealing_step": 10000,
+      "anneal_cap": 0.2,
+      "latent_clr_weight": 0.6,
+      "temperature": 0.5,
+      "store_latent": false
+    }
+  }

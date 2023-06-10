@@ -1,0 +1,24 @@
+data_class: ratings_beauty_5.pkl
+early_stopping:
+  mode: max
+  monitor: vae_recall@50
+  patience: 10
+  verbose: false
+model_params:
+  act_fn: tanh
+  autoencoder_structure:
+  - 512
+  batch_size: 512
+  beta: 0.0
+  hidden_dim: 256
+  likelihood: mult
+trainer_config:
+  devices:
+  - 0
+  limit_train_batches: 1.0
+  lr_scheduler: ReduceLROnPlateau
+  lr_scheduler_args:
+    patience: 10
+  max_epochs: 100
+  num_workers: 14
+  seed: 0
