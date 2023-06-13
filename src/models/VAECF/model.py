@@ -2,10 +2,10 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch import Tensor
-from tqdm.auto import trange
 import pytorch_lightning as pl
-from typing import List, Tuple, Any
-from .utils import split_matrix_by_mask, recall_precision_f1_calculate
+from typing import Tuple, Any
+from .utils import recall_precision_f1_calculate
+from ...datasets.vaecf_dset import split_matrix_by_mask
 from ...modules.utils import SCHEDULER
 
 
