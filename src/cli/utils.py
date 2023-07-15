@@ -14,15 +14,13 @@ def get_models():
 
 def get_configs(model_name, data_class="", extention="yaml"):
     p = Path(f"./configs").glob("**/*")
-    
 
     configs = [
         x
         for x in p
         if x.is_file()
-        and (model_name.lower() in str(x.name).split(".") 
-        and f".{extention}" in str(x))
-        and (data_class.replace(".pkl", "").lower()) in str(x.name).split(".") 
+        and (model_name.lower() in str(x.name).split(".") and f".{extention}" in str(x))
+        and (data_class.replace(".pkl", "").lower()) in str(x.name).split(".")
     ]
 
     configs = sorted(configs)
@@ -60,7 +58,8 @@ def get_negative_samples():
 
 def get_checkpoint_path(model_lower_name, data_class_stem):
     print(data_class_stem, model_lower_name)
-    find_path = f"*{data_class_stem}*{model_lower_name}*/**/*.ckpt"
+    find_path = f"*{data_class_stem}/{model_lower_name}*/**/*.ckpt"
+    print(find_path)
     p = Path(LOG_PATH).glob(find_path)
     ckpt_paths = [x for x in p if x.is_file()]
     ckpts = [str(x).replace(str(LOG_PATH), "")[1:] for x in ckpt_paths]

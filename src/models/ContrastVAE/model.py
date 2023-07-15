@@ -1,6 +1,5 @@
 from typing import Any, Dict
 import pytorch_lightning as pl
-import torch.nn.functional as F
 import torch
 import torch.nn as nn
 from ...modules.sasrec_modules import (
@@ -13,15 +12,6 @@ from ...modules.sasrec_modules import (
 )
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
-import numpy as np
-from .utils import (
-    recall_at_k,
-    ndcg_k,
-    get_metric,
-    cal_mrr,
-    get_user_performance_perpopularity,
-    get_item_performance_perpopularity,
-)
 import os
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
@@ -50,7 +40,6 @@ class ContrastVAEModel(pl.LightningModule):
         latent_contrastive_learning, latent_data_augmentation, VAandDA]"""
 
         if model_params["variational_dropout"]:
-
             self.model = ContrastVAE_VD(
                 num_items,
                 hidden_size=self.d_model,
@@ -621,7 +610,6 @@ class ContrastVAE(nn.Module):
         self.temperature = nn.Parameter(torch.zeros(1), requires_grad=True)
 
     def add_position_embedding(self, sequence):
-
         seq_length = sequence.size(1)
         position_ids = torch.arange(
             seq_length, dtype=torch.long, device=sequence.device
@@ -635,7 +623,7 @@ class ContrastVAE(nn.Module):
 
         return sequence_emb  # shape: b*max_Sq*d
 
-    def extended_attention_mask(self, input_ids):
+    def get_extended_attention_mask(self, input_ids):
         attention_mask = (input_ids > 0).long()  # used for mu, var
         extended_attention_mask = attention_mask.unsqueeze(1).unsqueeze(
             2
@@ -664,11 +652,9 @@ class ContrastVAE(nn.Module):
         return extended_attention_mask
 
     def eps_anneal_function(self, step):
-
         return min(1.0, (1.0 * step) / self.total_annealing_step)
 
     def reparameterization(self, mu, logvar, step):  # vanila reparam
-
         std = torch.exp(0.5 * logvar)
         if self.training:
             eps = torch.randn_like(std)
@@ -682,7 +668,6 @@ class ContrastVAE(nn.Module):
         return mu + std
 
     def reparameterization2(self, mu, logvar, step):  # use dropout
-
         if self.training:
             std = self.latent_dropout(torch.exp(0.5 * logvar))
         else:
@@ -710,7 +695,6 @@ class ContrastVAE(nn.Module):
             module.bias.data.zero_()
 
     def encode(self, sequence_emb, extended_attention_mask):  # forward
-
         item_encoded_mu_layers = self.item_encoder_mu(
             sequence_emb, extended_attention_mask, output_all_encoded_layers=True
         )
@@ -729,9 +713,8 @@ class ContrastVAE(nn.Module):
         return sequence_output
 
     def forward(self, input_ids, aug_input_ids, step):
-
         sequence_emb = self.add_position_embedding(input_ids)  # shape: b*max_Sq*d
-        extended_attention_mask = self.extended_attention_mask(input_ids)
+        extended_attention_mask = self.get_extended_attention_mask(input_ids)
 
         if self.train_method == "latent_contrastive_learning":
             mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask)
@@ -848,16 +831,14 @@ class ContrastVAE_VD(ContrastVAE):
         self.drop_rate = nn.Parameter(torch.tensor(0.2), requires_grad=True)
 
     def reparameterization3(self, mu, logvar, step):  # use drop out
-
         std, alpha = self.latent_dropout_VD(torch.exp(0.5 * logvar))
         res = mu + std
         return res, alpha
 
     def forward(self, input_ids, augmented_input_ids, step):
-
         if self.variational_dropout:
             sequence_emb = self.add_position_embedding(input_ids)  # shape: b*max_Sq*d
-            extended_attention_mask = self.extended_attention_mask(input_ids)
+            extended_attention_mask = self.get_extended_attention_mask(input_ids)
             mu1, log_var1 = self.encode(sequence_emb, extended_attention_mask)
             mu2, log_var2 = self.encode(sequence_emb, extended_attention_mask)
             z1 = self.reparameterization1(mu1, log_var1, step)
@@ -867,11 +848,11 @@ class ContrastVAE_VD(ContrastVAE):
 
         else:
             sequence_emb = self.add_position_embedding(input_ids)  # shape: b*max_Sq*d
-            extended_attention_mask = self.extended_attention_mask(input_ids)
+            extended_attention_mask = self.get_extended_attention_mask(input_ids)
             aug_sequence_emb = self.add_position_embedding(
                 augmented_input_ids
             )  # shape: b*max_Sq*d
-            aug_extended_attention_mask = self.extended_attention_mask(
+            aug_extended_attention_mask = self.get_extended_attention_mask(
                 augmented_input_ids
             )
 

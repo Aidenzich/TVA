@@ -18,6 +18,7 @@ from tqdm import tqdm
 dataset = "beauty.pkl"
 dataset = "toys.pkl"
 dataset = "ml1m.pkl"
+dataset = "bb.pkl"
 device = torch.device("cuda:0")
 
 if dataset == "beauty.pkl":
@@ -38,6 +39,9 @@ if dataset == "ml1m.pkl":
     # model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d256_as1024/version_0/checkpoints/epoch=99-step=1200.ckpt"
     # model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d256_as256_beta1.0/version_0/checkpoints/epoch=99-step=1200.ckpt"
     model_path = "/home/VS6102093/thesis/TVA/logs/ml1m.vaecf.d256_as256_beta0.4/version_30/checkpoints/epoch=99-step=1200.ckpt"
+
+if dataset == "bb.pkl":
+    model_path = ""
 
 
 with open(DATACLASS_PATH / dataset, "rb") as f:

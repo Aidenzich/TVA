@@ -10,7 +10,7 @@ from src.models import INFER_FACTORY
 import signal
 
 
-#%%
+# %%
 def keyboard_interrupt_handler(signal, frame) -> None:
     # Handle the keyboard interrupt here
     print(signal, frame)
@@ -68,6 +68,7 @@ def main() -> None:
         model_path.name.lower(), dcls_path.stem.lower()
     )
 
+    print(ckpt_paths)
     assert ckpt_paths != [], RED_COLOR + "No checkpoint found" + END_COLOR
 
     question = [

@@ -1,6 +1,6 @@
 from src.adapters.lightning_adapter import fit
 from src.datasets.cvae_dset import CVAEDataset
-from src.models.ContrastVAE.model import ContrastVAEModel
+from .model import SASRecModel
 
 
 def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
@@ -28,7 +28,7 @@ def train(model_params, trainer_config, recdata, callbacks=[]) -> None:
         max_len=model_params["max_len"],
     )
 
-    model = ContrastVAEModel(
+    model = SASRecModel(
         num_items=recdata.num_items,
         model_params=model_params,
         trainer_config=trainer_config,

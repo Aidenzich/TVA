@@ -9,6 +9,7 @@ from .BERT4Rec import train as train_bert4rec, infer as infer_bert4rec
 from .BERT4RecS import train as train_bert4recs, infer as infer_bert4recs
 from .CBiT import train as train_cbit
 from .ContrastVAE import train as train_cvae
+from .SASRec import train as train_sasrec
 from tabulate import tabulate
 
 from ..configs import CYAN_COLOR, END_COLOR
@@ -23,6 +24,7 @@ TRAIN_FACTORY = {
     "bert4recs": train_bert4recs,
     "cbit": train_cbit,
     "contrastvae": train_cvae,
+    "sasrec": train_sasrec,
 }
 INFER_FACTORY = {
     "bert4rec": infer_bert4rec,
@@ -61,19 +63,20 @@ class Trainer(metaclass=ABCMeta):
         print(
             CYAN_COLOR,
             "\n",
-            "Model Parameters: ",            
+            "Model Parameters: ",
         )
 
-        print(tabulate(
-            data,
-            headers=["property", "value"],
-            tablefmt="heavy_outline",
-            numalign="right",
-        ))
+        print(
+            tabulate(
+                data,
+                headers=["property", "value"],
+                tablefmt="heavy_outline",
+                numalign="right",
+            )
+        )
         print(END_COLOR + "\n")
 
     def print_trainer_config(self) -> None:
-
         data = []
         for k, v in self.trainer_config.items():
             if type(v) == dict:
@@ -82,18 +85,15 @@ class Trainer(metaclass=ABCMeta):
             else:
                 data.append([k, v])
 
+        print(CYAN_COLOR, "\n", "Trainer Configs: ", "\n")
         print(
-            CYAN_COLOR,
-            "\n",
-            "Trainer Configs: ",
-            "\n"
-        )
-        print(tabulate(
+            tabulate(
                 data,
                 headers=["property", "value"],
                 tablefmt="heavy_outline",
                 numalign="right",
-            ))
+            )
+        )
         print(END_COLOR + "\n")
 
     def train(self) -> None:
