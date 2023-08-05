@@ -11,9 +11,10 @@ def train(
     recdata,
     callbacks: list = [],
 ) -> None:
-    trainset = VAECFDataset(recdata.train_matrix)
-    testset = VAECFDataset(recdata.test_matrix)
-    valset = VAECFDataset(recdata.val_matrix)
+    trainset = VAECFDataset(recdata.matrix)
+    testset = VAECFDataset(recdata.matrix, u2val=recdata.test_seqs, mode="eval")
+    valset = VAECFDataset(recdata.matrix, u2val=recdata.val_seqs, mode="eval")
+
     model = VAECFModel(
         num_items=recdata.num_items,
         model_params=model_params,

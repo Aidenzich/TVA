@@ -7,17 +7,34 @@ from typing import Tuple
 
 
 class VAECFDataset(Dataset):
-    def __init__(self, data, wise="row") -> None:
+    def __init__(self, data, u2val=None, mode: str = "train", wise="row") -> None:
         self.data = data
         self.wise = wise
+        self.u2val = u2val
+        self.mode = mode
 
     def __len__(self) -> int:
         return self.data.shape[0]
 
-    def __getitem__(self, idx) -> Tensor:
+    def _get_eval(self, idx) -> bool:
         rdata = self.data[idx, :].A[0]
 
-        return torch.tensor(rdata, dtype=torch.float32)
+        return {
+            "matrix": torch.tensor(rdata, dtype=torch.float32),
+            "validate_data": self.u2val[idx] if self.u2val else None,
+        }
+
+    def _get_train(self, idx) -> bool:
+        rdata = self.data[idx, :].A[0]
+        return {
+            "matrix": torch.tensor(rdata, dtype=torch.float32),
+        }
+
+    def __getitem__(self, idx) -> Tensor:
+        if self.mode == "train":
+            return self._get_train(idx)
+        else:
+            return self._get_eval(idx)
 
 
 def split_matrix_by_mask(matrix: csr_matrix) -> Tuple[Tensor, Tensor, Tuple[int, int]]:

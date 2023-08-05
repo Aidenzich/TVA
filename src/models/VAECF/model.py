@@ -7,6 +7,7 @@ from typing import Tuple, Any
 from .utils import recall_precision_f1_calculate
 from ...datasets.vaecf_dset import split_matrix_by_mask
 from ...modules.utils import SCHEDULER
+from ...metrics import recall_at_k, ndcg_at_k, METRICS_KS
 
 
 class VAECFModel(pl.LightningModule):
@@ -63,6 +64,8 @@ class VAECFModel(pl.LightningModule):
         return optimizer
 
     def training_step(self, batch, batch_idx) -> Tensor:
+        batch = batch["matrix"]
+
         _batch, mu, logvar = self.vae(batch)
 
         # Annealing beta by epoch
@@ -80,34 +83,51 @@ class VAECFModel(pl.LightningModule):
         return loss / self.batch_size
 
     def validation_step(self, batch, batch_idx) -> None:
-        x, true_y, _ = split_matrix_by_mask(batch)
+        val_seqs = batch["validate_data"][0]
+        batch_matrix = batch["matrix"]
+        self._eval(batch_matrix, val_seqs)
 
-        z_u, _ = self.vae.encode(x)
+    def _eval(self, batch_matrix, eval_seqs):
+        z_u, _ = self.vae.encode(batch_matrix)
         pred_y = self.vae.decode(z_u)
-        seen = x != 0
+        seen = batch_matrix != 0
         pred_y[seen] = 0
-        true_y[seen] = 0
 
-        recall, precision, f1 = recall_precision_f1_calculate(
-            pred_y, true_y, k=self.top_k
-        )
+        top_k = pred_y.topk(1000, dim=1)[1]  # Default: 1000
 
-        self.log(f"vae_recall@{self.top_k}", recall, sync_dist=True)
+        sum_metrics_dict = {}
+
+        for idx in range(batch_matrix.shape[0]):
+            pred_list = top_k[idx].tolist()
+            true_list = [eval_seqs[idx].tolist()]
+            for metric_k in METRICS_KS:
+                recall_k = recall_at_k(
+                    true_list=true_list, pred_list=pred_list, k=metric_k
+                )
+                ndcg_k = ndcg_at_k(true_list=true_list, pred_list=pred_list, k=metric_k)
+
+                sum_metrics_dict.setdefault(f"recall@{metric_k}", 0)
+                sum_metrics_dict.setdefault(f"ndcg@{metric_k}", 0)
+
+                sum_metrics_dict[f"recall@{metric_k}"] += recall_k
+                sum_metrics_dict[f"ndcg@{metric_k}"] += ndcg_k
+
+        for metric_k in METRICS_KS:
+            self.log(
+                f"leave1out_recall@{metric_k}",
+                sum_metrics_dict[f"recall@{metric_k}"] / len(eval_seqs),
+                sync_dist=True,
+            )
+            self.log(
+                f"leave1out_ndcg@{metric_k}",
+                sum_metrics_dict[f"ndcg@{metric_k}"] / len(eval_seqs),
+                sync_dist=True,
+            )
 
     def test_step(self, batch, batch_idx) -> None:
-        x, true_y, _ = split_matrix_by_mask(batch)
-        z_u, _ = self.vae.encode(x)
-        pred_y = self.vae.decode(z_u)
-
-        seen = x != 0
-        pred_y[seen] = 0
-        true_y[seen] = 0
-
-        recall, precision, f1 = recall_precision_f1_calculate(
-            pred_y, true_y, k=self.top_k
-        )
-
-        self.log(f"vae_recall@{self.top_k}", recall, sync_dist=True)
+        test_seqs = batch["validate_data"][0]
+        batch_matrix = batch["matrix"]
+        self._eval(batch_matrix, test_seqs)
 
 
 EPS = 1e-10

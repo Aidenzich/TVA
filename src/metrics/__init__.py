@@ -1,9 +1,9 @@
 import torch
 from torch import Tensor
 from typing import Dict, List
+import numpy as np
 
-
-METRICS_KS = [1, 5, 10, 20, 30, 40, 50]
+METRICS_KS = [1, 5, 10, 20]
 
 
 def ndcg(scores: Tensor, labels: Tensor, k: int = 10) -> Tensor:
@@ -74,3 +74,36 @@ def recall_precision_f1_calculate(scores, labels, k):
         f1_score = 2 * (precision * recall) / (precision + recall)
 
     return recall, precision, f1_score
+
+
+def dcg_at_k(r, k):
+    r = np.asfarray(r)[:k]
+    if r.size:
+        return r[0] + np.sum(r[1:] / np.log2(np.arange(2, r.size + 1)))
+    return 0.0
+
+
+def ndcg_at_k(pred_list, true_list, k):
+    pred_labels = [1 if i in true_list else 0 for i in pred_list]
+    true_labels = [1 if i in true_list else 0 for i in true_list]
+
+    idcg = dcg_at_k(sorted(true_labels, reverse=True), k)
+    dcg = dcg_at_k(pred_labels, k)
+    return dcg / idcg if idcg > 0.0 else 0.0
+
+
+def recall_at_k(pred_list, true_list, k):
+    # Get top-k items
+    top_k_items = pred_list[:k]
+
+    # Check if true_item is among top-k
+    relevant_count = 0
+    for true_item in true_list:
+        if true_item in set(top_k_items):
+            relevant_count += 1
+
+    # Avoid division by zero
+    if len(true_list) == 0:
+        return 0
+
+    return relevant_count / len(true_list)
