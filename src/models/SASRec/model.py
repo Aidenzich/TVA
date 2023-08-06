@@ -6,6 +6,7 @@ import pytorch_lightning as pl
 from ...modules.sasrec_modules import Encoder, LayerNorm, Intermediate
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
+from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 
 
 class SASRecModel(pl.LightningModule):
@@ -101,7 +102,7 @@ class SASRecModel(pl.LightningModule):
         seq_emb = seq_out.view(-1, self.d_model)
         test_item_emb = self.model.item_embeddings.weight
         logits = torch.matmul(seq_emb, test_item_emb.transpose(0, 1))
-        # loss = self.loss_fct(logits, torch.squeeze(pos_ids.view(-1)))
+
         loss = F.cross_entropy(
             logits,
             torch.squeeze(pos_ids.view(-1)),
@@ -163,8 +164,14 @@ class SASRec(nn.Module):
         initializer_range,
     ) -> None:
         super().__init__()
-        self.item_embeddings = nn.Embedding(num_items + 2, hidden_size, padding_idx=0)
-        self.position_embeddings = nn.Embedding(max_seq_length, hidden_size)
+
+        self.item_embeddings = TokenEmbedding(
+            vocab_size=num_items + 2, embed_size=hidden_size
+        )
+        self.position_embeddings = PositionalEmbedding(
+            max_len=max_seq_length, d_model=hidden_size
+        )
+
         self.item_encoder = Encoder(
             hidden_size=hidden_size,
             num_attention_heads=num_attention_heads,
@@ -173,6 +180,7 @@ class SASRec(nn.Module):
             hidden_act=hidden_act,
             num_hidden_layers=num_hidden_layers,
         )
+
         self.LayerNorm = LayerNorm(hidden_size, eps=1e-12)
         self.dropout = nn.Dropout(hidden_dropout_prob)
 
@@ -185,7 +193,6 @@ class SASRec(nn.Module):
         self.initializer_range = initializer_range
         self.dis_projection = nn.Linear(hidden_size, 1)
 
-        self.criterion = nn.BCELoss(reduction="none")
         self.apply(self.init_weights)
 
     # Positional Embedding
@@ -242,7 +249,7 @@ class SASRec(nn.Module):
             sequence_output = item_encoded_layers[-1]
         return sequence_output
 
-    def init_weights(self, module):
+    def init_weights(self, module) -> None:
         """Initialize the weights."""
         if isinstance(module, (nn.Linear, nn.Embedding)):
             module.weight.data.normal_(mean=0.0, std=self.initializer_range)

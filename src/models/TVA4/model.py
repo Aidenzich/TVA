@@ -6,12 +6,11 @@ import torch.nn.functional as F
 from torch import Tensor
 
 from src.configs import RED_COLOR, END_COLOR, OUTPUT_PATH
-from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
+from ...modules.embeddings import TokenEmbedding, PositionalEmbedding, TimeEmbedding
 from ...modules.feedforward import PositionwiseFeedForward
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 from ...models.BERT4Rec.model import BERT
-import pickle
 
 
 class TVAModel(pl.LightningModule):
@@ -338,15 +337,13 @@ class TVAEmbedding(nn.Module):
 
         if len(self.time_features) > 0:
             # Time features
-
-            self.years_emb = nn.Embedding(2100, embed_size)
-            self.months_emb = nn.Embedding(13, embed_size)
-            self.days_emb = nn.Embedding(32, embed_size)
-            self.seasons_emb = nn.Embedding(5, embed_size)
-            self.hour_emb = nn.Embedding(25, embed_size)
-            # self.minute_emb = nn.Embedding(61, embed_size)
-            # self.second_emb = nn.Embedding(61, embed_size)
-            self.dayofweek_emb = nn.Embedding(8, embed_size)
+            self.time_emb = TimeEmbedding(embed_size, max_len, dropout=dropout)
+            # self.years_emb = nn.Embedding(2100, embed_size)
+            # self.months_emb = nn.Embedding(13, embed_size)
+            # self.days_emb = nn.Embedding(32, embed_size)
+            # self.seasons_emb = nn.Embedding(5, embed_size)
+            # self.hour_emb = nn.Embedding(25, embed_size)
+            # self.dayofweek_emb = nn.Embedding(8, embed_size)
             features_num += 1
             in_dim += embed_size
 
@@ -413,34 +410,9 @@ class TVAEmbedding(nn.Module):
         if self.time_features:
             years, months, days, seasons, hours, minutes, seconds, dayofweek = time_seqs
 
-            years = self.years_emb(years)
-            months = self.months_emb(months)
-            days = self.days_emb(days)
-
-            seasons = self.seasons_emb(seasons)
-            hours = self.hour_emb(hours)
-            # seconds = self.second_emb(seconds)
-            # minutes = self.minute_emb(minutes)
-
-            dayofweek = self.dayofweek_emb(dayofweek)
-            time_dict = {
-                "years": years,
-                "months": months,
-                "days": days,
-                "seasons": seasons,
-                "hours": hours,
-                "dayofweek": dayofweek,
-                # "seconds": seconds,
-                # "minutes": minutes,
-            }
-
-            time_features_tensor = None
-
-            for t in self.time_features:
-                if time_features_tensor is None:
-                    time_features_tensor = time_dict[t]
-                else:
-                    time_features_tensor = time_features_tensor + time_dict[t]
+            time_features_tensor = self.time_emb(
+                years, months, days, seasons, hours, dayofweek
+            )
 
             _cat.append(time_features_tensor)
 
@@ -448,7 +420,6 @@ class TVAEmbedding(nn.Module):
         if len(_cat) != 1:
             # If use gate, then use gate to combine all features
             if self.use_gate:
-                # print("use gate")
                 x = self.gate(_cat)
             # Otherwise, use concat to combine all features
             else:

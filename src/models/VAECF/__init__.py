@@ -12,8 +12,10 @@ def train(
     callbacks: list = [],
 ) -> None:
     trainset = VAECFDataset(recdata.matrix)
-    testset = VAECFDataset(recdata.matrix, u2val=recdata.test_seqs, mode="eval")
+
     valset = VAECFDataset(recdata.matrix, u2val=recdata.val_seqs, mode="eval")
+
+    testset = VAECFDataset(recdata.test_matrix, u2val=recdata.test_seqs, mode="eval")
 
     model = VAECFModel(
         num_items=recdata.num_items,
@@ -41,7 +43,7 @@ def infer(ckpt_path, recdata, rec_ks=100):
     latent_factor_path.mkdir(parents=True, exist_ok=False)
 
     device = torch.device("cuda:0")
-    inferset = VAECFDataset(recdata.matrix)
+    inferset = VAECFDataset(recdata.test_matrix)
     model = VAECFModel.load_from_checkpoint(ckpt_path)
     infer_loader = DataLoader(inferset, batch_size=3096, shuffle=False, pin_memory=True)
     model.to(device)

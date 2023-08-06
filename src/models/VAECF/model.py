@@ -9,6 +9,19 @@ from ...datasets.vaecf_dset import split_matrix_by_mask
 from ...modules.utils import SCHEDULER
 from ...metrics import recall_at_k, ndcg_at_k, METRICS_KS
 
+EPS = 1e-10
+torch.set_default_dtype(torch.float32)
+
+
+# Available Activation functions
+ACT = {
+    "sigmoid": nn.Sigmoid(),
+    "tanh": nn.Tanh(),
+    "elu": nn.ELU(),
+    "relu": nn.ReLU(),
+    "relu6": nn.ReLU6(),
+}
+
 
 class VAECFModel(pl.LightningModule):
     def __init__(
@@ -87,6 +100,12 @@ class VAECFModel(pl.LightningModule):
         batch_matrix = batch["matrix"]
         self._eval(batch_matrix, val_seqs)
 
+    def test_step(self, batch, batch_idx) -> None:
+        test_seqs = batch["validate_data"][0]
+        batch_matrix = batch["matrix"]
+
+        self._eval(batch_matrix, test_seqs)
+
     def _eval(self, batch_matrix, eval_seqs):
         z_u, _ = self.vae.encode(batch_matrix)
         pred_y = self.vae.decode(z_u)
@@ -123,25 +142,6 @@ class VAECFModel(pl.LightningModule):
                 sum_metrics_dict[f"ndcg@{metric_k}"] / len(eval_seqs),
                 sync_dist=True,
             )
-
-    def test_step(self, batch, batch_idx) -> None:
-        test_seqs = batch["validate_data"][0]
-        batch_matrix = batch["matrix"]
-        self._eval(batch_matrix, test_seqs)
-
-
-EPS = 1e-10
-torch.set_default_dtype(torch.float32)
-
-
-# Available Activation functions
-ACT = {
-    "sigmoid": nn.Sigmoid(),
-    "tanh": nn.Tanh(),
-    "elu": nn.ELU(),
-    "relu": nn.ReLU(),
-    "relu6": nn.ReLU6(),
-}
 
 
 class VAE(nn.Module):

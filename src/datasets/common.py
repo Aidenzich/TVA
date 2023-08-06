@@ -141,6 +141,7 @@ class RecsysData:
         uir_df = uir_df[uir_df[RATING_COLUMN_NAME] > 0]
 
         drop_all_idx = []
+        drop_val_idx = []
 
         # Remove the last 2 items from each user's sequence for sequence test and validation
         for u in tqdm(self.val_seqs):
@@ -159,25 +160,39 @@ class RecsysData:
                 )
             )
 
+            val_drop_idx = np.where(((val[:, 1] == self.test_seqs[u][0])))
+
             # Add the index of the last 2 items to the list of indexes to be removed
             drop_all_idx.extend(list(val_idx[drop_idx[0]]))
+            drop_val_idx.extend(list(val_idx[val_drop_idx[0]]))
 
         print("Number of items to be removed from training matrix:", len(drop_all_idx))
         print("Shape of uir_df before drop:", uir_df.shape)
+
+        test_uir_df = uir_df.drop(drop_val_idx)
         uir_df = uir_df.drop(drop_all_idx)
+
         print("Shape of uir_df after drop:", uir_df.shape)
         uir_vals = uir_df.values
         u_indices, i_indices, r_values = uir_vals[:, 0], uir_vals[:, 1], uir_vals[:, 2]
+
+        # For test
+        test_uir_vals = test_uir_df.values
+        test_u_indices, test_i_indices, test_r_values = (
+            test_uir_vals[:, 0],
+            test_uir_vals[:, 1],
+            test_uir_vals[:, 2],
+        )
 
         self.matrix = csr_matrix(
             (r_values, (u_indices, i_indices)),
             shape=(self.num_users, self.num_items),
         )
-        (
-            self.train_matrix,
-            self.test_matrix,
-            self.val_matrix,
-        ) = self._split_matrix_by_user()
+
+        self.test_matrix = csr_matrix(
+            (test_r_values, (test_u_indices, test_i_indices)),
+            shape=(self.num_users, self.num_items),
+        )
 
     def _split_df_u2seq(
         self, split_method: str = "leave_one_out"

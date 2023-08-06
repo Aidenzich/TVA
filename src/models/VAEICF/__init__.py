@@ -8,46 +8,21 @@ import random
 from torch.nn import functional as F
 
 
-def _split_matrix_by_item(recdata: RecsysData):
-    """
-    Splitting matrix by random shuffle user for train, testing and validation
-    """
-
-    print("Splitting matrix by random shuffle user for train, testing and validation")
-
-    # split to train val and test
-    users = list(recdata.i2cat.values())
-
-    random.shuffle(users)
-    train_num = int(len(users) * 0.98)
-    test_num = int(len(users) * 0.01)
-    # val_num = len(users) - train_num - test_num
-    # print(len(users[:train_num]))
-
-    train_users = users[:train_num]
-    test_users = users[-test_num:]
-    val_users = users[train_num:-test_num]
-
-    matrix = recdata.matrix.transpose()
-
-    train_matrix = matrix[train_users, :]
-    test_matrix = matrix[test_users, :]
-    val_matrix = matrix[val_users, :]
-
-    return train_matrix, test_matrix, val_matrix
-
-
 def train(
     model_params: dict,
     trainer_config: dict,
     recdata: RecsysData,
     callbacks: list = [],
 ) -> None:
-    train_matrix, test_matrix, val_matrix = _split_matrix_by_item(recdata)
+    trainset = VAECFDataset(recdata.matrix.transpose())
 
-    trainset = VAECFDataset(train_matrix)
-    testset = VAECFDataset(test_matrix)
-    valset = VAECFDataset(val_matrix)
+    valset = VAECFDataset(
+        recdata.matrix.transpose(), u2val=recdata.val_seqs, mode="eval"
+    )
+    testset = VAECFDataset(
+        recdata.test_matrix.transpose(), u2val=recdata.test_seqs, mode="eval"
+    )
+
     model = VAECFModel(
         num_items=recdata.num_users,
         model_params=model_params,
@@ -89,7 +64,8 @@ def infer(ckpt_path, recdata, rec_ks=100):
 
     with torch.no_grad():
         for batch in tqdm(infer_loader):
-            batch = batch.to(device)
+            batch = batch["matrix"].to(device)
+
             z_u, z_sigma = model.vae.encode(batch)
             y = model.vae.decode(z_u)
 
