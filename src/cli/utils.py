@@ -19,8 +19,8 @@ def get_configs(model_name, data_class="", extention="yaml"):
         x
         for x in p
         if x.is_file()
-        and (model_name.lower() in str(x.name).split(".") and f".{extention}" in str(x))
-        and (data_class.replace(".pkl", "").lower()) in str(x.name).split(".")
+        and (model_name.lower() in str(x).split("/") and f".{extention}" in str(x))
+        and (data_class.replace(".pkl", "").lower()) in str(x).split("/")
     ]
 
     configs = sorted(configs)

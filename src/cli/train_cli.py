@@ -14,32 +14,38 @@ warnings.filterwarnings("ignore", ".*(log_every_n_steps).*")
 def create_configs_from_template(
     model_path, data_class_name, data_class_stem, tune=False, config_name="default"
 ):
-    template_path = model_path / (("tune." if tune else "") + "template.json")
+    template_path = model_path / (("tune." if tune else "") + "template.yaml")
 
     print(f"Creating configs from template {template_path}")
 
-    config = json.load(open(template_path, "r"))
+    # config = json.load(open(template_path, "r"))
+    config = yaml.safe_load(open(template_path))
+
     config["data_class"] = data_class_name
 
-    yaml.dump(config, open(template_path.with_suffix(".yaml"), "w"))
+    # yaml.dump(config, open(template_path.with_suffix(".yaml"), "w"))
 
     new_config_path = CONFIG_PATH / (
         f"{data_class_stem}"  # data class name
-        + f".{model_path.name.lower()}"  # model name
-        + f".{config_name}"
+        + f"/{model_path.name.lower()}"  # model name
+        + f"/{config_name}"
         + (".tune" if tune else "")  # tune or not
-        + ".json"
+        + ".yaml"
     )
 
-    json.dump(config, open(new_config_path, "w"), indent=2)
+    # Create folder for the config if not exist
+    new_config_path.parent.mkdir(parents=True, exist_ok=True)
+
+    yaml.dump(config, open(new_config_path, "w"))
+    # json.dump(config, open(new_config_path, "w"), indent=2)
 
     print(f"Created {new_config_path} successfully")
     return new_config_path
 
 
-def create_new_config_inquirer() -> None:
-    data_classes, data_classes_paths = get_dataclass()
-    assert data_classes != [], "No dataclass found"
+def create_new_config_inquirer(dcls_path) -> None:
+    # data_classes, data_classes_paths = get_dataclass()
+    # assert data_classes != [], "No dataclass found"
 
     questions = [
         inquirer.List(
@@ -47,15 +53,15 @@ def create_new_config_inquirer() -> None:
             message="Do you want to auto-tune your model?",
             choices=["yes", "no"],
         ),
-        inquirer.List(
-            "data_class",
-            message="Which data class do you need? (Check in data/cache/dataclass)",
-            choices=data_classes,
-        ),
+        # inquirer.List(
+        #     "data_class",
+        #     message="Which data class do you need? (Check in data/cache/dataclass)",
+        #     choices=data_classes,
+        # ),
         inquirer.Text("config_name", message="What's config name? (blank: default)"),
     ]
     answers = inquirer.prompt(questions)
-    dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
+    # dcls_path = data_classes_paths[data_classes.index(answers["data_class"])]
 
     tune = False
     if answers["istune"] == "yes":
@@ -89,15 +95,15 @@ if __name__ == "__main__":
 
     answers = inquirer.prompt(questions)
     midx = models.index(answers["model"])
-    dcls = answers["data_class"]    
+    dcls = answers["data_class"]
+    dcls_path = data_classes_paths[data_classes.index(dcls)]
     model_path = models_path[midx]
-    
+
     configs = get_configs(model_name=model_path.name, data_class=dcls)
-    
-    
+
     if configs == []:
         print(f'No config of {answers["model"]} found')
-        create_new_config_inquirer()
+        create_new_config_inquirer(dcls_path=dcls_path)
     else:
         configs.append("➕ create new config")
 
@@ -111,8 +117,8 @@ if __name__ == "__main__":
 
         answers = inquirer.prompt(which_configs)
 
-        if answers["config"] == "+ create new config":
-            create_new_config_inquirer()
+        if answers["config"] == "➕ create new config":
+            create_new_config_inquirer(dcls_path=dcls_path)
         else:
             print("Using existing config")
             selected_config_path = answers["config"]
@@ -120,9 +126,13 @@ if __name__ == "__main__":
             # config = json.load(open(selected_config_path))
             config = yaml.safe_load(open(selected_config_path))
 
-            config["trainer_config"]["config_name"] = selected_config_path.name.replace(
-                ".json", ""
-            ).replace(".yaml", "")
+            config["trainer_config"]["config_name"] = (
+                ".".join(str(selected_config_path).split("/")[1:])
+                .replace(".json", "")
+                .replace(".yaml", "")
+            )
+
+            print(config["trainer_config"]["config_name"])
 
             # yaml.dump(config, open(selected_config_path.with_suffix(".yaml"), "w"))
 

@@ -13,6 +13,7 @@ from ...modules.sasrec_modules import (
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
 import os
+import torch.nn.functional as F
 
 os.environ["CUDA_LAUNCH_BLOCKING"] = "1"
 
@@ -399,7 +400,7 @@ class ContrastVAEModel(pl.LightningModule):
         )
 
         """compute reconstruction loss from Trainer"""
-        recons_loss1, recons_auc = self.cross_entropy(
+        recons_loss1, recons_auc = self.binary_cross_entropy_loss(
             reconstructed_seq1, target_pos_seq, target_neg_seq
         )
 
@@ -444,12 +445,17 @@ class ContrastVAEModel(pl.LightningModule):
         )
 
         """compute reconstruction loss from Trainer"""
-        recons_loss1, recons_auc = self.cross_entropy(
+        recons_loss1, recons_auc = self.binary_cross_entropy_loss(
             reconstructed_seq1, target_pos_seq, target_neg_seq
         )
-        recons_loss2, recons_auc = self.cross_entropy(
+        recons_loss2, recons_auc = self.binary_cross_entropy_loss(
             reconstructed_seq2, target_pos_seq, target_neg_seq
         )
+
+        # If we use cross entropy loss, the result is not good for contrastVAE
+        # recons_auc = None
+        # recons_loss1 = self.cross_entropy_loss(reconstructed_seq1, target_pos_seq)
+        # recons_loss2 = self.cross_entropy_loss(reconstructed_seq2, target_pos_seq)
 
         """compute clr loss"""
         user_representation1 = torch.sum(z1, dim=1)
@@ -503,10 +509,10 @@ class ContrastVAEModel(pl.LightningModule):
         )
 
         """compute reconstruction loss from Trainer"""
-        recons_loss1, recons_auc = self.cross_entropy(
+        recons_loss1, recons_auc = self.binary_cross_entropy_loss(
             reconstructed_seq1, target_pos_seq, target_neg_seq
         )
-        recons_loss2, recons_auc = self.cross_entropy(
+        recons_loss2, recons_auc = self.binary_cross_entropy_loss(
             reconstructed_seq2, target_pos_seq, target_neg_seq
         )
 
@@ -528,7 +534,7 @@ class ContrastVAEModel(pl.LightningModule):
 
         return loss, recons_auc
 
-    def cross_entropy(self, seq_out, pos_ids, neg_ids):
+    def binary_cross_entropy_loss(self, seq_out, pos_ids, neg_ids):
         # [batch seq_len hidden_size]
         pos_emb = self.model.item_embeddings(pos_ids)
         neg_emb = self.model.item_embeddings(neg_ids)
@@ -551,6 +557,18 @@ class ContrastVAEModel(pl.LightningModule):
         ) / torch.sum(istarget)
 
         return loss, auc
+
+    def cross_entropy_loss(self, seq_out, pos_ids):
+        seq_emb = seq_out.view(-1, self.d_model)
+        test_item_emb = self.model.item_embeddings.weight
+        logits = torch.matmul(seq_emb, test_item_emb.transpose(0, 1))
+
+        loss = F.cross_entropy(
+            logits,
+            torch.squeeze(pos_ids.view(-1)),
+            label_smoothing=0.0,
+        )
+        return loss
 
 
 class ContrastVAE(nn.Module):

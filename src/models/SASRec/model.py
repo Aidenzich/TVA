@@ -77,7 +77,7 @@ class SASRecModel(pl.LightningModule):
 
         return loss
 
-    def binary_cross_entropy_loss(self, seq_out, pos_ids, neg_ids):
+    def binary_cross_entropy_loss(self, seq_out, pos_ids, neg_ids) -> torch.Tensor:
         # [batch seq_len hidden_size]
         pos_emb = self.model.item_embeddings(pos_ids)
         neg_emb = self.model.item_embeddings(neg_ids)
