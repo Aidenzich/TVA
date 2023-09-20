@@ -1,11 +1,9 @@
-from src.datasets.vaecf_dset import VAECFDataset
+from src.datasets.vaecf_dset import VAECFDataset, _split_random_matrix_by_item
 from src.models.VAECF.model import VAECFModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
 from src.datasets.common import RecsysData
 import numpy as np
-import random
-from torch.nn import functional as F
 
 
 def train(
@@ -14,30 +12,58 @@ def train(
     recdata: RecsysData,
     callbacks: list = [],
 ) -> None:
-    transaction = recdata.dataframe
-    # Group by item and get the last two user buy the item
-    transaction.sort_values(by=["item_id", "timestamp"], inplace=True)
-    test_transaction = transaction.groupby("item_id").tail(1).sort_values("item_id")
+    vae_split_type = model_params["split_type"]
 
-    # Convert to dictionary like itemid: [userid]
-    test_user_seqs = (
-        test_transaction.groupby("item_id")["user_id"].apply(list).to_dict()
-    )
+    if vae_split_type == "loo":
+        transaction = recdata.dataframe
+        # Group by item and get the last two user buy the item
+        transaction.sort_values(by=["item_id", "timestamp"], inplace=True)
+        test_transaction = transaction.groupby("item_id").tail(1).sort_values("item_id")
 
-    val_transaction = transaction.groupby("item_id").tail(2).sort_values("item_id")
-    # romove test_transaction row from val_transaction
-    val_transaction = val_transaction.drop(test_transaction.index)
+        # Convert to dictionary like itemid: [userid]
+        test_user_seqs = (
+            test_transaction.groupby("item_id")["user_id"].apply(list).to_dict()
+        )
 
-    print(len(val_transaction.item_id), len(test_transaction.item_id))
+        val_transaction = transaction.groupby("item_id").tail(2).sort_values("item_id")
+        # romove test_transaction row from val_transaction
+        val_transaction = val_transaction.drop(test_transaction.index)
 
-    val_user_seqs = val_transaction.groupby("item_id")["user_id"].apply(list).to_dict()
+        print(len(val_transaction.item_id), len(test_transaction.item_id))
 
-    trainset = VAECFDataset(recdata.matrix.transpose())
-
-    valset = VAECFDataset(recdata.matrix.transpose(), u2val=val_user_seqs, mode="eval")
-    testset = VAECFDataset(
-        recdata.test_matrix.transpose(), u2val=test_user_seqs, mode="eval"
-    )
+        val_user_seqs = (
+            val_transaction.groupby("item_id")["user_id"].apply(list).to_dict()
+        )
+        trainset = VAECFDataset(
+            recdata.matrix.transpose(),
+            split_type="loo",
+        )
+        valset = VAECFDataset(
+            recdata.matrix.transpose(),
+            u2val=val_user_seqs,
+            mode="eval",
+            split_type="loo",
+        )
+        testset = VAECFDataset(
+            recdata.test_matrix.transpose(),
+            u2val=test_user_seqs,
+            mode="eval",
+            split_type="loo",
+        )
+    elif vae_split_type == "random":
+        train_matrix, test_matrix, val_matrix = _split_random_matrix_by_item(recdata)
+        trainset = VAECFDataset(
+            train_matrix,
+            split_type="random",
+        )
+        valset = VAECFDataset(
+            test_matrix,
+            split_type="random",
+        )
+        testset = VAECFDataset(
+            val_matrix,
+            split_type="random",
+        )
 
     model = VAECFModel(
         num_items=recdata.num_users,
@@ -68,7 +94,7 @@ def infer(ckpt_path, recdata, rec_ks=100):
     matrix = recdata.matrix.transpose()
     # matrix = recdata.test_matrix.transpose()
 
-    inferset = VAECFDataset(matrix)
+    inferset = VAECFDataset(matrix, split_type="")
     model = VAECFModel.load_from_checkpoint(ckpt_path)
     model.to(device)
 

@@ -3,38 +3,48 @@ from torch import Tensor
 from torch.utils.data import Dataset
 import numpy as np
 from scipy.sparse import csr_matrix
-from typing import Tuple
+from typing import Tuple, Any
+from src.datasets.common import RecsysData
+import random
 
 
 class VAECFDataset(Dataset):
-    def __init__(self, data, u2val=None, mode: str = "train", wise="row") -> None:
+    def __init__(self, data, split_type, u2val=None, mode: str = "train") -> None:
         self.data = data
-        self.wise = wise
         self.u2val = u2val
         self.mode = mode
+        self.split_type = split_type
 
     def __len__(self) -> int:
         return self.data.shape[0]
 
-    def _get_eval(self, idx) -> bool:
+    def _get_loo_eval(self, idx) -> bool:
         rdata = self.data[idx, :].A[0]
 
         return {
-            "matrix": torch.tensor(rdata, dtype=torch.float32),
+            "matrix": torch.tensor(
+                rdata,
+                dtype=torch.float32,
+            ),
             "validate_data": self.u2val[idx] if self.u2val else None,
         }
 
-    def _get_train(self, idx) -> bool:
-        rdata = self.data[idx, :].A[0]
+    def _get_matrix_tensor(self, idx) -> bool:
         return {
-            "matrix": torch.tensor(rdata, dtype=torch.float32),
+            "matrix": torch.tensor(
+                self.data[idx, :].A[0],
+                dtype=torch.float32,
+            )
         }
 
     def __getitem__(self, idx) -> Tensor:
-        if self.mode == "train":
-            return self._get_train(idx)
+        if self.split_type == "loo":
+            if self.mode == "train":
+                return self._get_matrix_tensor(idx)
+            else:
+                return self._get_loo_eval(idx)
         else:
-            return self._get_eval(idx)
+            return self._get_matrix_tensor(idx)
 
 
 def split_matrix_by_mask(matrix: csr_matrix) -> Tuple[Tensor, Tensor, Tuple[int, int]]:
@@ -69,3 +79,59 @@ def split_matrix_by_mask(matrix: csr_matrix) -> Tuple[Tensor, Tensor, Tuple[int,
     non_masked_matrix[masked_idx] = 0
 
     return non_masked_matrix, masked_matrix, masked_idx
+
+
+def _split_random_matrix_by_user(recdata: RecsysData) -> Tuple[Any, Any, Any]:
+    """
+    Splitting matrix by random shuffle user for train, testing and validation
+    """
+
+    print("*Splitting matrix by random shuffle user for train, testing and validation*")
+
+    # split to train val and test
+    users = list(recdata.u2cat.values())
+
+    random.shuffle(users)
+    train_num = int(len(users) * 0.98)
+    test_num = int(len(users) * 0.01)
+    # val_num = len(users) - train_num - test_num
+    # print(len(users[:train_num]))
+
+    train_users = users[:train_num]
+    test_users = users[-test_num:]
+    val_users = users[train_num:-test_num]
+
+    train_matrix = recdata.matrix[train_users, :]
+    test_matrix = recdata.matrix[test_users, :]
+    val_matrix = recdata.matrix[val_users, :]
+
+    return train_matrix, test_matrix, val_matrix
+
+
+def _split_random_matrix_by_item(recdata: RecsysData):
+    """
+    Splitting matrix by random shuffle user for train, testing and validation
+    """
+
+    print("Splitting matrix by random shuffle user for train, testing and validation")
+
+    # split to train val and test
+    items = list(recdata.i2cat.values())
+
+    random.shuffle(items)
+    train_num = int(len(items) * 0.98)
+    test_num = int(len(items) * 0.01)
+    # val_num = len(users) - train_num - test_num
+    # print(len(users[:train_num]))
+
+    train_users = items[:train_num]
+    test_users = items[-test_num:]
+    val_users = items[train_num:-test_num]
+
+    matrix = recdata.matrix.transpose()
+
+    train_matrix = matrix[train_users, :]
+    test_matrix = matrix[test_users, :]
+    val_matrix = matrix[val_users, :]
+
+    return train_matrix, test_matrix, val_matrix

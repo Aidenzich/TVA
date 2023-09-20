@@ -89,35 +89,6 @@ class RecsysData:
         )
         print(END_COLOR)
 
-    def _split_matrix_by_user(self) -> Tuple[Any, Any, Any]:
-        """
-        Splitting matrix by random shuffle user for train, testing and validation
-        """
-
-        print(
-            "Splitting matrix by random shuffle user for train, testing and validation"
-        )
-
-        # split to train val and test
-        users = list(self.u2cat.values())
-        import random
-
-        random.shuffle(users)
-        train_num = int(len(users) * 0.98)
-        test_num = int(len(users) * 0.01)
-        # val_num = len(users) - train_num - test_num
-        # print(len(users[:train_num]))
-
-        train_users = users[:train_num]
-        test_users = users[-test_num:]
-        val_users = users[train_num:-test_num]
-
-        train_matrix = self.matrix[train_users, :]
-        test_matrix = self.matrix[test_users, :]
-        val_matrix = self.matrix[val_users, :]
-
-        return train_matrix, test_matrix, val_matrix
-
     def _filter_rating_threshold(self, df: pd.DataFrame, threshold=5) -> pd.DataFrame:
         return df[df[RATING_COLUMN_NAME] >= threshold]
 

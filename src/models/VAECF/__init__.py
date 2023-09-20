@@ -11,11 +11,29 @@ def train(
     recdata,
     callbacks: list = [],
 ) -> None:
-    trainset = VAECFDataset(recdata.matrix)
+    vae_split_type = model_params["split_type"]
+    if vae_split_type == "loo":
+        trainset = VAECFDataset(recdata.matrix)
 
-    valset = VAECFDataset(recdata.matrix, u2val=recdata.val_seqs, mode="eval")
+        valset = VAECFDataset(recdata.matrix, u2val=recdata.val_seqs, mode="eval")
 
-    testset = VAECFDataset(recdata.test_matrix, u2val=recdata.test_seqs, mode="eval")
+        testset = VAECFDataset(
+            recdata.test_matrix, u2val=recdata.test_seqs, mode="eval"
+        )
+
+    elif vae_split_type == "random":
+        trainset = VAECFDataset(
+            recdata.random_train_matrix,
+            split_type="random",
+        )
+        testset = VAECFDataset(
+            recdata.test_matrix,
+            split_type="random",
+        )
+        valset = VAECFDataset(
+            recdata.val_matrix,
+            split_type="random",
+        )
 
     model = VAECFModel(
         num_items=recdata.num_items,

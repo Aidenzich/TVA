@@ -41,6 +41,7 @@ class VAECFModel(pl.LightningModule):
         self.annealing_epoch = model_params["beta_annealing_epoch"]
         self.batch_size = model_params["batch_size"]
         self.weight_decay = trainer_config.get("weight_decay", 0.0)
+        self.split_type = model_params["split_type"]
 
         self.lr = trainer_config.get("lr", 1e-3)
         self.lr_scheduler = SCHEDULER.get(trainer_config.get("lr_scheduler", None))
@@ -96,17 +97,26 @@ class VAECFModel(pl.LightningModule):
         return loss / self.batch_size
 
     def validation_step(self, batch, batch_idx) -> None:
-        val_seqs = batch["validate_data"][0]
         batch_matrix = batch["matrix"]
-        self._eval(batch_matrix, val_seqs)
+        if self.split_type == "loo":
+            val_seqs = batch["validate_data"][0]
+
+            self._eval_loo(batch_matrix, val_seqs)
+
+        elif self.split_type == "random":
+            self._eval_random(batch_matrix)
 
     def test_step(self, batch, batch_idx) -> None:
-        test_seqs = batch["validate_data"][0]
         batch_matrix = batch["matrix"]
 
-        self._eval(batch_matrix, test_seqs)
+        if self.split_type == "loo":
+            test_seqs = batch["validate_data"][0]
+            self._eval_loo(batch_matrix, test_seqs)
 
-    def _eval(self, batch_matrix, eval_seqs):
+        elif self.split_type == "random":
+            self._eval_random(batch_matrix)
+
+    def _eval_loo(self, batch_matrix, eval_seqs):
         z_u, _ = self.vae.encode(batch_matrix)
         pred_y = self.vae.decode(z_u)
         seen = batch_matrix != 0
@@ -142,6 +152,22 @@ class VAECFModel(pl.LightningModule):
                 sum_metrics_dict[f"ndcg@{metric_k}"] / len(eval_seqs),
                 sync_dist=True,
             )
+
+    def _eval_random(self, batch_matrix) -> None:
+        x, true_y, _ = split_matrix_by_mask(batch_matrix)
+
+        z_u, _ = self.vae.encode(x)
+        pred_y = self.vae.decode(z_u)
+        seen = x != 0
+        pred_y[seen] = 0
+        true_y[seen] = 0
+
+        for metric_k in METRICS_KS:
+            recall, precision, f1 = recall_precision_f1_calculate(
+                pred_y, true_y, k=metric_k
+            )
+
+            self.log(f"vae_recall@{metric_k}", recall, sync_dist=True)
 
 
 class VAE(nn.Module):
