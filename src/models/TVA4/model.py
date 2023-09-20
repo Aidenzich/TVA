@@ -77,6 +77,7 @@ class TVAModel(pl.LightningModule):
             dropout=model_params["dropout"],
             user_latent_factor_dim=userwise_var_dim if use_userwise_var else 0,
             item_latent_factor_dim=itemwise_var_dim if use_itemwise_var else 0,
+            use_softmax_on_item_latent=self.use_softmax_on_item_latent,
             time_features=model_params.get("time_features", []),
             latent_ff_dim=latent_ff_dim,
             use_gate=self.use_gate,
@@ -383,6 +384,7 @@ class TVAEmbedding(nn.Module):
             user_latent = self.user_latent_emb_ff(user_latent)
             _cat.append(user_latent)
 
+        # print("Item latent factor dim: ", self.item_latent_factor_dim)
         if self.item_latent_factor_dim != 0:
             assert (
                 itemwise_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2
@@ -393,11 +395,17 @@ class TVAEmbedding(nn.Module):
                 + END_COLOR
             )
 
+            # print(
+            #     "Using softmax on item latent factor", self.use_softmax_on_item_latent
+            # )
             # Use softmax on item latent factor
             if self.use_softmax_on_item_latent:
+                # print("Use softmax on item latent factor")
+                # print("Before:", itemwise_latent_factor_seq)
                 itemwise_latent_factor_seq = F.softmax(
                     itemwise_latent_factor_seq, dim=2
                 )
+                # print("Before:", itemwise_latent_factor_seq)
 
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
 

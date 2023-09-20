@@ -75,10 +75,10 @@ plt.rcParams["font.family"] = "serif"
 plt.rcParams["font.size"] = 16
 
 datasets = [r"\textbf{Beauty}", r"\textbf{Toys}", r"\textbf{ML-1m}"]
-BERT4Rec = [0.0560, 0.0547, 0.1791]
-wo_WarmUp = [0.0542, 0.0539, 0.1720]
-wo_Sliding_Window = [0.0461, 0.0460, 0.1578]
-wo_Multi_Mask = [0.0484, 0.0463, 0.1669]
+BERT4Rec = [0.0560, 0.0547, 0.1856]
+wo_WarmUp = [0.0542, 0.0539, 0.1782]
+wo_Sliding_Window = [0.0461, 0.0460, 0.1635]
+wo_Multi_Mask = [0.0484, 0.0463, 0.1729]
 
 bar_width = 0.15
 r1 = np.arange(len(datasets))

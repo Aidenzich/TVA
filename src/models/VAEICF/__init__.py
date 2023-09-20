@@ -14,13 +14,29 @@ def train(
     recdata: RecsysData,
     callbacks: list = [],
 ) -> None:
+    transaction = recdata.dataframe
+    # Group by item and get the last two user buy the item
+    transaction.sort_values(by=["item_id", "timestamp"], inplace=True)
+    test_transaction = transaction.groupby("item_id").tail(1).sort_values("item_id")
+
+    # Convert to dictionary like itemid: [userid]
+    test_user_seqs = (
+        test_transaction.groupby("item_id")["user_id"].apply(list).to_dict()
+    )
+
+    val_transaction = transaction.groupby("item_id").tail(2).sort_values("item_id")
+    # romove test_transaction row from val_transaction
+    val_transaction = val_transaction.drop(test_transaction.index)
+
+    print(len(val_transaction.item_id), len(test_transaction.item_id))
+
+    val_user_seqs = val_transaction.groupby("item_id")["user_id"].apply(list).to_dict()
+
     trainset = VAECFDataset(recdata.matrix.transpose())
 
-    valset = VAECFDataset(
-        recdata.matrix.transpose(), u2val=recdata.val_seqs, mode="eval"
-    )
+    valset = VAECFDataset(recdata.matrix.transpose(), u2val=val_user_seqs, mode="eval")
     testset = VAECFDataset(
-        recdata.test_matrix.transpose(), u2val=recdata.test_seqs, mode="eval"
+        recdata.test_matrix.transpose(), u2val=test_user_seqs, mode="eval"
     )
 
     model = VAECFModel(
@@ -50,11 +66,18 @@ def infer(ckpt_path, recdata, rec_ks=100):
 
     device = torch.device("cuda:0")
     matrix = recdata.matrix.transpose()
+    # matrix = recdata.test_matrix.transpose()
 
     inferset = VAECFDataset(matrix)
     model = VAECFModel.load_from_checkpoint(ckpt_path)
-    infer_loader = DataLoader(inferset, batch_size=3096, shuffle=False, pin_memory=True)
     model.to(device)
+
+    infer_loader = DataLoader(
+        inferset,
+        batch_size=3096,
+        shuffle=False,
+        pin_memory=True,
+    )
 
     predict_result: dict = {}
     user_count = 0
@@ -98,4 +121,4 @@ def infer(ckpt_path, recdata, rec_ks=100):
     with open(latent_factor_path / "encode_result.npy", "wb+") as f:
         np.save(f, all_z)
 
-    return predict_result
+    return False  # Return False to prevent the reverse_id

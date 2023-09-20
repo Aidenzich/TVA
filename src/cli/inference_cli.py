@@ -115,17 +115,19 @@ def main() -> None:
             recdata=recdata,
             rec_ks=top_k,
         )
-    predict_result = recdata.reverse_ids(recdata, predict_result)
 
-    json.dump(
-        predict_result,
-        open(
-            OUTPUT_PATH
-            / f"{ckpt_path.parent.parent.parent.name}.{ckpt_path.stem.lower()}.json",
-            "w",
-        ),
-        indent=2,
-    )
+    if predict_result != False:
+        predict_result = recdata.reverse_ids(recdata, predict_result)
+
+        json.dump(
+            predict_result,
+            open(
+                OUTPUT_PATH
+                / f"{ckpt_path.parent.parent.parent.name}.{ckpt_path.stem.lower()}.json",
+                "w",
+            ),
+            indent=2,
+        )
 
     print("Infer Complete")
 

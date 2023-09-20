@@ -177,7 +177,7 @@ class VAE(nn.Module):
         h = self.encoder(x)
         return self.enc_mu(h), self.enc_logvar(h)
 
-    def decode(self, z):
+    def decode(self, z) -> Tensor:
         h = self.decoder(z)
         if self.likelihood == "mult":
             return torch.softmax(h, dim=1)
