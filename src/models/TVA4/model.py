@@ -1,12 +1,12 @@
 import pytorch_lightning as pl
-from typing import Dict, Optional, Any
+from typing import Dict, Optional, Any, List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
 from src.configs import RED_COLOR, END_COLOR, OUTPUT_PATH
-from ...modules.embeddings import TokenEmbedding, PositionalEmbedding, TimeEmbedding
+from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
 from ...modules.feedforward import PositionwiseFeedForward
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
@@ -77,7 +77,6 @@ class TVAModel(pl.LightningModule):
             dropout=model_params["dropout"],
             user_latent_factor_dim=userwise_var_dim if use_userwise_var else 0,
             item_latent_factor_dim=itemwise_var_dim if use_itemwise_var else 0,
-            use_softmax_on_item_latent=self.use_softmax_on_item_latent,
             time_features=model_params.get("time_features", []),
             latent_ff_dim=latent_ff_dim,
             use_gate=self.use_gate,
@@ -280,6 +279,44 @@ class SoftGate(nn.Module):
         return output
 
 
+class TimeEmbedding(nn.Module):
+    def __init__(self, embed_size):
+        super(TimeEmbedding, self).__init__()
+        self.years_emb = nn.Embedding(2100, embed_size)
+        self.months_emb = nn.Embedding(13, embed_size)
+        self.days_emb = nn.Embedding(32, embed_size)
+        self.seasons_emb = nn.Embedding(5, embed_size)
+        self.hour_emb = nn.Embedding(25, embed_size)
+        self.dayofweek_emb = nn.Embedding(8, embed_size)
+
+    def forward(self, time_features, time_seqs):
+        years, months, days, seasons, hours, _, _, dayofweek = time_seqs
+        years = self.years_emb(years)
+        months = self.months_emb(months)
+        days = self.days_emb(days)
+        seasons = self.seasons_emb(seasons)
+        hours = self.hour_emb(hours)
+        dayofweek = self.dayofweek_emb(dayofweek)
+
+        time_dict = {
+            "years": years,
+            "months": months,
+            "days": days,
+            "seasons": seasons,
+            "hours": hours,
+            "dayofweek": dayofweek,
+        }
+
+        time_features_tensor = None
+        for t in time_features:
+            if time_features_tensor is None:
+                time_features_tensor = time_dict[t]
+            else:
+                time_features_tensor += time_dict[t]
+
+        return time_features_tensor
+
+
 # TVA Embedding
 class TVAEmbedding(nn.Module):
     def __init__(
@@ -290,7 +327,7 @@ class TVAEmbedding(nn.Module):
         user_latent_factor_dim=None,
         item_latent_factor_dim=None,
         latent_ff_dim=128,
-        time_features=[],
+        time_features: List[str] = [],
         dropout=0.1,
         use_softmax_on_item_latent=False,
         use_gate=True,
@@ -336,15 +373,16 @@ class TVAEmbedding(nn.Module):
             in_dim += embed_size
             features_num += 1
 
+        # Time features
         if len(self.time_features) > 0:
-            # Time features
-            self.time_emb = TimeEmbedding(embed_size, max_len, dropout=dropout)
+            self.time_embedding = TimeEmbedding(embed_size)
             # self.years_emb = nn.Embedding(2100, embed_size)
             # self.months_emb = nn.Embedding(13, embed_size)
             # self.days_emb = nn.Embedding(32, embed_size)
             # self.seasons_emb = nn.Embedding(5, embed_size)
             # self.hour_emb = nn.Embedding(25, embed_size)
             # self.dayofweek_emb = nn.Embedding(8, embed_size)
+
             features_num += 1
             in_dim += embed_size
 
@@ -360,7 +398,7 @@ class TVAEmbedding(nn.Module):
         userwise_latent_factor,
         itemwise_latent_factor_seq,
         time_seqs=None,
-    ):
+    ) -> Tensor:
         x = self.token(item_seq) + self.position(item_seq)
         _cat = [x]
 
@@ -384,7 +422,6 @@ class TVAEmbedding(nn.Module):
             user_latent = self.user_latent_emb_ff(user_latent)
             _cat.append(user_latent)
 
-        # print("Item latent factor dim: ", self.item_latent_factor_dim)
         if self.item_latent_factor_dim != 0:
             assert (
                 itemwise_latent_factor_seq.shape[2] == self.item_latent_factor_dim * 2
@@ -395,17 +432,11 @@ class TVAEmbedding(nn.Module):
                 + END_COLOR
             )
 
-            # print(
-            #     "Using softmax on item latent factor", self.use_softmax_on_item_latent
-            # )
             # Use softmax on item latent factor
             if self.use_softmax_on_item_latent:
-                # print("Use softmax on item latent factor")
-                # print("Before:", itemwise_latent_factor_seq)
                 itemwise_latent_factor_seq = F.softmax(
                     itemwise_latent_factor_seq, dim=2
                 )
-                # print("Before:", itemwise_latent_factor_seq)
 
             item_latent = self.item_latent_emb(itemwise_latent_factor_seq)
 
@@ -418,16 +449,39 @@ class TVAEmbedding(nn.Module):
         if self.time_features:
             years, months, days, seasons, hours, minutes, seconds, dayofweek = time_seqs
 
-            time_features_tensor = self.time_emb(
-                years, months, days, seasons, hours, dayofweek
-            )
+            # years = self.years_emb(years)
+            # months = self.months_emb(months)
+            # days = self.days_emb(days)
 
+            # seasons = self.seasons_emb(seasons)
+            # hours = self.hour_emb(hours)
+
+            # dayofweek = self.dayofweek_emb(dayofweek)
+            # time_dict = {
+            #     "years": years,
+            #     "months": months,
+            #     "days": days,
+            #     "seasons": seasons,
+            #     "hours": hours,
+            #     "dayofweek": dayofweek,
+            # }
+
+            # time_features_tensor = None
+
+            # for t in self.time_features:
+            #     if time_features_tensor is None:
+            #         time_features_tensor = time_dict[t]
+            #     else:
+            #         time_features_tensor = time_features_tensor + time_dict[t]
+
+            time_features_tensor = self.time_embedding(self.time_features, time_seqs)
             _cat.append(time_features_tensor)
 
         # Len of _cat is 1 means only original bert embedding
         if len(_cat) != 1:
             # If use gate, then use gate to combine all features
             if self.use_gate:
+                # print("use gate")
                 x = self.gate(_cat)
             # Otherwise, use concat to combine all features
             else:
