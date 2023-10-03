@@ -85,7 +85,7 @@ class Trainer(metaclass=ABCMeta):
             else:
                 data.append([k, v])
 
-        print(CYAN_COLOR, "\n", "Trainer Configs: ", "\n")
+        print(CYAN_COLOR, "\n", "Trainer Configs: ")
         print(
             tabulate(
                 data,

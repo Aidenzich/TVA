@@ -1,12 +1,12 @@
 import pytorch_lightning as pl
-from typing import Dict, Optional, Any, List
+from typing import Dict, Any, List
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch import Tensor
 
 from src.configs import RED_COLOR, END_COLOR, OUTPUT_PATH
-from ...modules.embeddings import TokenEmbedding, PositionalEmbedding
+from ...modules.embeddings import TokenEmbedding, PositionalEmbedding, TimeEmbedding
 from ...modules.feedforward import PositionwiseFeedForward
 from ...modules.utils import SCHEDULER
 from ...metrics import recalls_and_ndcgs_for_ks, METRICS_KS
@@ -36,7 +36,6 @@ class TVAModel(pl.LightningModule):
         user_latent_factor_params = model_params.get("user_latent_factor", None)
         item_latent_factor_params = model_params.get("item_latent_factor", None)
         latent_ff_dim = model_params.get("latent_ff_dim", 0)
-
         self.max_len = model_params["max_len"]
         self.d_model = model_params["d_model"]
         self.num_mask = model_params.get("num_mask", 1)
@@ -218,14 +217,13 @@ class TVAModel(pl.LightningModule):
             minutes=batch[f"minutes"],
             seconds=batch[f"seconds"],
             dayofweek=batch[f"dayofweek"],
-        )
+        )  # Batch x Seq_len x Item_num
 
-        # scores = self.forward(batch)  # Batch x Seq_len x Item_num
         scores = scores[:, -1, :]  # Batch x Item_num
         scores[:, 0] = -999.999
         scores[
             :, -1
-        ] = -999.999  # pad token and mask token should not appear in the logits outpu
+        ] = -999.999  # Pad token and mask token should not appear in the logits outpu
 
         batch_candidates = batch["candidates"]
         batch_labels = batch["labels"]
@@ -267,54 +265,7 @@ class SoftGate(nn.Module):
         # Sum the gated inputs to get the final output
         output = torch.sum(torch.stack(gated_inputs), dim=0)
 
-        # print("\n")
-        # print("=" * 50)
-        # print(attention_weights.shape)
-        # print(attention_weights)
-        # mean = attention_weights.mean(dim=(0, 1))
-        # print(mean.shape)
-        # print(mean)
-        # print("=" * 50)
-
         return output
-
-
-class TimeEmbedding(nn.Module):
-    def __init__(self, embed_size):
-        super(TimeEmbedding, self).__init__()
-        self.years_emb = nn.Embedding(2100, embed_size)
-        self.months_emb = nn.Embedding(13, embed_size)
-        self.days_emb = nn.Embedding(32, embed_size)
-        self.seasons_emb = nn.Embedding(5, embed_size)
-        self.hour_emb = nn.Embedding(25, embed_size)
-        self.dayofweek_emb = nn.Embedding(8, embed_size)
-
-    def forward(self, time_features, time_seqs):
-        years, months, days, seasons, hours, _, _, dayofweek = time_seqs
-        years = self.years_emb(years)
-        months = self.months_emb(months)
-        days = self.days_emb(days)
-        seasons = self.seasons_emb(seasons)
-        hours = self.hour_emb(hours)
-        dayofweek = self.dayofweek_emb(dayofweek)
-
-        time_dict = {
-            "years": years,
-            "months": months,
-            "days": days,
-            "seasons": seasons,
-            "hours": hours,
-            "dayofweek": dayofweek,
-        }
-
-        time_features_tensor = None
-        for t in time_features:
-            if time_features_tensor is None:
-                time_features_tensor = time_dict[t]
-            else:
-                time_features_tensor += time_dict[t]
-
-        return time_features_tensor
 
 
 # TVA Embedding
@@ -376,12 +327,6 @@ class TVAEmbedding(nn.Module):
         # Time features
         if len(self.time_features) > 0:
             self.time_embedding = TimeEmbedding(embed_size)
-            # self.years_emb = nn.Embedding(2100, embed_size)
-            # self.months_emb = nn.Embedding(13, embed_size)
-            # self.days_emb = nn.Embedding(32, embed_size)
-            # self.seasons_emb = nn.Embedding(5, embed_size)
-            # self.hour_emb = nn.Embedding(25, embed_size)
-            # self.dayofweek_emb = nn.Embedding(8, embed_size)
 
             features_num += 1
             in_dim += embed_size
@@ -389,7 +334,7 @@ class TVAEmbedding(nn.Module):
         if in_dim != embed_size:
             self.cat_layer = nn.Linear(
                 in_dim, embed_size
-            )  # if you declare an un-used layer, it still will effect the output value
+            )  # If you declare an un-used layer, it still will effect the output value
             self.gate = SoftGate(embed_size, features_num)
 
     def forward(
@@ -447,33 +392,6 @@ class TVAEmbedding(nn.Module):
             _cat.append(item_latent)
 
         if self.time_features:
-            years, months, days, seasons, hours, minutes, seconds, dayofweek = time_seqs
-
-            # years = self.years_emb(years)
-            # months = self.months_emb(months)
-            # days = self.days_emb(days)
-
-            # seasons = self.seasons_emb(seasons)
-            # hours = self.hour_emb(hours)
-
-            # dayofweek = self.dayofweek_emb(dayofweek)
-            # time_dict = {
-            #     "years": years,
-            #     "months": months,
-            #     "days": days,
-            #     "seasons": seasons,
-            #     "hours": hours,
-            #     "dayofweek": dayofweek,
-            # }
-
-            # time_features_tensor = None
-
-            # for t in self.time_features:
-            #     if time_features_tensor is None:
-            #         time_features_tensor = time_dict[t]
-            #     else:
-            #         time_features_tensor = time_features_tensor + time_dict[t]
-
             time_features_tensor = self.time_embedding(self.time_features, time_seqs)
             _cat.append(time_features_tensor)
 
@@ -481,8 +399,8 @@ class TVAEmbedding(nn.Module):
         if len(_cat) != 1:
             # If use gate, then use gate to combine all features
             if self.use_gate:
-                # print("use gate")
                 x = self.gate(_cat)
+
             # Otherwise, use concat to combine all features
             else:
                 x = self.cat_layer(
