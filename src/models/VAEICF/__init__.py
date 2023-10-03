@@ -1,8 +1,8 @@
-from src.datasets.vaecf_dset import VAECFDataset, _split_random_matrix_by_item
+from src.datasets.vaecf_dset import VAECFDataset, split_random_matrix_by_item
 from src.models.VAECF.model import VAECFModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
-from src.datasets.common import RecsysData
+from src.datasets.base import RecsysData
 import numpy as np
 
 
@@ -51,7 +51,7 @@ def train(
             split_type="loo",
         )
     elif vae_split_type == "random":
-        train_matrix, test_matrix, val_matrix = _split_random_matrix_by_item(recdata)
+        train_matrix, test_matrix, val_matrix = split_random_matrix_by_item(recdata)
         trainset = VAECFDataset(
             train_matrix,
             split_type="random",

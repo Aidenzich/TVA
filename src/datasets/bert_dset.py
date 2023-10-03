@@ -8,21 +8,20 @@ import random
 class BertDataset(Dataset):
     def __init__(
         self,
-        u2seq,
+        u2seq: Dict[int, List[int]],
         max_len: int,
-        mask_token,
-        mode="train",  # train, eval, predict
+        mask_token: int,
+        mode="train",  # Available parameters: train, eval, predict
         num_items=0,
-        # Train
+        # Parameter Used for Training
         mask_prob=0,
         seed=0,
-        # Evaluate
+        # Parameter Used for Evaluation
         u2answer=None,
         u2test=None,
         u2val=None,
         num_mask=1,
     ) -> None:
-
         if mode == "eval":
             if u2answer is None:
                 raise ValueError("u2answer must be provided")
@@ -49,7 +48,6 @@ class BertDataset(Dataset):
         return len(self.u2seq)
 
     def __getitem__(self, index) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
-
         user = self.users[index]
         item_seq = self.u2seq[user]
 
@@ -69,7 +67,6 @@ class BertDataset(Dataset):
             return self._predict(item_seq=item_seq)
 
     def _get_train(self, item_seq):
-
         return_dict = {}
         for idx in range(self.num_mask):
             # Do masking
@@ -86,25 +83,21 @@ class BertDataset(Dataset):
             return_dict[f"labels_{idx}"] = torch.LongTensor(labels)
 
         return return_dict
-        # return {
-        #     "item_seq": torch.LongTensor(masked_item_seq),
-        #     "labels": torch.LongTensor(labels),
-        # }
 
     def _eval(
         self, item_seq, answer_item, val_item=None
     ) -> Dict[str, torch.LongTensor]:
-
         if val_item is not None:
-            # print("val_item", val_item)
             # In test phase, we add val_item to item_seq,
             # and use the item_seq to predict the answer_item
             item_seq = item_seq + val_item
 
         # Mask the last item, which need to be predicted
         item_seq = item_seq + [self.mask_token]
+
         # Truncate the sequence to max_len
         item_seq = item_seq[-self.max_len :]
+
         # Pad the sequence to max_len
         item_seq = [0] * (self.max_len - len(item_seq)) + item_seq
 
@@ -123,11 +116,11 @@ class BertDataset(Dataset):
         labels = [1] * len(answer_item) + [0] * (len(candidates) - 1)
 
         return {
-            # user's sequence
+            # User's Item sequence
             "item_seq": torch.LongTensor(item_seq),
-            # candidates from negative sampling
+            # Candidates from negative sampling
             "candidates": torch.LongTensor(candidates),
-            # labels from user's answer and negative samples
+            # Labels from user's answer and negative samples
             "labels": torch.LongTensor(labels),
         }
 

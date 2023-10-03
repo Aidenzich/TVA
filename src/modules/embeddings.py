@@ -1,19 +1,31 @@
 import torch.nn as nn
 from torch import Tensor
+from typing import List, Tuple, Optional
 
 
 class SegmentEmbedding(nn.Embedding):
-    def __init__(self, embed_size=512):
+    def __init__(
+        self,
+        embed_size: int,
+    ) -> None:
         super().__init__(3, embed_size, padding_idx=0)
 
 
 class TokenEmbedding(nn.Embedding):
-    def __init__(self, vocab_size, embed_size=512):
+    def __init__(
+        self,
+        vocab_size: int,
+        embed_size: int,
+    ) -> None:
         super().__init__(vocab_size, embed_size, padding_idx=0)
 
 
 class PositionalEmbedding(nn.Module):
-    def __init__(self, max_len, d_model):
+    def __init__(
+        self,
+        max_len: int,
+        d_model: int,
+    ) -> None:
         super().__init__()
 
         # Compute the positional encodings once in log space.
@@ -25,7 +37,11 @@ class PositionalEmbedding(nn.Module):
 
 
 class TimeEmbedding(nn.Module):
-    def __init__(self, embed_size):
+    def __init__(
+        self,
+        embed_size: int,
+        dropout: Optional[float] = 0.4,
+    ) -> None:
         super(TimeEmbedding, self).__init__()
         self.years_emb = nn.Embedding(2100, embed_size)
         self.months_emb = nn.Embedding(13, embed_size)
@@ -33,8 +49,15 @@ class TimeEmbedding(nn.Module):
         self.seasons_emb = nn.Embedding(5, embed_size)
         self.hour_emb = nn.Embedding(25, embed_size)
         self.dayofweek_emb = nn.Embedding(8, embed_size)
+        self.dropout = None
+        if dropout is not None:
+            self.dropout = nn.Dropout(dropout)
 
-    def forward(self, time_features, time_seqs):
+    def forward(
+        self,
+        time_features: List[str],
+        time_seqs: Tuple[Tensor],
+    ) -> Tensor:
         years, months, days, seasons, hours, _, _, dayofweek = time_seqs
         years = self.years_emb(years)
         months = self.months_emb(months)
@@ -58,5 +81,8 @@ class TimeEmbedding(nn.Module):
                 time_features_tensor = time_dict[t]
             else:
                 time_features_tensor += time_dict[t]
+
+        if self.dropout is not None:
+            time_features_tensor = self.dropout(time_features_tensor)
 
         return time_features_tensor

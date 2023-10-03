@@ -1,4 +1,4 @@
-#%%
+# %%
 from src.configs import (
     USER_COLUMN_NAME,
     ITEM_COLUMN_NAME,
@@ -6,7 +6,7 @@ from src.configs import (
     TIMESTAMP_COLUMN_NAME,
 )
 
-from src.datasets.common import RecsysData
+from src.datasets.base import RecsysData
 from .utils import get_data
 import pandas as pd
 

@@ -9,11 +9,11 @@
 
 Clone this repository to your local machine and navigate to the directory containing the Makefile.
 ```
-git clone <repository-url>
-cd <repository-directory>
+git clone https://github.com/Aidenzich/TVaR.git
+cd TVaR
 ```
 
-To create the `tvar` conda environment, run the following command:
+We use conda as default environment in this repo. To create the `tvar` conda environment, run the following command:
 
 ```
 conda create --name tvar python=3.8

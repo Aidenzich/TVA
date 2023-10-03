@@ -4,7 +4,7 @@ from torch.utils.data import Dataset
 import numpy as np
 from scipy.sparse import csr_matrix
 from typing import Tuple, Any
-from src.datasets.common import RecsysData
+from src.datasets.base import RecsysData
 import random
 
 
@@ -94,8 +94,6 @@ def _split_random_matrix_by_user(recdata: RecsysData) -> Tuple[Any, Any, Any]:
     random.shuffle(users)
     train_num = int(len(users) * 0.98)
     test_num = int(len(users) * 0.01)
-    # val_num = len(users) - train_num - test_num
-    # print(len(users[:train_num]))
 
     train_users = users[:train_num]
     test_users = users[-test_num:]
@@ -108,7 +106,7 @@ def _split_random_matrix_by_user(recdata: RecsysData) -> Tuple[Any, Any, Any]:
     return train_matrix, test_matrix, val_matrix
 
 
-def _split_random_matrix_by_item(recdata: RecsysData):
+def split_random_matrix_by_item(recdata: RecsysData):
     """
     Splitting matrix by random shuffle user for train, testing and validation
     """

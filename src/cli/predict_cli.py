@@ -1,6 +1,4 @@
-# %%
 import pickle
-import json
 import inquirer
 
 from .utils import get_dataclass, get_checkpoint_path, get_negative_samples
@@ -9,7 +7,7 @@ from src.cli.utils import get_models
 from src.models import INFER_FACTORY
 
 
-#%%
+# %%
 def keyboard_interrupt_handler(signal, frame) -> None:
     # Handle the keyboard interrupt here
     print(signal, frame)

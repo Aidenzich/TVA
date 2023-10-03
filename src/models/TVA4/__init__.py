@@ -1,4 +1,4 @@
-from src.datasets.common import RecsysData
+from src.datasets.base import RecsysData
 from src.datasets.tva_dset import TVASequenceDataset
 from .model import TVAModel
 from src.adapters.lightning_adapter import fit

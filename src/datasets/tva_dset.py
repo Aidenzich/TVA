@@ -1,7 +1,7 @@
 import torch
 from torch.utils.data import Dataset
-from torch import Tensor, LongTensor
-from typing import Dict, List, Tuple, Any, Optional
+from torch import Tensor, LongTensor, FloatTensor
+from typing import Dict, List, Tuple, Optional
 import random
 from pydantic import BaseModel
 import numpy as np
@@ -10,23 +10,24 @@ from ..datasets.bert_dset import get_masked_seq
 
 
 class TVASequences(BaseModel):
-    userwise_latent_factor: Optional[torch.FloatTensor]
-    itemwise_latent_factor_seq: Optional[torch.FloatTensor]
-    time_seq: Optional[torch.FloatTensor]
-    time_interval_seq: Optional[torch.LongTensor]
-    candidates: Optional[torch.LongTensor]
-    item_seq: Optional[torch.LongTensor]
-    vae_seq: Optional[torch.LongTensor]
-    labels: Optional[torch.LongTensor]
+    userwise_latent_factor: Optional[FloatTensor]
+    itemwise_latent_factor_seq: Optional[FloatTensor]
+    time_seq: Optional[FloatTensor]
 
-    years: Optional[torch.LongTensor]
-    months: Optional[torch.LongTensor]
-    days: Optional[torch.LongTensor]
-    seasons: Optional[torch.LongTensor]
-    hours: Optional[torch.LongTensor]
-    minutes: Optional[torch.LongTensor]
-    seconds: Optional[torch.LongTensor]
-    dayofweek: Optional[torch.LongTensor]
+    time_interval_seq: Optional[LongTensor]
+    candidates: Optional[LongTensor]
+    item_seq: Optional[LongTensor]
+    vae_seq: Optional[LongTensor]
+    labels: Optional[LongTensor]
+
+    years: Optional[LongTensor]
+    months: Optional[LongTensor]
+    days: Optional[LongTensor]
+    seasons: Optional[LongTensor]
+    hours: Optional[LongTensor]
+    minutes: Optional[LongTensor]
+    seconds: Optional[LongTensor]
+    dayofweek: Optional[LongTensor]
 
     class Config:
         arbitrary_types_allowed = True
@@ -40,23 +41,22 @@ class TVASequenceDataset(Dataset):
         max_len: int,
         mask_token: int,
         mode: str = "train",  # train, eval, inference
-        # Train parameters
+        # Parameters used for Training
         num_items: Optional[int] = 0,
         mask_prob: Optional[float] = 0.0,
         seed: Optional[int] = 0,
-        # Eval parameters
+        # Parameters used for Evaluation
         u2answer: Optional[Dict[int, List[int]]] = None,
         u2answer_time: Optional[Dict[int, List[int]]] = None,
         u2val_time: Optional[Dict[int, List[int]]] = None,
         u2val=None,
-        # Latent
+        # Latent factors
         user_latent_factor=None,
         item_latent_factor=None,
         # Sliding window
         seqs_user=None,
         num_mask=1,
     ) -> None:
-
         if mode == "eval":
             if u2answer is None and num_items == 0:
                 raise ValueError("num_items, u2answer must be provided")
@@ -131,7 +131,6 @@ class TVASequenceDataset(Dataset):
             return data
 
     def _get_train(self, item_seq, time_seq, user_latent_factor):
-
         return_dict = {}
         for idx in range(self.num_mask):
             # Do masking
@@ -192,8 +191,8 @@ class TVASequenceDataset(Dataset):
         user_latent_factor,
         val_item=None,
         val_time=None,
-    ):
-        if val_item is not None and val_time is not None:            
+    ) -> Dict[str, Tensor]:
+        if val_item is not None and val_time is not None:
             # In test phase, we add val_item to item_seq,
             # and use the item_seq to predict the answer_item
             item_seq = item_seq + val_item
@@ -201,8 +200,10 @@ class TVASequenceDataset(Dataset):
 
         # Mask the last item, which need to be predicted
         item_seq = item_seq + [self.mask_token]
+
         # Truncate the sequence to max_len
         item_seq = item_seq[-self.max_len :]
+
         # Pad the sequence to max_len
         item_seq = [0] * (self.max_len - len(item_seq)) + item_seq
 
@@ -247,16 +248,13 @@ class TVASequenceDataset(Dataset):
 
         data = {
             # user's sequence
-            "item_seq": torch.LongTensor(item_seq),
+            "item_seq": LongTensor(item_seq),
             # candidates from negative sampling
-            "candidates": torch.LongTensor(candidates),
+            "candidates": LongTensor(candidates),
             # labels from user's answer and negative samples
-            "labels": torch.LongTensor(labels),
-            # "time_seq": torch.FloatTensor(time_seq),
-            "userwise_latent_factor": torch.FloatTensor(user_latent_factor),
-            "itemwise_latent_factor_seq": torch.FloatTensor(
-                np.array(item_latent_factor_seq)
-            ),
+            "labels": LongTensor(labels),
+            "userwise_latent_factor": FloatTensor(user_latent_factor),
+            "itemwise_latent_factor_seq": FloatTensor(np.array(item_latent_factor_seq)),
         }
 
         time_features = self._get_time_features(time_seq)
@@ -288,12 +286,12 @@ class TVASequenceDataset(Dataset):
                 seasons.append(4)
 
         return {
-            "years": torch.LongTensor(years),
-            "months": torch.LongTensor(months),
-            "days": torch.LongTensor(days),
-            "hours": torch.LongTensor(hours),
-            "minutes": torch.LongTensor(minutes),
-            "seconds": torch.LongTensor(seconds),
-            "seasons": torch.LongTensor(seasons),
-            "dayofweek": torch.LongTensor(dayofweek),
+            "years": LongTensor(years),
+            "months": LongTensor(months),
+            "days": LongTensor(days),
+            "hours": LongTensor(hours),
+            "minutes": LongTensor(minutes),
+            "seconds": LongTensor(seconds),
+            "seasons": LongTensor(seasons),
+            "dayofweek": LongTensor(dayofweek),
         }

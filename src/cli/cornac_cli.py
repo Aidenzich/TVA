@@ -1,4 +1,4 @@
-#%%
+# %%
 from cornac.datasets import (
     movielens,
     netflix,
@@ -6,7 +6,7 @@ from cornac.datasets import (
 import inquirer
 import numpy as np
 import pandas as pd
-from src.datasets.common import RecsysData
+from src.datasets.base import RecsysData
 
 # %%
 datasets_options_factory = {

@@ -22,7 +22,11 @@ tqdm.pandas()
 
 
 class RecsysData:
-    def __init__(self, df: pd.DataFrame, filename="") -> None:
+    def __init__(
+        self,
+        df: pd.DataFrame,
+        filename: str = "",
+    ) -> None:
         self.filename = filename
         self.dataframe = df
 
@@ -179,54 +183,53 @@ class RecsysData:
         train_timeseqs, val_timeseqs, test_timeseqs, fully_timeseqs = {}, {}, {}, {}
         users = df[USER_COLUMN_NAME].unique()
 
-        if split_method == "leave_one_out":
-            user_group = df.groupby(USER_COLUMN_NAME)
+        user_group = df.groupby(USER_COLUMN_NAME)
 
-            user2items = user_group.progress_apply(
-                lambda d: list(
-                    d.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="mergesort")[
-                        ITEM_COLUMN_NAME
-                    ]
-                )
+        user2items = user_group.progress_apply(
+            lambda d: list(
+                d.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="mergesort")[
+                    ITEM_COLUMN_NAME
+                ]
+            )
+        )
+
+        user2time = user_group.progress_apply(
+            lambda t: list(
+                t.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="mergesort")[
+                    TIMESTAMP_COLUMN_NAME
+                ].astype(np.int64)
+            )
+        )
+
+        for d in user2time:
+            compare = 0
+            for t in d:
+                if t < compare:
+                    assert False, "Timestamps are not sorted"
+                compare = t
+
+        for user in users:
+            items = user2items[user]
+            timestamps = user2time[user]
+
+            train_seqs[user], val_seqs[user], test_seqs[user], fully_seqs[user] = (
+                items[:-2],
+                items[-2:-1],
+                items[-1:],
+                items,
             )
 
-            user2time = user_group.progress_apply(
-                lambda t: list(
-                    t.sort_values(by=TIMESTAMP_COLUMN_NAME, kind="mergesort")[
-                        TIMESTAMP_COLUMN_NAME
-                    ].astype(np.int64)
-                )
+            (
+                train_timeseqs[user],
+                val_timeseqs[user],
+                test_timeseqs[user],
+                fully_timeseqs[user],
+            ) = (
+                timestamps[:-2],
+                timestamps[-2:-1],
+                timestamps[-1:],
+                timestamps,
             )
-
-            for d in user2time:
-                compare = 0
-                for t in d:
-                    if t < compare:
-                        assert False, "Timestamps are not sorted"
-                    compare = t
-
-            for user in users:
-                items = user2items[user]
-                timestamps = user2time[user]
-
-                train_seqs[user], val_seqs[user], test_seqs[user], fully_seqs[user] = (
-                    items[:-2],
-                    items[-2:-1],
-                    items[-1:],
-                    items,
-                )
-
-                (
-                    train_timeseqs[user],
-                    val_timeseqs[user],
-                    test_timeseqs[user],
-                    fully_timeseqs[user],
-                ) = (
-                    timestamps[:-2],
-                    timestamps[-2:-1],
-                    timestamps[-1:],
-                    timestamps,
-                )
 
         return (
             train_seqs,
@@ -240,7 +243,8 @@ class RecsysData:
         )
 
     def _get_cat2id(
-        self, df: pd.DataFrame
+        self,
+        df: pd.DataFrame,
     ) -> Tuple[
         Dict[str, int],
         Dict[str, int],
@@ -250,11 +254,17 @@ class RecsysData:
         pd.core.series.Series,
     ]:
         """
-        The function of the following code is to convert the contents of the USER_COLUMN_NAME and
-        ITEM_COLUMN_NAME columns in the passed DataFrame to numerical category codes using
-        `astype("category").cat.codes`, and create the relevant conversion dictionaries.
-        The converted results are then returned.
+        Convert user and item identifiers to categorical codes and create relevant conversion dictionaries.
+
+        Parameters:
+        - df: DataFrame containing user and item data.
+
+        Returns:
+        - u2cat, i2cat: Dictionaries mapping original identifiers to category codes for users and items.
+        - cat2u, cat2i: Dictionaries mapping category codes back to original identifiers for users and items.
+        - users_cats, items_cats: Series with user and item categorical codes.
         """
+
         users_cats = df[USER_COLUMN_NAME].astype("category").cat.codes
         items_cats = df[ITEM_COLUMN_NAME].astype("category").cat.codes
         u2cat = dict(zip(self.dataframe[USER_COLUMN_NAME].astype("str"), users_cats))

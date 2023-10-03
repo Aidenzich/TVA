@@ -1,8 +1,6 @@
+from tabulate import tabulate
+
 from .TVA4 import train as train_tva4
-from .TVA6 import train as train_tva6
-from .TVAE import train as train_tvae
-
-
 from .VAECF import train as train_vaecf, infer as infer_vaecf
 from .VAEICF import train as train_vaeicf, infer as infer_vaeicf
 from .BERT4Rec import train as train_bert4rec, infer as infer_bert4rec
@@ -10,8 +8,6 @@ from .BERT4RecS import train as train_bert4recs, infer as infer_bert4recs
 from .CBiT import train as train_cbit
 from .ContrastVAE import train as train_cvae
 from .SASRec import train as train_sasrec
-from tabulate import tabulate
-
 from ..configs import CYAN_COLOR, END_COLOR
 
 TRAIN_FACTORY = {
@@ -19,8 +15,6 @@ TRAIN_FACTORY = {
     "vaecf": train_vaecf,
     "vaeicf": train_vaeicf,
     "tva4": train_tva4,
-    "tva6": train_tva6,
-    "tvae": train_tvae,
     "bert4recs": train_bert4recs,
     "cbit": train_cbit,
     "contrastvae": train_cvae,
