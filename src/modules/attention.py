@@ -1,7 +1,9 @@
 import torch
+from torch import Tensor
 import torch.nn as nn
 import torch.nn.functional as F
 import math
+from typing import Tuple
 
 
 class Attention(nn.Module):
@@ -9,7 +11,9 @@ class Attention(nn.Module):
     Compute 'Scaled Dot Product Attention
     """
 
-    def forward(self, query, key, value, mask=None, dropout=None):
+    def forward(
+        self, query, key, value, mask=None, dropout=None
+    ) -> Tuple(Tensor, Tensor):
         scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(query.size(-1))
 
         if mask is not None:
@@ -29,7 +33,7 @@ class MultiHeadedAttention(nn.Module):
     Take in model size and number of heads.
     """
 
-    def __init__(self, h, d_model, dropout=0.1):
+    def __init__(self, h, d_model, dropout=0.1) -> None:
         super().__init__()
 
         # We assume d_v always equals d_k
@@ -44,7 +48,7 @@ class MultiHeadedAttention(nn.Module):
 
         self.dropout = nn.Dropout(p=dropout)
 
-    def forward(self, query, key, value, mask=None):
+    def forward(self, query, key, value, mask=None) -> Tensor:
         batch_size = query.size(0)
 
         # 1) Do all the linear projections in batch

@@ -26,16 +26,16 @@ def train(
         )
 
         val_transaction = transaction.groupby("item_id").tail(2).sort_values("item_id")
-        # romove test_transaction row from val_transaction
-        val_transaction = val_transaction.drop(test_transaction.index)
 
-        print(len(val_transaction.item_id), len(test_transaction.item_id))
+        # Remove test_transaction row from val_transaction
+        val_transaction = val_transaction.drop(test_transaction.index)
 
         val_user_seqs = (
             val_transaction.groupby("item_id")["user_id"].apply(list).to_dict()
         )
         trainset = VAECFDataset(
             recdata.matrix.transpose(),
+            mode="train",
             split_type="loo",
         )
         valset = VAECFDataset(

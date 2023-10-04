@@ -38,11 +38,8 @@ class VAECFDataset(Dataset):
         }
 
     def __getitem__(self, idx) -> Tensor:
-        if self.split_type == "loo":
-            if self.mode == "train":
-                return self._get_matrix_tensor(idx)
-            else:
-                return self._get_loo_eval(idx)
+        if self.split_type == "loo" and self.mode == "eval":
+            return self._get_loo_eval(idx)
         else:
             return self._get_matrix_tensor(idx)
 
@@ -56,11 +53,12 @@ def split_matrix_by_mask(matrix: csr_matrix) -> Tuple[Tensor, Tensor, Tuple[int,
 
     # Randomly shuffle the indicess
     random_items_idx = np.random.permutation(len(buy_idxs[0]))
-    # The last 20% of the data is used for testing
+
     mask_num = int(len(random_items_idx) * 0.2)
 
     # The first 80% of the data is used for training
     train_idx = random_items_idx[:mask_num]
+
     # The last 20% of the data is used for testing
     test_idx = random_items_idx[mask_num:]
 
@@ -81,7 +79,7 @@ def split_matrix_by_mask(matrix: csr_matrix) -> Tuple[Tensor, Tensor, Tuple[int,
     return non_masked_matrix, masked_matrix, masked_idx
 
 
-def _split_random_matrix_by_user(recdata: RecsysData) -> Tuple[Any, Any, Any]:
+def split_random_matrix_by_user(recdata: RecsysData) -> Tuple[Any, Any, Any]:
     """
     Splitting matrix by random shuffle user for train, testing and validation
     """

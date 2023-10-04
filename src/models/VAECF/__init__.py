@@ -1,4 +1,4 @@
-from src.datasets.vaecf_dset import VAECFDataset
+from src.datasets.vaecf_dset import VAECFDataset, split_random_matrix_by_user
 from src.models.VAECF.model import VAECFModel
 from src.adapters.lightning_adapter import fit
 from src.configs import CACHE_PATH
@@ -22,16 +22,17 @@ def train(
         )
 
     elif vae_split_type == "random":
+        train_matrix, test_matrix, val_matrix = split_random_matrix_by_user(recdata)
         trainset = VAECFDataset(
-            recdata.random_train_matrix,
+            train_matrix,
             split_type="random",
         )
         testset = VAECFDataset(
-            recdata.test_matrix,
+            test_matrix,
             split_type="random",
         )
         valset = VAECFDataset(
-            recdata.val_matrix,
+            val_matrix,
             split_type="random",
         )
 

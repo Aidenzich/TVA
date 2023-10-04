@@ -40,7 +40,7 @@ class TimeEmbedding(nn.Module):
     def __init__(
         self,
         embed_size: int,
-        dropout: Optional[float] = 0.4,
+        dropout: float = 0,
     ) -> None:
         super(TimeEmbedding, self).__init__()
         self.years_emb = nn.Embedding(2100, embed_size)
@@ -49,9 +49,7 @@ class TimeEmbedding(nn.Module):
         self.seasons_emb = nn.Embedding(5, embed_size)
         self.hour_emb = nn.Embedding(25, embed_size)
         self.dayofweek_emb = nn.Embedding(8, embed_size)
-        self.dropout = None
-        if dropout is not None:
-            self.dropout = nn.Dropout(dropout)
+        self.dropout = nn.Dropout(dropout)
 
     def forward(
         self,
@@ -82,7 +80,6 @@ class TimeEmbedding(nn.Module):
             else:
                 time_features_tensor += time_dict[t]
 
-        if self.dropout is not None:
-            time_features_tensor = self.dropout(time_features_tensor)
+        time_features_tensor = self.dropout(time_features_tensor)
 
         return time_features_tensor
