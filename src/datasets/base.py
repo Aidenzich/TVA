@@ -97,7 +97,9 @@ class RecsysData:
         return df[df[RATING_COLUMN_NAME] >= threshold]
 
     def _filter_purchases_threshold(
-        self, df: pd.DataFrame, threshold=10
+        self,
+        df: pd.DataFrame,
+        threshold: int = 10,
     ) -> Tuple[pd.DataFrame, pd.DataFrame]:
         user_val_count = df[USER_COLUMN_NAME].value_counts()
         user_index = user_val_count[user_val_count > threshold].index
@@ -110,7 +112,7 @@ class RecsysData:
     def prepare_matrix(self) -> None:
         uir_df = self.dataframe[
             [USER_COLUMN_NAME, ITEM_COLUMN_NAME, RATING_COLUMN_NAME]
-        ]
+        ].copy()
 
         uir_df[RATING_COLUMN_NAME] = uir_df[RATING_COLUMN_NAME].astype(float)
         uir_df = uir_df[uir_df[RATING_COLUMN_NAME] > 0]

@@ -26,7 +26,7 @@ class VAECFDataset(Dataset):
                 rdata,
                 dtype=torch.float32,
             ),
-            "validate_data": self.u2val[idx] if self.u2val else None,
+            "validate_data": self.u2val.get(idx, [0]) if self.u2val else None,
         }
 
     def _get_matrix_tensor(self, idx) -> bool:

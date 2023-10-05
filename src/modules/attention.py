@@ -13,7 +13,7 @@ class Attention(nn.Module):
 
     def forward(
         self, query, key, value, mask=None, dropout=None
-    ) -> Tuple(Tensor, Tensor):
+    ) -> Tuple[Tensor, Tensor]:
         scores = torch.matmul(query, key.transpose(-2, -1)) / math.sqrt(query.size(-1))
 
         if mask is not None:

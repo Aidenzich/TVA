@@ -33,6 +33,7 @@ def train(
         val_user_seqs = (
             val_transaction.groupby("item_id")["user_id"].apply(list).to_dict()
         )
+
         trainset = VAECFDataset(
             recdata.matrix.transpose(),
             mode="train",
