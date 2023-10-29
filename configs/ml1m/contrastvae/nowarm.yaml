@@ -1,0 +1,43 @@
+data_class: ml1m.pkl
+model_params:
+  activation: gelu
+  anneal_cap: 0.2
+  arguement_method: ''
+  attention_dropout: 0
+  batch_size: 256
+  d_model: 128
+  dropout: 0.3
+  heads: 4
+  initializer_range: 0.02
+  latent_clr_weight: 0.6
+  mask_prob: 0.15
+  max_len: 50
+  n_layers: 1
+  reparam_dropout_rate: 0.0
+  store_latent: false
+  temperature: 0.5
+  total_annealing_step: 10000
+  train_method: latent_contrastive_learning
+  variational_dropout: 0.0
+num_items: 11924
+trainer_config:
+  check_val_every_n_epoch: 50  
+  devices:
+  - 2
+  ks:
+  - 1
+  - 5
+  - 10
+  - 20
+  label_smoothing: 0.0
+  limit_train_batches: 1.0
+  lr: 0.001
+  # lr_scheduler: Warmup
+  # lr_scheduler_args:
+  #   num_cycles: 0.2
+  #   num_training_steps: 35000
+  #   num_warmup_steps: 200
+  max_epochs: 400
+  num_workers: 12
+  seed: 0
+  weight_decay: 0

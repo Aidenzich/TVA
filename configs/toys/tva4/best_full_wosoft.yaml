@@ -1,0 +1,45 @@
+data_class: toys.pkl
+model_params:
+  batch_size: 256
+  d_model: 256
+  dropout: 0.25
+  heads: 4
+  item_latent_factor:
+    available: true
+    hidden_dim: 256
+    path: /home/VS6102093/thesis/TVA/logs/toys/vaeicf/d256/version_2/latent_factor/encode_result.npy
+  latent_ff_dim: 0
+  mask_prob: 0.2
+  max_len: 20
+  n_layers: 2
+  num_mask: 5
+  time_features:  
+  - months
+  - years  
+  use_gate: true
+  use_softmax_on_item_latent: false
+trainer_config:
+  check_val_every_n_epoch: 50
+  config_name: toys.tva4.best
+  devices:
+  - 0
+  ks:
+  - 1
+  - 5
+  - 10
+  - 20  
+  label_smoothing: 0.3
+  limit_train_batches: 1.0
+  lr: 0.001
+  lr_scheduler: Warmup
+  lr_scheduler_args:
+    num_cycles: 0.2
+    num_training_steps: 35750
+    num_warmup_steps: 4000
+  lr_scheduler_interval: step
+  max_epochs: 250
+  num_workers: 12
+  seed: 9527
+  sliding_step: 1
+  sliding_window: true
+  weight_decay: 0.0

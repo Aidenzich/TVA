@@ -1,0 +1,35 @@
+data_class: beauty.pkl
+model_params:
+  batch_size: 256
+  d_model: 256
+  dropout: 0.3
+  heads: 2
+  mask_prob: 0.15
+  max_len: 50
+  n_layers: 2
+  num_mask: 1
+trainer_config:
+  check_val_every_n_epoch: 50
+  config_name: beauty.bert4rec.non
+  devices:
+  - 0
+  ks:
+  - 1
+  - 5
+  - 10
+  - 20
+  - 40
+  - 50
+  label_smoothing: 0.0
+  limit_train_batches: 1.0
+  lr: 0.001
+  lr_scheduler: Warmup
+  lr_scheduler_args:
+    num_cycles: 0.2
+    num_training_steps: 22000
+    num_warmup_steps: 4000
+  lr_scheduler_interval: step
+  max_epochs: 250
+  num_workers: 1
+  seed: 0
+  weight_decay: 0

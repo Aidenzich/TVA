@@ -1,0 +1,28 @@
+data_class: beauty.pkl
+early_stopping:
+  mode: max
+  monitor: vae_recall@50
+  patience: 10
+  verbose: false
+model_params:
+  act_fn: tanh
+  autoencoder_structure:
+  - 512
+  batch_size: 512
+  beta: 0.5
+  beta_annealing_epoch: 20
+  hidden_dim: 512
+  likelihood: mult
+trainer_config:
+  config_name: beauty.vaeicf.re
+  devices:
+  - 2
+  limit_train_batches: 1.0
+  lr: 0.001
+  lr_scheduler: ReduceLROnPlateau
+  lr_scheduler_args:
+    patience: 10
+  lr_scheduler_interval: epoch
+  max_epochs: 100
+  num_workers: 12
+  seed: 0

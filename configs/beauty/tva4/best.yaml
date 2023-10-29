@@ -1,0 +1,46 @@
+data_class: beauty.pkl
+model_params:
+  batch_size: 256
+  d_model: 256
+  dropout: 0.3
+  heads: 4
+  item_latent_factor:
+    available: true
+    hidden_dim: 128
+    path: /home/VS6102093/thesis/TVA/logs/beauty/vaeicf/d128/version_2/latent_factor/encode_result.npy
+  latent_ff_dim: 0
+  mask_prob: 0.4
+  max_len: 15
+  n_layers: 2
+  num_mask: 4
+  time_features:
+  - months
+  - years
+  use_softmax_on_item_latent: False
+  use_gate: True
+num_items: 12101
+trainer_config:
+  check_val_every_n_epoch: 50
+  config_name: beauty.tva4.34_vd128
+  devices:
+  - 3
+  ks:
+  - 1
+  - 5
+  - 10
+  - 20  
+  label_smoothing: 0.35
+  limit_train_batches: 1.0
+  lr: 0.001
+  lr_scheduler: Warmup
+  lr_scheduler_args:
+    num_cycles: 0.2
+    num_training_steps: 43000
+    num_warmup_steps: 10000
+  lr_scheduler_interval: step
+  max_epochs: 250
+  num_workers: 6
+  seed: 0221
+  sliding_step: 1
+  sliding_window: true
+  weight_decay: 0.0

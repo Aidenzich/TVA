@@ -1,0 +1,29 @@
+data_class: toys.pkl
+model_params:
+  act_fn: tanh
+  autoencoder_structure:
+  - 512
+  batch_size: 512
+  beta: 0.5
+  beta_annealing_epoch: 0
+  hidden_dim: 512
+  likelihood: mult
+  split_type: random
+trainer_config:
+  config_name: toys.vaeicf.test
+  devices:
+  - 1
+  early_stopping:
+    mode: max
+    monitor: vae_recall@50
+    patience: 20
+    verbose: false
+  limit_train_batches: 1.0
+  lr: 0.001
+  lr_scheduler: ReduceLROnPlateau
+  lr_scheduler_args:
+    patience: 20
+  lr_scheduler_interval: epoch
+  max_epochs: 100
+  num_workers: 12
+  seed: 0
