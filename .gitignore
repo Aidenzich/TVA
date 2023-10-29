@@ -221,3 +221,8 @@ cache/
 
 data/*.json*
 data/*.txt
+
+!data/toys.csv
+!data/beauty.csv
+!data/ml1m.csv
+
